@@ -1,0 +1,17 @@
+= Quarkus.io Search
+
+> A Quarkus-powered application that allows full-text search in websites of the Quarkus organization such as https://quarkus.io.
+
+== TODO: How to use/configure
+
+TODO: this is work in progress
+
+[[deployment]]
+== Deployment
+
+TODO: this is work in progress
+
+[[license]]
+== License
+
+This project is licensed under the Apache License Version 2.0.
