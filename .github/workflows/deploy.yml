@@ -1,0 +1,43 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - "main"
+    paths-ignore:
+      - '.gitignore'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+      - '*.md'
+      - '*.adoc'
+      - '*.txt'
+      - '.all-contributorsrc'
+
+concurrency:
+  group: deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+
+    if: github.repository == 'yrodiere/search.quarkus.io'
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v2
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - name: Log in to OpenShift
+      run: oc login --token=${{ secrets.SEARCH_QUARKUS_IO_OC_DEPLOY_TOKEN }} --server=${{ secrets.SEARCH_QUARKUS_IO_OC_DEPLOY_SERVER }}
+
+    - name: Delete problematic image
+      run: oc delete is ubi-quarkus-native-binary-s2i || true
+
+    - name: Build and deploy
+      run: mvn clean package -Dquarkus.kubernetes.deploy=true -Dquarkus.native.container-build=true -Dnative -Drevision=${{ github.sha }}
