@@ -32,7 +32,7 @@
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.1.2</surefire-plugin.version>
-    <version.formatter.plugin>2.20.0</version.formatter.plugin>
+    <version.formatter.plugin>2.23.0</version.formatter.plugin>
   </properties>
   <dependencyManagement>
     <dependencies>
