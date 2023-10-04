@@ -5,29 +5,23 @@
   <groupId>io.quarkus.search</groupId>
   <artifactId>quarkus-search-app</artifactId>
   <version>${revision}</version>
-
   <name>Quarkus GitHub Lottery</name>
   <url>https://github.com/quarkusio/quarkus-github-lottery</url>
   <inceptionYear>2023</inceptionYear>
-
   <organization>
     <name>QuarkusIO</name>
     <url>https://quarkus.io/</url>
   </organization>
-
-  <issueManagement>
-    <system>GitHub</system>
-    <url>https://github.com/yrodiere/search.quarkus.io/issues</url>
-  </issueManagement>
   <scm>
     <connection>scm:git:git@github.com:yrodiere/quarkus-github-lottery.git</connection>
     <developerConnection>scm:git:git@github.com:yrodiere/quarkus-github-lottery.git</developerConnection>
     <url>https://github.com/yrodiere/quarkus-github-lottery</url>
-    <tag>HEAD</tag>
   </scm>
-
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/yrodiere/search.quarkus.io/issues</url>
+  </issueManagement>
   <properties>
-    <revision>999-SNAPSHOT</revision>
     <compiler-plugin.version>3.11.0</compiler-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -35,6 +29,7 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
     <quarkus.version>3.4.1</quarkus.version>
+    <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.1.2</surefire-plugin.version>
     <version.formatter.plugin>2.20.0</version.formatter.plugin>
@@ -62,6 +57,10 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-health</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-openshift</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -128,6 +127,14 @@
         <groupId>net.revelc.code.formatter</groupId>
         <artifactId>formatter-maven-plugin</artifactId>
         <version>${version.formatter.plugin}</version>
+        <executions>
+          <execution>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>format</goal>
+            </goals>
+          </execution>
+        </executions>
         <dependencies>
           <dependency>
             <groupId>io.quarkus</groupId>
@@ -140,14 +147,6 @@
           <lineEnding>LF</lineEnding>
           <skip>${format.skip}</skip>
         </configuration>
-        <executions>
-          <execution>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>format</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>
