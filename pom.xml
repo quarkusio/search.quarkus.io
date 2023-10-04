@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.quarkus.search</groupId>
   <artifactId>search-quarkus-io</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>${revision}</version>
 
   <name>Quarkus.io Search App</name>
   <url>https://github.com/yrodiere/search-quarkus-io</url>
@@ -27,6 +27,7 @@
   </scm>
 
   <properties>
+    <revision>999-SNAPSHOT</revision>
     <compiler-plugin.version>3.11.0</compiler-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
