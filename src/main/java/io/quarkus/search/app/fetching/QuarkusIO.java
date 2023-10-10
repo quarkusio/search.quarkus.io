@@ -27,7 +27,10 @@ public class QuarkusIO implements AutoCloseable {
 
     public Stream<Guide> guides() throws IOException {
         return Files.list(directory.path().resolve("_guides"))
-                .filter(path -> FilenameUtils.isExtension(path.getFileName().toString(), "adoc"))
+                .filter(path -> {
+                    String filename = path.getFileName().toString();
+                    return !filename.startsWith("_") && FilenameUtils.isExtension(filename, "adoc");
+                })
                 .map(this::parseGuide);
     }
 

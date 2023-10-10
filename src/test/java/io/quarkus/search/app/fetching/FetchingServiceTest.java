@@ -102,8 +102,11 @@ public class FetchingServiceTest {
         @BeforeAll
         static void initLocalRepo() throws IOException {
             Path guideToFetch = sourceDir.resolve("_guides/" + FETCHED_GUIDE_NAME + ".adoc");
+            Path adocToIgnore = sourceDir.resolve("_guides/_attributes.adoc");
             PathUtils.createParentDirectories(guideToFetch);
             Files.writeString(guideToFetch, FETCHED_GUIDE_CONTENT);
+            PathUtils.createParentDirectories(adocToIgnore);
+            Files.writeString(adocToIgnore, "ignored");
         }
     }
 
@@ -121,10 +124,12 @@ public class FetchingServiceTest {
         @BeforeAll
         static void initOrigin() throws IOException, GitAPIException {
             Path guideToFetch = sourceRepoDir.resolve("_guides/" + FETCHED_GUIDE_NAME + ".adoc");
+            Path adocToIgnore = sourceRepoDir.resolve("_guides/_attributes.adoc");
             try (Git git = Git.init().setDirectory(sourceRepoDir.toFile()).call()) {
                 PathUtils.createParentDirectories(guideToFetch);
-
                 Files.writeString(guideToFetch, "initial");
+                PathUtils.createParentDirectories(adocToIgnore);
+                Files.writeString(adocToIgnore, "ignored");
                 git.add().addFilepattern(".").call();
                 git.commit().setMessage("First commit").call();
 

@@ -1,7 +1,5 @@
 package io.quarkus.search.app.entity;
 
-import io.quarkus.search.app.hibernate.AnalysisConfigurer;
-import io.quarkus.search.app.hibernate.PathWrapper;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -12,6 +10,9 @@ import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
+
+import io.quarkus.search.app.hibernate.AnalysisConfigurer;
+import io.quarkus.search.app.hibernate.PathWrapper;
 
 @Entity
 @Indexed
@@ -41,4 +42,10 @@ public class Guide {
     // Using PathWrapper because of https://hibernate.atlassian.net/browse/HSEARCH-4988
     public PathWrapper fullContentPath;
 
+    @Override
+    public String toString() {
+        return "Guide{" +
+                "relativePath='" + relativePath + '\'' +
+                '}';
+    }
 }
