@@ -1,4 +1,4 @@
-package io.quarkus.search.app;
+package io.quarkus.search.app.dto;
 
 import java.util.List;
 
