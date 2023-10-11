@@ -147,9 +147,9 @@ public class SearchServiceTest {
                         GuideIds.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideIds.HIBERNATE_REACTIVE_PANACHE,
                         GuideIds.HIBERNATE_ORM_PANACHE,
+                        GuideIds.HIBERNATE_REACTIVE,
                         GuideIds.HIBERNATE_ORM,
                         GuideIds.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideIds.HIBERNATE_REACTIVE,
                         GuideIds.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideIds.SPRING_DATA_JPA)),
                 Arguments.of("jpa", List.of(

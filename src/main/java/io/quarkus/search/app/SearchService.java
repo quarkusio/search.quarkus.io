@@ -44,7 +44,7 @@ public class SearchService {
                             .field("summary").boost(5.0f)
                             .field("fullContent")
                             .field("keywords_autocomplete").boost(1.0f)
-                            .field("title_autocomplete").boost(0.7f)
+                            .field("title_autocomplete").boost(1.0f)
                             .field("summary_autocomplete").boost(0.5f)
                             .field("fullContent_autocomplete").boost(0.1f)
                             .matching(q))
