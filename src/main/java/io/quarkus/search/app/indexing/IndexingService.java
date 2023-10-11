@@ -2,15 +2,18 @@ package io.quarkus.search.app.indexing;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.RestClient;
 
 import org.hibernate.Session;
+import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.mapper.orm.mapping.SearchMapping;
 import org.hibernate.search.util.common.impl.Closer;
 
@@ -34,6 +37,11 @@ public class IndexingService {
     @Inject
     FetchingService fetchingService;
 
+    @Inject
+    IndexingConfig indexingConfig;
+
+    private final AtomicBoolean reindexingInProgress = new AtomicBoolean();
+
     void registerManagementRoutes(@Observes ManagementInterface mi) {
         mi.router().get("/reindex")
                 .blockingHandler(rc -> {
@@ -42,17 +50,48 @@ public class IndexingService {
                 });
     }
 
-    void indexOnStartup(@Observes StartupEvent ev,
-            @ConfigProperty(name = "indexing.on-startup", defaultValue = "true") boolean index) {
-        if (index) {
+    void indexOnStartup(@Observes StartupEvent ev)
+            throws InterruptedException {
+        if (indexingConfig.onStartup().enabled()) {
+            Log.infof("Reindexing on startup");
+            var waitInterval = indexingConfig.onStartup().waitInterval().toMillis();
+            while (!isSearchBackendAccessible()) {
+                Log.infof("Search backend is not reachable yet, waiting...");
+                Thread.sleep(waitInterval);
+            }
             reindex();
+        }
+    }
+
+    private boolean isSearchBackendAccessible() {
+        try {
+            searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
+                    .performRequest(new Request("GET", "/"));
+            return true;
+        } catch (IOException e) {
+            Log.debug("Caught exception when testing whether the search backend is reachable", e);
+            return false;
         }
     }
 
     @ActivateRequestContext
     protected void reindex() {
-        clearIndexes();
-        indexAll();
+        // Reindexing requires exclusive access to the DB/indexes
+        if (!reindexingInProgress.compareAndSet(false, true)) {
+            throw new ReindexingAlreadyInProgressException();
+        }
+        try {
+            clearIndexes();
+            indexAll();
+        } finally {
+            reindexingInProgress.set(false);
+        }
+    }
+
+    private static class ReindexingAlreadyInProgressException extends RuntimeException {
+        ReindexingAlreadyInProgressException() {
+            super("Reindexing is already in progress and cannot be started at this moment");
+        }
     }
 
     private void clearIndexes() {
