@@ -20,7 +20,7 @@ concurrency:
 jobs:
   deploy:
 
-    if: github.repository == 'yrodiere/search.quarkus.io'
+    if: github.repository == 'quarkus/search.quarkus.io'
 
     runs-on: ubuntu-latest
 
