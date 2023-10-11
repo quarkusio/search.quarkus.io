@@ -15,7 +15,8 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.SoftAssertions;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-
+import org.eclipse.jgit.util.SystemReader;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -28,6 +29,8 @@ import io.quarkus.search.app.entity.Guide;
 import io.quarkus.test.component.QuarkusComponentTestExtension;
 
 public class FetchingServiceTest {
+
+    private static final Logger LOG = Logger.getLogger(FetchingServiceTest.class);
 
     // Unfortunately we can't use @TempDir here,
     // because we need the path initialized before we create the extension below.
@@ -126,6 +129,8 @@ public class FetchingServiceTest {
             Path guideToFetch = sourceRepoDir.resolve("_guides/" + FETCHED_GUIDE_NAME + ".adoc");
             Path adocToIgnore = sourceRepoDir.resolve("_guides/_attributes.adoc");
             try (Git git = Git.init().setDirectory(sourceRepoDir.toFile()).call()) {
+                cleanGitUserConfig();
+
                 PathUtils.createParentDirectories(guideToFetch);
                 Files.writeString(guideToFetch, "initial");
                 PathUtils.createParentDirectories(adocToIgnore);
@@ -172,4 +177,11 @@ public class FetchingServiceTest {
         };
     }
 
+    private static void cleanGitUserConfig() {
+        try {
+            SystemReader.getInstance().getUserConfig().clear();
+        } catch (Exception e) {
+            LOG.warn("Unable to clear the Git user config");
+        }
+    }
 }
