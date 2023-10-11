@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import jakarta.inject.Inject;
@@ -87,6 +88,8 @@ public class FetchingServiceTest {
                                     "Some title",
                                     "This is a summary",
                                     "keyword1, keyword2",
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     FETCHED_GUIDE_CONTENT));
                 }
             }
@@ -151,6 +154,8 @@ public class FetchingServiceTest {
             :irrelevant: foo
             :keywords: keyword1, keyword2
             :summary: This is a summary
+            :topics: topic1, topic2
+            :extensions: io.quarkus:extension1,io.quarkus:extension2
 
             This is the guide body
 
@@ -163,13 +168,18 @@ public class FetchingServiceTest {
             This is another subsection
             """;
 
-    private static Consumer<Guide> isGuide(String relativePath, String title, String summary, String keywords, String content) {
+    private static Consumer<Guide> isGuide(String relativePath, String title, String summary, String keywords,
+            Set<String> topics, Set<String> extensions, String content) {
         return guide -> {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(guide).extracting("relativePath").isEqualTo(relativePath);
                 softly.assertThat(guide).extracting("title").isEqualTo(title);
                 softly.assertThat(guide).extracting("summary").isEqualTo(summary);
                 softly.assertThat(guide).extracting("keywords").isEqualTo(keywords);
+                softly.assertThat(guide).extracting("topics", InstanceOfAssertFactories.COLLECTION)
+                        .containsExactlyInAnyOrderElementsOf(topics);
+                softly.assertThat(guide).extracting("extensions", InstanceOfAssertFactories.COLLECTION)
+                        .containsExactlyInAnyOrderElementsOf(extensions);
                 softly.assertThat(guide).extracting("fullContentPath.value", InstanceOfAssertFactories.PATH)
                         .content()
                         .isEqualTo(content);

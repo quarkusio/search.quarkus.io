@@ -15,24 +15,24 @@ public final class DatasetConstants {
         public static final String SPRING_DATA_JPA = "/guides/spring-data-jpa";
         public static final String HIBERNATE_SEARCH_ORM_ELASTICSEARCH = "/guides/hibernate-search-orm-elasticsearch";
         public static final String SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION = "/guides/security-oidc-bearer-token-authentication";
-        public static final String SECURITY_VULNERABILITY_DETECTION = "/guides/security-vulnerability-detection";
         public static final String HIBERNATE_ORM_PANACHE = "/guides/hibernate-orm-panache";
         public static final String HIBERNATE_ORM_PANACHE_KOTLIN = "/guides/hibernate-orm-panache-kotlin";
         public static final String HIBERNATE_REACTIVE_PANACHE = "/guides/hibernate-reactive-panache";
         public static final String HIBERNATE_ORM = "/guides/hibernate-orm";
         public static final String HIBERNATE_REACTIVE = "/guides/hibernate-reactive";
+        public static final String STORK_REFERENCE = "/guides/stork-reference";
 
         public static final String[] ALL = new String[] {
                 DUPLICATED_CONTEXT,
                 SPRING_DATA_JPA,
                 HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                 SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
-                SECURITY_VULNERABILITY_DETECTION,
                 HIBERNATE_ORM_PANACHE,
                 HIBERNATE_ORM_PANACHE_KOTLIN,
                 HIBERNATE_REACTIVE_PANACHE,
                 HIBERNATE_ORM,
-                HIBERNATE_REACTIVE
+                HIBERNATE_REACTIVE,
+                STORK_REFERENCE
         };
     }
 

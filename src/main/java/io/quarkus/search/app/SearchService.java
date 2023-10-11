@@ -32,20 +32,23 @@ public class SearchService {
     public SearchResult<SearchHit> search(@RestQuery String q) {
         var result = session.search(Guide.class)
                 .select(SearchHit.class)
-                .where((f, root) -> {
-                    root.add(f.matchAll()); // Default
-                    if (q != null && !q.isBlank()) {
-                        root.add(f.simpleQueryString()
-                                .field("keywords").boost(10.0f)
-                                .field("title").boost(7.0f)
-                                .field("summary").boost(5.0f)
-                                .field("fullContent")
-                                .field("keywords_autocomplete").boost(1.0f)
-                                .field("title_autocomplete").boost(0.7f)
-                                .field("summary_autocomplete").boost(0.5f)
-                                .field("fullContent_autocomplete").boost(0.1f)
-                                .matching(q));
+                .where(f -> {
+                    if (q == null || q.isBlank()) {
+                        return f.matchAll();
                     }
+
+                    return f.bool().must(f.simpleQueryString()
+                            .field("title").boost(10.0f)
+                            .field("topics").boost(10.0f)
+                            .field("keywords").boost(10.0f)
+                            .field("summary").boost(5.0f)
+                            .field("fullContent")
+                            .field("keywords_autocomplete").boost(1.0f)
+                            .field("title_autocomplete").boost(0.7f)
+                            .field("summary_autocomplete").boost(0.5f)
+                            .field("fullContent_autocomplete").boost(0.1f)
+                            .matching(q))
+                            .should(f.not(f.match().field("topics").matching("compatibility")).boost(50.0f));
                 })
                 .sort(f -> f.score().then().field("title_sort"))
                 .fetch(20);
