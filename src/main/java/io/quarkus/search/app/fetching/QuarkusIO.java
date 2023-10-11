@@ -3,7 +3,11 @@ package io.quarkus.search.app.fetching;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.FilenameUtils;
@@ -40,8 +44,19 @@ public class QuarkusIO implements AutoCloseable {
         guide.fullContentPath = new PathWrapper(path);
         Asciidoc.parse(path, title -> guide.title = title,
                 Map.of("summary", summary -> guide.summary = summary,
-                        "keywords", keywords -> guide.keywords = keywords));
+                        "keywords", keywords -> guide.keywords = keywords,
+                        "topics", topics -> guide.topics = toSet(topics),
+                        "extensions", extensions -> guide.extensions = toSet(extensions)));
         return guide;
     }
 
+    private static Set<String> toSet(String value) {
+        if (value == null || value.isBlank()) {
+            return Set.of();
+        }
+
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .collect(Collectors.toCollection(HashSet::new));
+    }
 }
