@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
@@ -35,7 +36,10 @@ public class IndexingService {
 
     void registerManagementRoutes(@Observes ManagementInterface mi) {
         mi.router().get("/reindex")
-                .blockingHandler(rc -> reindex());
+                .blockingHandler(rc -> {
+                    reindex();
+                    rc.end("Success");
+                });
     }
 
     void indexOnStartup(@Observes StartupEvent ev,
@@ -45,7 +49,8 @@ public class IndexingService {
         }
     }
 
-    private void reindex() {
+    @ActivateRequestContext
+    protected void reindex() {
         clearIndexes();
         indexAll();
     }
