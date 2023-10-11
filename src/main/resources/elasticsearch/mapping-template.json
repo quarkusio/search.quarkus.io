@@ -1,0 +1,9 @@
+{
+  "_source": {
+    "excludes": [
+      "fullContent",
+      "fullContent_autocomplete"
+    ]
+  }
+}
+
