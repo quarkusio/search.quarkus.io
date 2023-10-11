@@ -40,6 +40,8 @@ Then head over to http://0.0.0.0:9000/q/swagger-ui/ to try the service.
 [[deployment]]
 == Deployment
 
+=== Current process
+
 Deployment should happen automatically when pushing to the `main` branch.
 
 Maintainers can review the application and update configuration/secrets
@@ -47,6 +49,35 @@ at https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/
 
 Be careful about which configuration you change in the UI,
 as deployment may overwrite part of the topology.
+
+=== Setting it up
+
+Most of the process is automated, but if you need to deploy to a new cluster,
+you will need to set up a few things manually:
+
+1. Service account for GitHub Actions deployment.
+   The account credentials (username/token) need to be registered as GitHub Actions secrets,
+   as well as the cluster URI.
+   See `.github/workflows/deploy.yml`.
+2. Namespace
+   The OpenShift namespace needs to be registered as a GitHub Actions environment variable.
+   See `.github/workflows/deploy.yml`.
+3. Config maps and secrets.
+  `search-quarkus-io-config`::
+    Environment variables for the application.
+    Put in there whatever configuration you need for your specific cluster.
+  `search-quarkus-io-secret`::
+    Secret environment variables for the application.
+    Put in there whatever secret configuration you need for your specific cluster.
+  `search-quarkus-io-pull-secret`::
+    Secrets for pulling images from registry.connect.redhat.com, in particular the Elasticsearch image.
+    See https://access.redhat.com/terms-based-registry/ to generate it.
+  `elasticsearch-config`::
+    Environment variables for the Elasticsearch instances.
+    Put in there whatever configuration you need for your specific cluster.
+  `elasticsearch-secret`::
+    Secret environment variables for the Elasticsearch instances.
+    Put in there whatever secret configuration you need for your specific cluster.
 
 [[license]]
 == License

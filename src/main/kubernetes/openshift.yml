@@ -43,7 +43,8 @@ spec:
     spec:
       containers:
         - name: elasticsearch
-          image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+          # https://catalog.redhat.com/software/containers/elastic/elasticsearch/5fac2d6dac3db90370a224c7
+          image: registry.connect.redhat.com/elastic/elasticsearch:8.10.2
           imagePullPolicy: Always
           resources:
             limits:
@@ -68,3 +69,5 @@ spec:
             - containerPort: 9200
               name: http
               protocol: TCP
+      imagePullSecrets:
+        - name: search-quarkus-io-pull-secret
