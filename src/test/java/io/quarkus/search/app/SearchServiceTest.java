@@ -121,8 +121,7 @@ public class SearchServiceTest {
                 // I wonder if we could use something similar to https://stackoverflow.com/a/74737474/5043585
                 // to have some sort of weight in the documents and prioritize some of them
                 // problem will be to find the right balance because the weight would be always on
-                // another option could be to use the keyword to trick some searches
-                // I suspect we should make the keywords a List separated by , and a proper list in the index rather than what it is currently
+                // another option could be to use the keywords to trick some searches
                 Arguments.of("orm", List.of(
                         // TODO Shouldn't the ORM guide be before Panache?
                         GuideIds.HIBERNATE_ORM_PANACHE,
