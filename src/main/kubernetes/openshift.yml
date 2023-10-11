@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/component: datastore
+    app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/managed-by: quarkus
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    app.kubernetes.io/name: elasticsearch
+  type: ClusterIP
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/component: datastore
+    app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/managed-by: quarkus
+spec:
+  replicas: 3
+  selector:
+    app.kubernetes.io/name: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+        app.kubernetes.io/name: elasticsearch
+        app.kubernetes.io/component: datastore
+        app.kubernetes.io/part-of: search-quarkus-io
+        app.kubernetes.io/managed-by: quarkus
+    spec:
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 500Mi
+          env:
+            - name: cluster.name
+              value: search-quarkus-io
+            # Not exposed to the internet, no sensitive data
+            # => We don't bother with HTTPS and pesky self-signed certificates
+            - name: xpack.security.enabled
+              value: false
+          envFrom:
+            - configMapRef:
+                name: elasticsearch-config
+            - secretRef:
+                name: elasticsearch-secrets
+          ports:
+            - containerPort: 9200
+              name: http
+              protocol: TCP
