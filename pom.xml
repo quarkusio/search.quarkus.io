@@ -7,20 +7,20 @@
     <artifactId>search-quarkus-io</artifactId>
     <version>${revision}</version>
     <name>Quarkus.io Search App</name>
-    <url>https://github.com/quarkus/search-quarkus-io</url>
+    <url>https://github.com/quarkusio/search-quarkus-io</url>
     <inceptionYear>2023</inceptionYear>
     <organization>
         <name>QuarkusIO</name>
         <url>https://quarkus.io/</url>
     </organization>
     <scm>
-        <connection>scm:git:git@github.com:quarkus/search-quarkus-io.git</connection>
-        <developerConnection>scm:git:git@github.com:quarkus/search-quarkus-io.git</developerConnection>
-        <url>https://github.com/quarkus/search-quarkus-io</url>
+        <connection>scm:git:git@github.com:quarkusio/search-quarkus-io.git</connection>
+        <developerConnection>scm:git:git@github.com:quarkusio/search-quarkus-io.git</developerConnection>
+        <url>https://github.com/quarkusio/search-quarkus-io</url>
     </scm>
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/quarkus/search.quarkus.io/issues</url>
+        <url>https://github.com/quarkusio/search.quarkus.io/issues</url>
     </issueManagement>
     <properties>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
