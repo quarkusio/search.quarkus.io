@@ -169,6 +169,23 @@
                         <maven.home>${maven.home}</maven.home>
                         <maven.test.data.path>${test.data.path}</maven.test.data.path>
                     </systemPropertyVariables>
+                    <!-- Better test names in test reports.
+                         See https://maven.apache.org/surefire/maven-surefire-plugin/examples/junit-platform.html#Surefire_Extensions_and_Reports_Configuration_for_.40DisplayName
+                         Don't ask me why this isn't the default -->
+                    <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+                        <usePhrasedFileName>true</usePhrasedFileName>
+                        <usePhrasedTestSuiteClassName>true</usePhrasedTestSuiteClassName>
+                        <usePhrasedTestCaseClassName>true</usePhrasedTestCaseClassName>
+                        <usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
+                    </statelessTestsetReporter>
+                    <consoleOutputReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5ConsoleOutputReporter">
+                        <usePhrasedFileName>true</usePhrasedFileName>
+                    </consoleOutputReporter>
+                    <statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoReporter">
+                        <usePhrasedFileName>true</usePhrasedFileName>
+                        <usePhrasedClassNameInRunning>true</usePhrasedClassNameInRunning>
+                        <usePhrasedClassNameInTestCaseSummary>true</usePhrasedClassNameInTestCaseSummary>
+                    </statelessTestsetInfoReporter>
                 </configuration>
             </plugin>
             <plugin>
@@ -193,6 +210,25 @@
                         </configuration>
                     </execution>
                 </executions>
+                <configuration>
+                    <!-- Better test names in test reports.
+                         See https://maven.apache.org/surefire/maven-surefire-plugin/examples/junit-platform.html#Surefire_Extensions_and_Reports_Configuration_for_.40DisplayName
+                         Don't ask me why this isn't the default -->
+                    <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+                        <usePhrasedFileName>true</usePhrasedFileName>
+                        <usePhrasedTestSuiteClassName>true</usePhrasedTestSuiteClassName>
+                        <usePhrasedTestCaseClassName>true</usePhrasedTestCaseClassName>
+                        <usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
+                    </statelessTestsetReporter>
+                    <consoleOutputReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5ConsoleOutputReporter">
+                        <usePhrasedFileName>true</usePhrasedFileName>
+                    </consoleOutputReporter>
+                    <statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoReporter">
+                        <usePhrasedFileName>true</usePhrasedFileName>
+                        <usePhrasedClassNameInRunning>true</usePhrasedClassNameInRunning>
+                        <usePhrasedClassNameInTestCaseSummary>true</usePhrasedClassNameInTestCaseSummary>
+                    </statelessTestsetInfoReporter>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>net.revelc.code.formatter</groupId>
