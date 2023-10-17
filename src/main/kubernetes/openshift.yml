@@ -71,8 +71,6 @@ spec:
             - containerPort: 9200
               name: http
               protocol: TCP
-      imagePullSecrets:
-        - name: search-quarkus-io-pull-secret
   triggers:
     - type: ConfigChange
     - imageChangeParams:
@@ -94,8 +92,7 @@ metadata:
     app.kubernetes.io/managed-by: quarkus
 spec:
   tags:
-    # https://catalog.redhat.com/software/containers/elastic/elasticsearch/5fac2d6dac3db90370a224c7
     - name: 8.10.2
       from:
         kind: DockerImage
-        name: registry.connect.redhat.com/elastic/elasticsearch:8.10.2
+        name: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
