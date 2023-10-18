@@ -11,15 +11,20 @@ metadata:
 spec:
   ports:
     - name: http
-      port: 80
+      port: 9200
       protocol: TCP
-      targetPort: 9200
+    - name: inter-node
+      protocol: TCP
+      port: 9300
   selector:
     app.kubernetes.io/name: elasticsearch
   type: ClusterIP
+  # Using a StatefulSet, each pod has its own immutable address,
+  # so we don't need the service to have an IP.
+  clusterIP: None
 ---
-apiVersion: apps.openshift.io/v1
-kind: DeploymentConfig
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   name: elasticsearch
   labels:
@@ -28,10 +33,13 @@ metadata:
     app.kubernetes.io/component: datastore
     app.kubernetes.io/part-of: search-quarkus-io
     app.kubernetes.io/managed-by: quarkus
+# See https://www.hafifbilgiler.com/hafif-bilgiler/elasticsearch-installation-on-openshift/
 spec:
+  serviceName: elasticsearch
   replicas: 3
   selector:
-    app.kubernetes.io/name: elasticsearch
+    matchLabels:
+      app.kubernetes.io/name: elasticsearch
   template:
     metadata:
       labels:
@@ -52,13 +60,41 @@ spec:
             requests:
               cpu: 250m
               memory: 500Mi
+          readinessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /_cluster/health?local=true
+              port: 9200
+            initialDelaySeconds: 5
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+            - name: inter-node
+              containerPort: 9300
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
           env:
             - name: cluster.name
               value: search-quarkus-io
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#discovery-settings
+            # Rely on OpenShift's internal DNS to address the other hosts
+            - name: discovery.seed_hosts
+              value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch,elasticsearch-2.elasticsearch"
+            - name: cluster.initial_master_nodes
+              value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
             # Not exposed to the internet, no sensitive data
             # => We don't bother with HTTPS and pesky self-signed certificates
             - name: xpack.security.enabled
-              value: false
+              value: "false"
+            - name: bootstrap.memory_lock
+              value: "false"
             # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_configure_and_start_the_cluster
             - name: ES_PORT
               value: 127.0.0.1:9200
@@ -67,10 +103,21 @@ spec:
                 name: elasticsearch-config
             - secretRef:
                 name: elasticsearch-secrets
-          ports:
-            - containerPort: 9200
-              name: http
-              protocol: TCP
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: elasticsearch
+          app.kubernetes.io/name: elasticsearch
+          app.kubernetes.io/component: datastore
+          app.kubernetes.io/part-of: search-quarkus-io
+          app.kubernetes.io/managed-by: quarkus
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "gp2"
+        resources:
+          requests:
+            storage: 5Gi
   triggers:
     - type: ConfigChange
     - type: ImageChange
