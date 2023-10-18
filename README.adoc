@@ -69,9 +69,6 @@ you will need to set up a few things manually:
   `search-quarkus-io-secret`::
     Secret environment variables for the application.
     Put in there whatever secret configuration you need for your specific cluster.
-  `search-quarkus-io-pull-secret`::
-    Secrets for pulling images from registry.connect.redhat.com, in particular the Elasticsearch image.
-    See https://access.redhat.com/terms-based-registry/ to generate it.
   `elasticsearch-config`::
     Environment variables for the Elasticsearch instances.
     Put in there whatever configuration you need for your specific cluster.
