@@ -73,7 +73,8 @@ spec:
               protocol: TCP
   triggers:
     - type: ConfigChange
-    - imageChangeParams:
+    - type: ImageChange
+      imageChangeParams:
         automatic: true
         containerNames:
           - elasticsearch
