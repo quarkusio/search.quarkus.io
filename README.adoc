@@ -37,6 +37,36 @@ quarkus dev -Dfetching.quarkusio.uri=file:$HOME/my-clone
 
 Then head over to http://0.0.0.0:9000/q/swagger-ui/ to try the service.
 
+[[production]]
+== Production
+
+If you want to start a (production) container locally, you can build one with the following command:
+
+[source,shell]
+----
+quarkus build -DskipTests -Dquarkus.container-image.build=true -Dquarkus.container-image.builder=jib
+# OR
+./mvnw install -DskipTests -Dquarkus.container-image.build=true -Dquarkus.container-image.builder=jib
+----
+
+Then start it this way:
+
+[source,shell]
+----
+podman pod create -p 8080:8080 -p 9000:9000 -p 9200:9200 --name search.quarkus.io
+podman container run -d --name elasticearch --pod search.quarkus.io \
+    -e "discovery.type=single-node" -e "xpack.security.enabled=false" \
+    -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" -e "cluster.routing.allocation.disk.threshold_enabled=false" \
+    elastic/elasticsearch:8.10.2
+# Then the app; this will fetch the actual data on startup (might take a while):
+podman container run -it --rm --pod search.quarkus.io search-quarkus-io:999-SNAPSHOT
+# OR, if you already have a local clone of quarkus.io:
+podman container run -it --rm --pod search.quarkus.io \
+    -v $HOME/myclone:/mnt/quarkus-io:ro,z \
+    -e FETCHING_QUARKUSIO_URI=file:/mnt/quarkus-io \
+    search-quarkus-io:999-SNAPSHOT
+----
+
 [[deployment]]
 == Deployment
 
