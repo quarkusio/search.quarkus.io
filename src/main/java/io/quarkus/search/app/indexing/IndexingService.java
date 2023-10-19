@@ -81,7 +81,12 @@ public class IndexingService {
             throw new ReindexingAlreadyInProgressException();
         }
         try {
-            clearIndexes();
+            Log.info("Creating missing indexes (if any)");
+            searchMapping.scope(Object.class).schemaManager().createIfMissing();
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("Failed to create missing indexes: " + e.getMessage(), e);
+        }
+        try {
             indexAll();
         } finally {
             reindexingInProgress.set(false);
@@ -94,27 +99,23 @@ public class IndexingService {
         }
     }
 
-    private void clearIndexes() {
-        try {
-            Log.info("Clearing all indexes");
-            searchMapping.scope(Object.class).schemaManager().dropAndCreate();
-        } catch (RuntimeException e) {
-            throw new IllegalStateException("Failed to clear all index data: " + e.getMessage(), e);
-        }
-    }
-
     private void indexAll() {
         Log.info("Indexing...");
-        try (Closer<IOException> closer = new Closer<>()) {
+        try (Rollover rollover = Rollover.start(searchMapping);
+                Closer<IOException> closer = new Closer<>()) {
             // We don't use the database for searching, so let's make sure to clear it at the end.
             closer.push(IndexingService::clearDatabaseWithoutIndexes, this);
 
             try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo()) {
                 indexQuarkusIo(quarkusIO);
             }
+
+            rollover.commit();
+            Log.info("Indexing success");
+
             Log.info("Refreshing indexes...");
             searchMapping.scope(Object.class).workspace().refresh();
-            Log.info("Indexing success");
+            Log.info("Indexes refreshed");
         } catch (Exception e) {
             throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
         }
