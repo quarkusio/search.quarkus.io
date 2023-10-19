@@ -1,9 +1,16 @@
 package io.quarkus.search.app.indexing;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Iterator;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
+import io.smallrye.mutiny.subscription.FixedDemandPacer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
@@ -50,17 +57,41 @@ public class IndexingService {
                 });
     }
 
-    void indexOnStartup(@Observes StartupEvent ev)
-            throws InterruptedException {
-        if (indexingConfig.onStartup().enabled()) {
-            Log.infof("Reindexing on startup");
-            var waitInterval = indexingConfig.onStartup().waitInterval().toMillis();
-            while (!isSearchBackendAccessible()) {
-                Log.infof("Search backend is not reachable yet, waiting...");
-                Thread.sleep(waitInterval);
-            }
-            reindex();
+    void indexOnStartup(@Observes StartupEvent ev) {
+        if (!indexingConfig.onStartup().enabled()) {
+            Log.infof("Not reindexing on startup (disabled)");
+            return;
         }
+        Log.infof("Reindexing on startup");
+        var waitInterval = indexingConfig.onStartup().waitInterval();
+        // https://smallrye.io/smallrye-mutiny/2.0.0/guides/polling/#how-to-use-polling
+        Multi.createBy().repeating()
+                .supplier(this::isSearchBackendAccessible)
+                .until(backendAccessible -> backendAccessible)
+                .onItem().invoke(() -> {
+                    Log.infof("Search backend is not reachable yet, waiting...");
+                })
+                .onCompletion().call(() -> Uni.createFrom()
+                        .item(() -> {
+                            reindex();
+                            return null;
+                        })
+                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()))
+                // https://smallrye.io/smallrye-mutiny/2.5.1/guides/controlling-demand/#pacing-the-demand
+                .paceDemand().on(Infrastructure.getDefaultWorkerPool())
+                .using(new FixedDemandPacer(1L, waitInterval))
+                .onFailure().invoke(t -> Log.errorf("Reindexing on startup failed: " + t.getMessage(), t))
+                // We don't care about the result, we just want this to run.
+                .subscribe().with(ignored -> {
+                });
+    }
+
+    // https://smallrye.io/smallrye-mutiny/2.0.0/guides/delaying-events/#throttling-a-multi
+    private static <T> Multi<T> throttle(Multi<T> source, Duration waitInterval) {
+        Multi<Long> ticks = Multi.createFrom().ticks().every(waitInterval)
+                .onOverflow().drop();
+        return Multi.createBy().combining().streams(ticks, source)
+                .using((x, item) -> item);
     }
 
     private boolean isSearchBackendAccessible() {

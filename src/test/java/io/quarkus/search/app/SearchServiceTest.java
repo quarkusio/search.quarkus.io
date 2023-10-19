@@ -6,7 +6,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.awaitility.Awaitility;
+
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -20,9 +24,27 @@ import io.restassured.common.mapper.TypeRef;
 
 @QuarkusTest
 @TestHTTPEndpoint(SearchService.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class SearchServiceTest {
     private static final TypeRef<SearchResult<SearchHit>> SEARCH_RESULT_SEARCH_HITS = new TypeRef<>() {
     };
+
+    protected int managementPort() {
+        if (getClass().getName().endsWith("IT")) {
+            return 9000;
+        } else {
+            return 9001;
+        }
+    }
+
+    @BeforeAll
+    public void waitForIndexing() {
+        Awaitility.await().untilAsserted(() -> {
+            when().get("http://localhost:" + managementPort() + "/q/health/ready")
+                    .then()
+                    .statusCode(200);
+        });
+    }
 
     @Test
     public void queryNotMatching() {
