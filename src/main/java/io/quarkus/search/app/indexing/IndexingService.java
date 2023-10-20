@@ -105,12 +105,7 @@ public class IndexingService {
             throw new ReindexingAlreadyInProgressException();
         }
         try {
-            Log.info("Creating missing indexes (if any)");
-            searchMapping.scope(Object.class).schemaManager().createIfMissing();
-        } catch (RuntimeException e) {
-            throw new IllegalStateException("Failed to create missing indexes: " + e.getMessage(), e);
-        }
-        try {
+            createIndexes();
             indexAll();
         } finally {
             reindexingInProgress.set(false);
@@ -120,6 +115,31 @@ public class IndexingService {
     private static class ReindexingAlreadyInProgressException extends RuntimeException {
         ReindexingAlreadyInProgressException() {
             super("Reindexing is already in progress and cannot be started at this moment");
+        }
+    }
+
+    private void createIndexes() {
+        try {
+            Log.info("Creating missing indexes");
+            searchMapping.scope(Object.class).schemaManager().createIfMissing();
+        } catch (RuntimeException e) {
+            // This may happen if aliases were left in a stale state by a previous pod
+            // that failed to get ready in time, but is potentially still indexing.
+            // Ideally we'd just tell Kubernetes that a previous failed pod
+            // must be killed completely before rolling out a new one,
+            // so that it gets the chance to get things back in order,
+            // but I don't know how to do this without having Kubernetes
+            // also kill previous *ready* pods, which would completely prevent zero-downtime rollouts.
+            // So, we'll just do this and accept that things will go wrong
+            // (hopefully just a temporary downtime)
+            // if we do two rollouts too close to each other.
+            Log.error("Creating missing indexes failed; attempting drop-and-create", e);
+            try {
+                searchMapping.scope(Object.class).schemaManager().dropAndCreate();
+            } catch (RuntimeException e2) {
+                e.addSuppressed(e2);
+                throw new IllegalStateException("Failed to create indexes: " + e.getMessage(), e);
+            }
         }
     }
 
