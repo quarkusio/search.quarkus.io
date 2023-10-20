@@ -6,7 +6,7 @@
 == Environment
 
 Application startup involves
-cloning the [quarkus.io repository](https://github.com/quarkusio/quarkusio.github.io),
+cloning the https://github.com/quarkusio/quarkusio.github.io[quarkus.io repository],
 which depending on your bandwidth may be very slow.
 
 Consider cloning it manually and adding a `.env` file to your working directory
@@ -38,8 +38,18 @@ Indexing happens on startup.
 Because there is a lot of data to fetch before indexing,
 by default dev mode will use a smaller test dataset included in this repository.
 
-To fetch use the actual quarkus.io data,
+To use the actual quarkus.io data,
 considering <<environment,setting up your environment>> before launching the app.
+
+Alternatively, to test actual retrieval from a git repository,
+pass `-Dfetching.quarkusio.type=git` to the startup command:
+
+[source,shell]
+----
+quarkus dev -Dfetching.quarkusio.method=git
+# OR
+./mvnw quarkus:dev -Dfetching.quarkusio.method=git
+----
 ====
 
 [[production]]
