@@ -87,14 +87,6 @@ public class IndexingService {
                         t -> Log.errorf(t, "Reindexing on startup failed: %s", t.getMessage()));
     }
 
-    // https://smallrye.io/smallrye-mutiny/2.0.0/guides/delaying-events/#throttling-a-multi
-    private static <T> Multi<T> throttle(Multi<T> source, Duration waitInterval) {
-        Multi<Long> ticks = Multi.createFrom().ticks().every(waitInterval)
-                .onOverflow().drop();
-        return Multi.createBy().combining().streams(ticks, source)
-                .using((x, item) -> item);
-    }
-
     private boolean isSearchBackendAccessible() {
         try {
             searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
