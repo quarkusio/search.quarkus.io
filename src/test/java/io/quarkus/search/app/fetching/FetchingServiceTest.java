@@ -29,7 +29,7 @@ import org.mockito.Mockito;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.test.component.QuarkusComponentTestExtension;
 
-public class FetchingServiceTest {
+class FetchingServiceTest {
 
     private static final Logger LOG = Logger.getLogger(FetchingServiceTest.class);
 
@@ -49,6 +49,7 @@ public class FetchingServiceTest {
         PathUtils.deleteDirectory(tmpDir);
     }
 
+    @SuppressWarnings("JUnitMalformedDeclaration")
     static abstract class AbstractTest {
         protected static QuarkusComponentTestExtension extension(FetchingConfig.Source.Method quarkusIOMethod,
                 URI quarkusIOURI) {
@@ -77,7 +78,7 @@ public class FetchingServiceTest {
         FetchingService service;
 
         @Test
-        public void fetchQuarkusIo() throws Exception {
+        void fetchQuarkusIo() throws Exception {
             try (QuarkusIO quarkusIO = service.fetchQuarkusIo()) {
                 try (var guides = quarkusIO.guides()) {
                     assertThat(guides)

@@ -25,7 +25,7 @@ import io.restassured.common.mapper.TypeRef;
 @QuarkusTest
 @TestHTTPEndpoint(SearchService.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class SearchServiceTest {
+class SearchServiceTest {
     private static final TypeRef<SearchResult<SearchHit>> SEARCH_RESULT_SEARCH_HITS = new TypeRef<>() {
     };
 
@@ -37,8 +37,17 @@ public class SearchServiceTest {
         }
     }
 
+    private SearchResult<SearchHit> search(String term) {
+        return given()
+                .queryParam("q", term)
+                .when().get()
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+    }
+
     @BeforeAll
-    public void waitForIndexing() {
+    void waitForIndexing() {
         Awaitility.await().untilAsserted(() -> {
             when().get("http://localhost:" + managementPort() + "/q/health/ready")
                     .then()
@@ -47,25 +56,15 @@ public class SearchServiceTest {
     }
 
     @Test
-    public void queryNotMatching() {
-        var result = given()
-                .queryParam("q", "termnotmatching")
-                .when().get()
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+    void queryNotMatching() {
+        var result = search("termnotmatching");
         assertThat(result.hits()).isEmpty();
         assertThat(result.total()).isEqualTo(0);
     }
 
     @Test
-    public void queryMatchingFullTerm() {
-        var result = given()
-                .queryParam("q", "orm")
-                .when().get()
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+    void queryMatchingFullTerm() {
+        var result = search("orm");
         // We check order in another test
         assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(
                 DatasetConstants.GuideIds.HIBERNATE_ORM,
@@ -79,13 +78,8 @@ public class SearchServiceTest {
     }
 
     @Test
-    public void queryMatchingPrefixTerm() {
-        var result = given()
-                .queryParam("q", "hiber")
-                .when().get()
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+    void queryMatchingPrefixTerm() {
+        var result = search("hiber");
         // We check order in another test
         assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(
                 GuideIds.HIBERNATE_ORM,
@@ -100,20 +94,15 @@ public class SearchServiceTest {
     }
 
     @Test
-    public void queryEmptyString() {
-        var result = given()
-                .queryParam("q", "")
-                .when().get()
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+    void queryEmptyString() {
+        var result = search("");
         assertThat(result.hits()).extracting(SearchHit::id)
                 .containsExactlyInAnyOrder(DatasetConstants.GuideIds.ALL);
         assertThat(result.total()).isEqualTo(10);
     }
 
     @Test
-    public void queryNotProvided() {
+    void queryNotProvided() {
         var result = when().get()
                 .then()
                 .statusCode(200)
@@ -124,21 +113,16 @@ public class SearchServiceTest {
     }
 
     @ParameterizedTest
-    @MethodSource("relevance_params")
-    public void relevance(String query, List<String> expectedGuideIds) {
-        var result = given()
-                .queryParam("q", query)
-                .when().get()
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+    @MethodSource
+    void relevance(String query, List<String> expectedGuideIds) {
+        var result = search(query);
         // Using "startsWith" here, because what we want is to have the most relevant hits first.
         // We don't mind that much if there's a trail of not-so-relevant hits.
         assertThat(result.hits()).extracting(SearchHit::id).startsWith(
                 expectedGuideIds.toArray(String[]::new));
     }
 
-    private static List<Arguments> relevance_params() {
+    private static List<Arguments> relevance() {
         return List.of(
                 // I wonder if we could use something similar to https://stackoverflow.com/a/74737474/5043585
                 // to have some sort of weight in the documents and prioritize some of them
@@ -189,13 +173,8 @@ public class SearchServiceTest {
     }
 
     @Test
-    public void projections() {
-        var result = given()
-                .queryParam("q", "hibernate + elasticsearch")
-                .when().get()
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+    void projections() {
+        var result = search("hibernate + elasticsearch");
         assertThat(result.hits()).containsExactlyInAnyOrder(
                 new SearchHit(GuideIds.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         "Hibernate Search guide"));
