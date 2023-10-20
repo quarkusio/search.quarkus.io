@@ -187,4 +187,17 @@ public class SearchServiceTest {
                 Arguments.of("spring data", List.of(
                         GuideIds.SPRING_DATA_JPA)));
     }
+
+    @Test
+    public void projections() {
+        var result = given()
+                .queryParam("q", "hibernate + elasticsearch")
+                .when().get()
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).containsExactlyInAnyOrder(
+                new SearchHit(GuideIds.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                        "Hibernate Search guide"));
+    }
 }
