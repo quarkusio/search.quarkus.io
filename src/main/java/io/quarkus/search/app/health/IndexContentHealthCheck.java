@@ -24,19 +24,15 @@ public class IndexContentHealthCheck implements HealthCheck {
     @Override
     @Transactional
     public HealthCheckResponse call() {
+        long totalHitCount;
         try {
-            long totalHitCount = session.search(Object.class)
+            totalHitCount = session.search(Object.class)
                     .where(f -> f.matchAll())
                     .fetchTotalHitCount();
-            if (totalHitCount > 0L) {
-                // Indexing uses rollover and alias switching so that indexing appears (is?) atomic.
-                // If we find one document, we know they are all there.
-                // See IndexingService#indexAll
-                return HealthCheckResponse.builder()
-                        .name(NAME).up()
-                        .withData("details", "Indexes contain " + totalHitCount + " elements")
-                        .build();
-            } else {
+            // Indexing uses rollover and alias switching so that indexing appears (is?) atomic.
+            // If we find one document, we know they are all there.
+            // See IndexingService#indexAll
+            if (totalHitCount <= 0L) {
                 return HealthCheckResponse.builder()
                         .name(NAME).down()
                         .withData("details", "Indexes are empty")
@@ -49,5 +45,10 @@ public class IndexContentHealthCheck implements HealthCheck {
                     .withData("exception", e.getMessage())
                     .build();
         }
+
+        return HealthCheckResponse.builder()
+                .name(NAME).up()
+                .withData("details", "Indexes contain " + totalHitCount + " elements")
+                .build();
     }
 }
