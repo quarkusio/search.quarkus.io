@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.TextProgressMonitor;
 
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 
@@ -43,6 +44,7 @@ public class FetchingService {
                     .setURI(gitUri.toString())
                     .setDirectory(clone.path().toFile())
                     .setDepth(1)
+                    .setProgressMonitor(new TextProgressMonitor())
                     // Unfortunately sparse checkouts are not supported: https://www.eclipse.org/forums/index.php/t/1094825/
                     .call()) {
                 return clone;
