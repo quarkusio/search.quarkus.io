@@ -91,10 +91,10 @@ public class Rollover implements Closeable {
         var client = client(searchMapping);
         var gson = new Gson();
         try {
-            var aliases = getAliases(client, gson, searchMapping.allIndexedEntities()
+            var aliased = aliased(client, gson, searchMapping.allIndexedEntities()
                     .stream().map(e -> e.indexManager().unwrap(ElasticsearchIndexManager.class).descriptor())
                     .toList());
-            return recoverInconsistentAliases(client, gson, aliases);
+            return recoverInconsistentAliases(client, gson, aliased);
         } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to recover aliases: " + e.getMessage(), e);
         }
@@ -158,15 +158,15 @@ public class Rollover implements Closeable {
     private record IndexRolloverResult(ElasticsearchIndexDescriptor index, String oldIndex, String newIndex) {
     }
 
-    private static Collection<GetIndexAliasesResult> getAliases(RestClient client, Gson gson,
+    static Collection<GetAliasedResult> aliased(RestClient client, Gson gson,
             List<ElasticsearchIndexDescriptor> indexes)
             throws IOException {
         var request = new Request("GET", "/_aliases");
 
-        Map<String, GetIndexAliasesResult> resultsByReadAlias = new HashMap<>();
-        Map<String, GetIndexAliasesResult> resultsByWriteAlias = new HashMap<>();
+        Map<String, GetAliasedResult> resultsByReadAlias = new HashMap<>();
+        Map<String, GetAliasedResult> resultsByWriteAlias = new HashMap<>();
         for (ElasticsearchIndexDescriptor index : indexes) {
-            var result = new GetIndexAliasesResult(index);
+            var result = new GetAliasedResult(index);
             resultsByReadAlias.put(index.readName(), result);
             resultsByWriteAlias.put(index.writeName(), result);
         }
@@ -182,7 +182,7 @@ public class Rollover implements Closeable {
                     var aliasMetadata = aliasEntry.getValue().getAsJsonObject();
                     boolean isWriteAlias = aliasMetadata.has("is_write_index")
                             && aliasMetadata.get("is_write_index").getAsBoolean();
-                    GetIndexAliasesResult result;
+                    GetAliasedResult result;
                     if (isWriteAlias) {
                         result = resultsByWriteAlias.get(alias);
                     } else {
@@ -198,36 +198,36 @@ public class Rollover implements Closeable {
         return resultsByReadAlias.values();
     }
 
-    private static class GetIndexAliasesResult {
+    static class GetAliasedResult {
         public final ElasticsearchIndexDescriptor index;
-        private final Set<String> allIndexes = new TreeSet<>();
-        private final Set<String> writeIndexes = new TreeSet<>();
+        private final Set<String> allAliasedIndexes = new TreeSet<>();
+        private final Set<String> writeAliasedIndexes = new TreeSet<>();
 
-        private GetIndexAliasesResult(ElasticsearchIndexDescriptor index) {
+        private GetAliasedResult(ElasticsearchIndexDescriptor index) {
             this.index = index;
         }
 
         public void addActualIndex(String name, boolean isWrite) {
-            allIndexes.add(name);
+            allAliasedIndexes.add(name);
             if (isWrite) {
-                writeIndexes.add(name);
+                writeAliasedIndexes.add(name);
             }
         }
 
         public boolean hasMultipleIndexes() {
-            return allIndexes.size() > 1;
+            return allAliasedIndexes.size() > 1;
         }
 
         public Set<String> extraIndexes() {
-            Set<String> extra = new HashSet<>(allIndexes);
+            Set<String> extra = new HashSet<>(allAliasedIndexes);
             // We keep only the oldest write index,
             // which hopefully should allow a rollover to start.
-            if (!writeIndexes.isEmpty()) {
-                extra.remove(writeIndexes.iterator().next());
+            if (!writeAliasedIndexes.isEmpty()) {
+                extra.remove(writeAliasedIndexes.iterator().next());
             }
             // Failing that, we keep only one index, and hope for the best.
-            else if (!allIndexes.isEmpty()) {
-                extra.remove(allIndexes.iterator().next());
+            else if (!allAliasedIndexes.isEmpty()) {
+                extra.remove(allAliasedIndexes.iterator().next());
             }
             return extra;
         }
@@ -268,9 +268,9 @@ public class Rollover implements Closeable {
     }
 
     private static boolean recoverInconsistentAliases(RestClient client, Gson gson,
-            Collection<GetIndexAliasesResult> indexAliases) {
-        List<GetIndexAliasesResult> inconsistentList = indexAliases.stream()
-                .filter(GetIndexAliasesResult::hasMultipleIndexes)
+            Collection<GetAliasedResult> aliased) {
+        List<GetAliasedResult> inconsistentList = aliased.stream()
+                .filter(GetAliasedResult::hasMultipleIndexes)
                 .toList();
         if (inconsistentList.isEmpty()) {
             return false;
