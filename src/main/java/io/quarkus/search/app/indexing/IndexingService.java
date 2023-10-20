@@ -141,12 +141,14 @@ public class IndexingService {
                 indexQuarkusIo(quarkusIO);
             }
 
-            rollover.commit();
-            Log.info("Indexing success");
-
+            // Refresh BEFORE committing the rollover,
+            // so that the new indexes are fully refreshed
+            // as soon as we switch the aliases.
             Log.info("Refreshing indexes...");
             searchMapping.scope(Object.class).workspace().refresh();
-            Log.info("Indexes refreshed");
+
+            rollover.commit();
+            Log.info("Indexing success");
         } catch (Exception e) {
             throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
         }

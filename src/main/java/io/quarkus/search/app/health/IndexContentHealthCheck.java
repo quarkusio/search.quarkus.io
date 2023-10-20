@@ -29,6 +29,9 @@ public class IndexContentHealthCheck implements HealthCheck {
                     .where(f -> f.matchAll())
                     .fetchTotalHitCount();
             if (totalHitCount > 0L) {
+                // Indexing uses rollover and alias switching so that indexing appears (is?) atomic.
+                // If we find one document, we know they are all there.
+                // See IndexingService#indexAll
                 return HealthCheckResponse.builder()
                         .name(NAME).up()
                         .withData("details", "Indexes contain " + totalHitCount + " elements")
