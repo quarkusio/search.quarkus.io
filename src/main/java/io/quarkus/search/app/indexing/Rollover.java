@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -91,10 +92,10 @@ public class Rollover implements Closeable {
         var client = client(searchMapping);
         var gson = new Gson();
         try {
-            var aliases = getAliases(client, gson, searchMapping.allIndexedEntities()
+            var aliased = aliased(client, gson, searchMapping.allIndexedEntities()
                     .stream().map(e -> e.indexManager().unwrap(ElasticsearchIndexManager.class).descriptor())
                     .toList());
-            return recoverInconsistentAliases(client, gson, aliases);
+            return recoverInconsistentAliases(client, gson, aliased);
         } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to recover aliases: " + e.getMessage(), e);
         }
@@ -158,15 +159,15 @@ public class Rollover implements Closeable {
     private record IndexRolloverResult(ElasticsearchIndexDescriptor index, String oldIndex, String newIndex) {
     }
 
-    private static Collection<GetIndexAliasesResult> getAliases(RestClient client, Gson gson,
+    static Collection<GetAliasedResult> aliased(RestClient client, Gson gson,
             List<ElasticsearchIndexDescriptor> indexes)
             throws IOException {
         var request = new Request("GET", "/_aliases");
 
-        Map<String, GetIndexAliasesResult> resultsByReadAlias = new HashMap<>();
-        Map<String, GetIndexAliasesResult> resultsByWriteAlias = new HashMap<>();
+        Map<String, GetAliasedResult> resultsByReadAlias = new HashMap<>();
+        Map<String, GetAliasedResult> resultsByWriteAlias = new HashMap<>();
         for (ElasticsearchIndexDescriptor index : indexes) {
-            var result = new GetIndexAliasesResult(index);
+            var result = new GetAliasedResult(index);
             resultsByReadAlias.put(index.readName(), result);
             resultsByWriteAlias.put(index.writeName(), result);
         }
@@ -182,7 +183,7 @@ public class Rollover implements Closeable {
                     var aliasMetadata = aliasEntry.getValue().getAsJsonObject();
                     boolean isWriteAlias = aliasMetadata.has("is_write_index")
                             && aliasMetadata.get("is_write_index").getAsBoolean();
-                    GetIndexAliasesResult result;
+                    GetAliasedResult result;
                     if (isWriteAlias) {
                         result = resultsByWriteAlias.get(alias);
                     } else {
@@ -198,38 +199,35 @@ public class Rollover implements Closeable {
         return resultsByReadAlias.values();
     }
 
-    private static class GetIndexAliasesResult {
+    static class GetAliasedResult {
         public final ElasticsearchIndexDescriptor index;
-        private final Set<String> allIndexes = new TreeSet<>();
-        private final Set<String> writeIndexes = new TreeSet<>();
+        private final Set<String> allAliasedIndexes = new TreeSet<>();
+        private final Set<String> writeAliasedIndexes = new TreeSet<>();
+        private final Set<String> readAliasedIndexes = new TreeSet<>();
 
-        private GetIndexAliasesResult(ElasticsearchIndexDescriptor index) {
+        private GetAliasedResult(ElasticsearchIndexDescriptor index) {
             this.index = index;
         }
 
         public void addActualIndex(String name, boolean isWrite) {
-            allIndexes.add(name);
+            allAliasedIndexes.add(name);
             if (isWrite) {
-                writeIndexes.add(name);
+                writeAliasedIndexes.add(name);
+            } else {
+                readAliasedIndexes.add(name);
             }
         }
 
-        public boolean hasMultipleIndexes() {
-            return allIndexes.size() > 1;
+        public Set<String> allAliasedIndexes() {
+            return Collections.unmodifiableSet(allAliasedIndexes);
         }
 
-        public Set<String> extraIndexes() {
-            Set<String> extra = new HashSet<>(allIndexes);
-            // We keep only the oldest write index,
-            // which hopefully should allow a rollover to start.
-            if (!writeIndexes.isEmpty()) {
-                extra.remove(writeIndexes.iterator().next());
-            }
-            // Failing that, we keep only one index, and hope for the best.
-            else if (!allIndexes.isEmpty()) {
-                extra.remove(allIndexes.iterator().next());
-            }
-            return extra;
+        Set<String> writeAliasedIndexes() {
+            return Collections.unmodifiableSet(writeAliasedIndexes);
+        }
+
+        public Set<String> readAliasedIndexes() {
+            return Collections.unmodifiableSet(readAliasedIndexes);
         }
     }
 
@@ -268,9 +266,9 @@ public class Rollover implements Closeable {
     }
 
     private static boolean recoverInconsistentAliases(RestClient client, Gson gson,
-            Collection<GetIndexAliasesResult> indexAliases) {
-        List<GetIndexAliasesResult> inconsistentList = indexAliases.stream()
-                .filter(GetIndexAliasesResult::hasMultipleIndexes)
+            Collection<GetAliasedResult> aliased) {
+        List<GetAliasedResult> inconsistentList = aliased.stream()
+                .filter(a -> a.allAliasedIndexes.size() > 1)
                 .toList();
         if (inconsistentList.isEmpty()) {
             return false;
@@ -278,8 +276,32 @@ public class Rollover implements Closeable {
         List<String> inconsistentNames = inconsistentList.stream().map(r -> r.index.hibernateSearchName()).toList();
         Log.infof("Recovering index aliases for %s", inconsistentNames);
         try {
-            changeAliasesAtomically(client, gson, inconsistentList, inconsistent -> inconsistent.extraIndexes().stream()
-                    .map(indexName -> aliasAction("remove_index", Map.of("index", indexName))));
+            changeAliasesAtomically(client, gson, inconsistentList, inconsistent -> {
+                Set<String> extraIndexes = new HashSet<>(inconsistent.allAliasedIndexes);
+                String indexToKeep;
+                // We keep only the oldest read index,
+                // which hopefully should restore a complete index with the ability to search.
+                if (!inconsistent.readAliasedIndexes.isEmpty()) {
+                    indexToKeep = inconsistent.readAliasedIndexes.iterator().next();
+                }
+                // Failing that, we keep only one write, and hope for the best.
+                else {
+                    indexToKeep = inconsistent.allAliasedIndexes.iterator().next();
+                }
+                extraIndexes.remove(indexToKeep);
+                JsonObject restoreIndexToKeepAsWriteIndex = aliasAction("add", Map.of(
+                        "index", indexToKeep,
+                        "alias", inconsistent.index.writeName(),
+                        "is_write_index", "true"));
+                JsonObject restoreIndexToKeepAsReadIndex = aliasAction("add", Map.of(
+                        "index", indexToKeep,
+                        "alias", inconsistent.index.readName(),
+                        "is_write_index", "false"));
+                return Stream.concat(
+                        Stream.of(restoreIndexToKeepAsWriteIndex, restoreIndexToKeepAsReadIndex),
+                        extraIndexes.stream()
+                                .map(indexName -> aliasAction("remove_index", Map.of("index", indexName))));
+            });
         } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to recover index aliases for " + inconsistentNames + ": " + e.getMessage(),
                     e);
