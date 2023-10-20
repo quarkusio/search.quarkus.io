@@ -1,16 +1,9 @@
 package io.quarkus.search.app.indexing;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Iterator;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Predicate;
 
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
-import io.smallrye.mutiny.subscription.FixedDemandPacer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
@@ -30,6 +23,10 @@ import io.quarkus.runtime.StartupEvent;
 import io.quarkus.search.app.fetching.FetchingService;
 import io.quarkus.search.app.fetching.QuarkusIO;
 import io.quarkus.vertx.http.ManagementInterface;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
+import io.smallrye.mutiny.subscription.FixedDemandPacer;
 
 @ApplicationScoped
 public class IndexingService {
@@ -123,6 +120,7 @@ public class IndexingService {
             Log.info("Creating missing indexes");
             searchMapping.scope(Object.class).schemaManager().createIfMissing();
         } catch (RuntimeException e) {
+            Log.error("Creating missing indexes failed; will attempt to recover mismatched aliases...", e);
             // This may happen if aliases were left in a stale state by a previous pod
             // that failed to get ready in time, but is potentially still indexing.
             // Ideally we'd just tell Kubernetes that a previous failed pod
@@ -133,9 +131,13 @@ public class IndexingService {
             // So, we'll just do this and accept that things will go wrong
             // (hopefully just a temporary downtime)
             // if we do two rollouts too close to each other.
-            Log.error("Creating missing indexes failed; attempting drop-and-create", e);
             try {
-                searchMapping.scope(Object.class).schemaManager().dropAndCreate();
+                if (Rollover.recoverInconsistentAliases(searchMapping)) {
+                    Log.info("Creating missing indexes after aliases were recovered");
+                    searchMapping.scope(Object.class).schemaManager().createIfMissing();
+                } else {
+                    throw e;
+                }
             } catch (RuntimeException e2) {
                 e.addSuppressed(e2);
                 throw new IllegalStateException("Failed to create indexes: " + e.getMessage(), e);
