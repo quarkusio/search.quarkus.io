@@ -2,6 +2,21 @@
 
 > A Quarkus-powered application that allows full-text search in websites of the Quarkus organization such as https://quarkus.io.
 
+[[environment]]
+== Environment
+
+Application startup involves
+cloning the [quarkus.io repository](https://github.com/quarkusio/quarkusio.github.io),
+which depending on your bandwidth may be very slow.
+
+Consider cloning it manually and adding a `.env` file to your working directory
+(it will be ignored by git):
+
+```properties
+FETCHING_QUARKUSIO_URI=file:/home/myself/path/to/quarkusio.github.io
+```
+
+
 [[development]]
 == Development
 
@@ -14,28 +29,18 @@ quarkus dev
 ./mvnw quarkus:dev
 ----
 
+Then head over to http://0.0.0.0:9000/q/swagger-ui/ to try the service.
+
+[NOTE]
+====
 Indexing happens on startup.
+
 Because there is a lot of data to fetch before indexing,
 by default dev mode will use a smaller test dataset included in this repository.
-To fetch the actual data on startup:
 
-[source,shell]
-----
-quarkus dev -Dfetching.quarkusio.type=git
-# OR
-./mvnw quarkus:dev -Dfetching.quarkusio.method=git
-----
-
-Or, if you already have a local clone of quarkus.io:
-
-[source,shell]
-----
-quarkus dev -Dfetching.quarkusio.uri=file:$HOME/my-clone
-# OR
-./mvnw quarkus:dev -Dfetching.quarkusio.uri=file:$HOME/my-clone
-----
-
-Then head over to http://0.0.0.0:9000/q/swagger-ui/ to try the service.
+To fetch use the actual quarkus.io data,
+considering <<environment,setting up your environment>> before launching the app.
+====
 
 [[production]]
 == Production
@@ -62,7 +67,7 @@ podman container run -d --name elasticearch --pod search.quarkus.io \
 podman container run -it --rm --pod search.quarkus.io search-quarkus-io:999-SNAPSHOT
 # OR, if you already have a local clone of quarkus.io:
 podman container run -it --rm --pod search.quarkus.io \
-    -v $HOME/myclone:/mnt/quarkus-io:ro,z \
+    -v $HOME/path/to/quarkusio.github.io:/mnt/quarkus-io:ro,z \
     -e FETCHING_QUARKUSIO_URI=file:/mnt/quarkus-io \
     search-quarkus-io:999-SNAPSHOT
 ----

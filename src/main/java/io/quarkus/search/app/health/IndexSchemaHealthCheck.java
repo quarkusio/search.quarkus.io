@@ -12,13 +12,13 @@ import org.eclipse.microprofile.health.Startup;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
 /**
- * Checks that the indexes were populated.
+ * Checks that the indexes have the correct schema.
  */
 @Startup
 @Readiness
 @ApplicationScoped
-public class IndexContentHealthCheck implements HealthCheck {
-    private static final String NAME = "Index content";
+public class IndexSchemaHealthCheck implements HealthCheck {
+    private static final String NAME = "Index schema";
 
     @Inject
     SearchSession session;
@@ -26,31 +26,19 @@ public class IndexContentHealthCheck implements HealthCheck {
     @Override
     @Transactional
     public HealthCheckResponse call() {
-        long totalHitCount;
         try {
-            totalHitCount = session.search(Object.class)
-                    .where(f -> f.matchAll())
-                    .fetchTotalHitCount();
-            // Indexing uses rollover and alias switching so that indexing appears (is?) atomic.
-            // If we find one document, we know they are all there.
-            // See IndexingService#indexAll
-            if (totalHitCount <= 0L) {
-                return HealthCheckResponse.builder()
-                        .name(NAME).down()
-                        .withData("details", "Indexes are empty")
-                        .build();
-            }
+            session.scope(Object.class).schemaManager().validate();
         } catch (RuntimeException e) {
             return HealthCheckResponse.builder()
                     .name(NAME).down()
-                    .withData("details", "Cannot reach indexes")
+                    .withData("details", "Cannot validate index schema")
                     .withData("exception", e.getMessage())
                     .build();
         }
 
         return HealthCheckResponse.builder()
                 .name(NAME).up()
-                .withData("details", "Indexes contain " + totalHitCount + " elements")
+                .withData("details", "Index schemas are valid")
                 .build();
     }
 }
