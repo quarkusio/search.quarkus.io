@@ -113,9 +113,16 @@ public class Rollover implements Closeable {
             JsonObject mapping, JsonObject settings)
             throws IOException {
         var request = new Request("POST", "/" + index.writeName() + "/_rollover");
+
         JsonObject body = new JsonObject();
         body.add("mappings", mapping);
         body.add("settings", settings);
+
+        // Includes an empty "aliases" so that the aliases are not copied over to the new index,
+        // except for the write alias.
+        // We don't want the read alias to start pointing to the new index immediately.
+        body.add("aliases", new JsonObject());
+
         request.setEntity(new StringEntity(gson.toJson(body), ContentType.APPLICATION_JSON));
         var response = client.performRequest(request);
         try (var input = response.getEntity().getContent()) {
@@ -131,7 +138,8 @@ public class Rollover implements Closeable {
             changeAliasesAtomically(client, gson, rollovers, rolloverResult -> {
                 JsonObject useNewIndexAsRead = aliasAction("add", Map.of(
                         "index", rolloverResult.newIndex,
-                        "alias", rolloverResult.index.readName()));
+                        "alias", rolloverResult.index.readName(),
+                        "is_write_index", "false"));
                 JsonObject removeOldIndex = aliasAction("remove_index", Map.of(
                         "index", rolloverResult.oldIndex));
                 return Stream.of(useNewIndexAsRead, removeOldIndex);
