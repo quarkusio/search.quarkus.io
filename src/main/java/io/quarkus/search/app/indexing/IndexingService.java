@@ -84,7 +84,7 @@ public class IndexingService {
                         // We don't care about the items, we just want this to run.
                         ignored -> {
                         },
-                        t -> Log.errorf("Reindexing on startup failed: " + t.getMessage(), t));
+                        t -> Log.errorf(t, "Reindexing on startup failed: %s", t.getMessage()));
     }
 
     // https://smallrye.io/smallrye-mutiny/2.0.0/guides/delaying-events/#throttling-a-multi
