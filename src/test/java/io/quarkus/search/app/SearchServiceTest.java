@@ -54,8 +54,8 @@ public class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.total()).isEqualTo(0);
         assertThat(result.hits()).isEmpty();
+        assertThat(result.total()).isEqualTo(0);
     }
 
     @Test
@@ -66,7 +66,6 @@ public class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.total()).isEqualTo(7);
         // We check order in another test
         assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(
                 DatasetConstants.GuideIds.HIBERNATE_ORM,
@@ -76,6 +75,7 @@ public class SearchServiceTest {
                 GuideIds.HIBERNATE_REACTIVE,
                 GuideIds.HIBERNATE_REACTIVE_PANACHE,
                 GuideIds.SPRING_DATA_JPA);
+        assertThat(result.total()).isEqualTo(7);
     }
 
     @Test
@@ -86,7 +86,6 @@ public class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.total()).isEqualTo(8);
         // We check order in another test
         assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(
                 GuideIds.HIBERNATE_ORM,
@@ -97,6 +96,7 @@ public class SearchServiceTest {
                 GuideIds.HIBERNATE_REACTIVE_PANACHE,
                 GuideIds.SPRING_DATA_JPA,
                 GuideIds.DUPLICATED_CONTEXT);
+        assertThat(result.total()).isEqualTo(8);
     }
 
     @Test
@@ -107,9 +107,9 @@ public class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.total()).isEqualTo(10);
         assertThat(result.hits()).extracting(SearchHit::id)
                 .containsExactlyInAnyOrder(DatasetConstants.GuideIds.ALL);
+        assertThat(result.total()).isEqualTo(10);
     }
 
     @Test
@@ -118,9 +118,9 @@ public class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.total()).isEqualTo(10);
         assertThat(result.hits()).extracting(SearchHit::id)
                 .containsExactlyInAnyOrder(DatasetConstants.GuideIds.ALL);
+        assertThat(result.total()).isEqualTo(10);
     }
 
     @ParameterizedTest
