@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -202,6 +203,7 @@ public class Rollover implements Closeable {
         public final ElasticsearchIndexDescriptor index;
         private final Set<String> allAliasedIndexes = new TreeSet<>();
         private final Set<String> writeAliasedIndexes = new TreeSet<>();
+        private final Set<String> readAliasedIndexes = new TreeSet<>();
 
         private GetAliasedResult(ElasticsearchIndexDescriptor index) {
             this.index = index;
@@ -211,11 +213,25 @@ public class Rollover implements Closeable {
             allAliasedIndexes.add(name);
             if (isWrite) {
                 writeAliasedIndexes.add(name);
+            } else {
+                readAliasedIndexes.add(name);
             }
         }
 
         public boolean hasMultipleIndexes() {
             return allAliasedIndexes.size() > 1;
+        }
+
+        Set<String> allAliasedIndexes() {
+            return Collections.unmodifiableSet(allAliasedIndexes);
+        }
+
+        Set<String> writeAliasedIndexes() {
+            return Collections.unmodifiableSet(writeAliasedIndexes);
+        }
+
+        Set<String> readAliasedIndexes() {
+            return Collections.unmodifiableSet(readAliasedIndexes);
         }
 
         public Set<String> extraIndexes() {
