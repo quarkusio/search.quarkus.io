@@ -80,10 +80,11 @@ public class IndexingService {
                 // https://smallrye.io/smallrye-mutiny/2.5.1/guides/controlling-demand/#pacing-the-demand
                 .paceDemand().on(Infrastructure.getDefaultWorkerPool())
                 .using(new FixedDemandPacer(1L, waitInterval))
-                .onFailure().invoke(t -> Log.errorf("Reindexing on startup failed: " + t.getMessage(), t))
-                // We don't care about the result, we just want this to run.
-                .subscribe().with(ignored -> {
-                });
+                .subscribe().with(
+                        // We don't care about the items, we just want this to run.
+                        ignored -> {
+                        },
+                        t -> Log.errorf("Reindexing on startup failed: " + t.getMessage(), t));
     }
 
     // https://smallrye.io/smallrye-mutiny/2.0.0/guides/delaying-events/#throttling-a-multi
