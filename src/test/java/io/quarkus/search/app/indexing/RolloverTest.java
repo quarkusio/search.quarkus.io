@@ -154,23 +154,27 @@ class RolloverTest {
         // Simulate a JVM crash: the rollover does not get closed
         // We restart... and try to recover
         assertThat(Rollover.recoverInconsistentAliases(searchMapping)).isTrue();
-        // Immediately after recovery, search may not work, but write will
-        assertWriteTargetsIndex(2);
+        // After recovery and throughout indexing, search must continue to work,
+        // and target the index most likely to contain (complete) data.
+        assertSearchWorksAndTargetsIndex(1);
+        assertWriteTargetsIndex(1);
 
         // Then we will reindex, triggering another rollover...
         searchMapping.scope(Guide.class).schemaManager().createIfMissing();
-        assertWriteTargetsIndex(2);
+        assertSearchWorksAndTargetsIndex(1);
+        assertWriteTargetsIndex(1);
 
         try (Rollover rollover = Rollover.start(searchMapping)) {
-            assertWriteTargetsIndex(3);
+            assertSearchWorksAndTargetsIndex(1);
+            assertWriteTargetsIndex(2);
 
             rollover.commit();
-            assertSearchWorksAndTargetsIndex(3);
-            assertWriteTargetsIndex(3);
+            assertSearchWorksAndTargetsIndex(2);
+            assertWriteTargetsIndex(2);
         }
         // And all is good in the end!
-        assertSearchWorksAndTargetsIndex(3);
-        assertWriteTargetsIndex(3);
+        assertSearchWorksAndTargetsIndex(2);
+        assertWriteTargetsIndex(2);
     }
 
 }

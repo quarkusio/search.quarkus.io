@@ -218,11 +218,7 @@ public class Rollover implements Closeable {
             }
         }
 
-        public boolean hasMultipleIndexes() {
-            return allAliasedIndexes.size() > 1;
-        }
-
-        Set<String> allAliasedIndexes() {
+        public Set<String> allAliasedIndexes() {
             return Collections.unmodifiableSet(allAliasedIndexes);
         }
 
@@ -230,22 +226,8 @@ public class Rollover implements Closeable {
             return Collections.unmodifiableSet(writeAliasedIndexes);
         }
 
-        Set<String> readAliasedIndexes() {
+        public Set<String> readAliasedIndexes() {
             return Collections.unmodifiableSet(readAliasedIndexes);
-        }
-
-        public Set<String> extraIndexes() {
-            Set<String> extra = new HashSet<>(allAliasedIndexes);
-            // We keep only the oldest write index,
-            // which hopefully should allow a rollover to start.
-            if (!writeAliasedIndexes.isEmpty()) {
-                extra.remove(writeAliasedIndexes.iterator().next());
-            }
-            // Failing that, we keep only one index, and hope for the best.
-            else if (!allAliasedIndexes.isEmpty()) {
-                extra.remove(allAliasedIndexes.iterator().next());
-            }
-            return extra;
         }
     }
 
@@ -286,7 +268,7 @@ public class Rollover implements Closeable {
     private static boolean recoverInconsistentAliases(RestClient client, Gson gson,
             Collection<GetAliasedResult> aliased) {
         List<GetAliasedResult> inconsistentList = aliased.stream()
-                .filter(GetAliasedResult::hasMultipleIndexes)
+                .filter(a -> a.allAliasedIndexes.size() > 1)
                 .toList();
         if (inconsistentList.isEmpty()) {
             return false;
@@ -294,8 +276,32 @@ public class Rollover implements Closeable {
         List<String> inconsistentNames = inconsistentList.stream().map(r -> r.index.hibernateSearchName()).toList();
         Log.infof("Recovering index aliases for %s", inconsistentNames);
         try {
-            changeAliasesAtomically(client, gson, inconsistentList, inconsistent -> inconsistent.extraIndexes().stream()
-                    .map(indexName -> aliasAction("remove_index", Map.of("index", indexName))));
+            changeAliasesAtomically(client, gson, inconsistentList, inconsistent -> {
+                Set<String> extraIndexes = new HashSet<>(inconsistent.allAliasedIndexes);
+                String indexToKeep;
+                // We keep only the oldest read index,
+                // which hopefully should restore a complete index with the ability to search.
+                if (!inconsistent.readAliasedIndexes.isEmpty()) {
+                    indexToKeep = inconsistent.readAliasedIndexes.iterator().next();
+                }
+                // Failing that, we keep only one write, and hope for the best.
+                else {
+                    indexToKeep = inconsistent.allAliasedIndexes.iterator().next();
+                }
+                extraIndexes.remove(indexToKeep);
+                JsonObject restoreIndexToKeepAsWriteIndex = aliasAction("add", Map.of(
+                        "index", indexToKeep,
+                        "alias", inconsistent.index.writeName(),
+                        "is_write_index", "true"));
+                JsonObject restoreIndexToKeepAsReadIndex = aliasAction("add", Map.of(
+                        "index", indexToKeep,
+                        "alias", inconsistent.index.readName(),
+                        "is_write_index", "false"));
+                return Stream.concat(
+                        Stream.of(restoreIndexToKeepAsWriteIndex, restoreIndexToKeepAsReadIndex),
+                        extraIndexes.stream()
+                                .map(indexName -> aliasAction("remove_index", Map.of("index", indexName))));
+            });
         } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to recover index aliases for " + inconsistentNames + ": " + e.getMessage(),
                     e);
