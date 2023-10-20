@@ -2,21 +2,6 @@
 
 > A Quarkus-powered application that allows full-text search in websites of the Quarkus organization such as https://quarkus.io.
 
-[[environment]]
-== Environment
-
-Application startup involves
-cloning the https://github.com/quarkusio/quarkusio.github.io[quarkus.io repository],
-which depending on your bandwidth may be very slow.
-
-Consider cloning it manually and adding a `.env` file to your working directory
-(it will be ignored by git):
-
-```properties
-FETCHING_QUARKUSIO_URI=file:/home/myself/path/to/quarkusio.github.io
-```
-
-
 [[development]]
 == Development
 
@@ -39,7 +24,14 @@ Because there is a lot of data to fetch before indexing,
 by default dev mode will use a smaller test dataset included in this repository.
 
 To use the actual quarkus.io data,
-considering <<environment,setting up your environment>> before launching the app.
+consider cloning the https://github.com/quarkusio/quarkusio.github.io[quarkus.io repository]
+manually and adding a `.env` file to your working directory
+(it will be ignored by git if you try to contribute something):
+
+[source,properties]
+----
+_DEV_FETCHING_QUARKUSIO_URI=file:/home/myself/path/to/quarkusio.github.io
+----
 
 Alternatively, to test actual retrieval from a git repository,
 pass `-Dfetching.quarkusio.type=git` to the startup command:
