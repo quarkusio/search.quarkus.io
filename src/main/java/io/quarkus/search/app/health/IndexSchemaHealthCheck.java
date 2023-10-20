@@ -14,6 +14,7 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 /**
  * Checks that the indexes have the correct schema.
  */
+@Startup
 @Readiness
 @ApplicationScoped
 public class IndexSchemaHealthCheck implements HealthCheck {

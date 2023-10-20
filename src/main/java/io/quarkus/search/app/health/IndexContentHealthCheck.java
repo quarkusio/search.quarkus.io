@@ -7,12 +7,14 @@ import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Readiness;
+import org.eclipse.microprofile.health.Startup;
 
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
 /**
  * Checks that the indexes were populated.
  */
+@Startup
 @Readiness
 @ApplicationScoped
 public class IndexContentHealthCheck implements HealthCheck {
