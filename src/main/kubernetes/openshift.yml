@@ -117,7 +117,7 @@ spec:
         storageClassName: "gp2"
         resources:
           requests:
-            storage: 5Gi
+            storage: 1Gi
   triggers:
     - type: ConfigChange
     - type: ImageChange
