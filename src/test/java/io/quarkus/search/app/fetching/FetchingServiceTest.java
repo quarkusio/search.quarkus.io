@@ -53,10 +53,10 @@ class FetchingServiceTest {
     static abstract class AbstractTest {
         protected static QuarkusComponentTestExtension extension(FetchingConfig.Source.Method quarkusIOMethod,
                 URI quarkusIOURI) {
-            var extension = new QuarkusComponentTestExtension();
-            // It seems injecting config mappings isn't supported at the moment;
-            // see https://quarkusio.zulipchat.com/#narrow/stream/187038-dev/topic/QuarkusComponentTest.20and.20ConfigMapping
-            extension.mock(FetchingConfig.class)
+            return QuarkusComponentTestExtension.builder()
+                    // It seems injecting config mappings isn't supported at the moment;
+                    // see https://quarkusio.zulipchat.com/#narrow/stream/187038-dev/topic/QuarkusComponentTest.20and.20ConfigMapping
+                    .mock(FetchingConfig.class)
                     .createMockitoMock(mock -> {
                         Mockito.when(mock.quarkusio())
                                 .thenReturn(new FetchingConfig.Source() {
@@ -70,8 +70,8 @@ class FetchingServiceTest {
                                         return quarkusIOURI;
                                     }
                                 });
-                    });
-            return extension;
+                    })
+                    .build();
         }
 
         @Inject
