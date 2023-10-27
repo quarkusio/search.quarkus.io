@@ -1,5 +1,7 @@
 package io.quarkus.search.app;
 
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -33,6 +35,7 @@ public class SearchService {
     @Operation(summary = "Search for any resource")
     @Transactional
     public SearchResult<SearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
+            @RestQuery List<String> categories,
             @RestQuery String q,
             @RestQuery @DefaultValue("0") int page) {
         var result = session.search(Guide.class)
@@ -42,6 +45,10 @@ public class SearchService {
                     root.add(f.matchAll());
 
                     root.add(f.match().field("version").matching(version));
+
+                    if (categories != null && !categories.isEmpty()) {
+                        root.add(f.terms().field("categories").matchingAny(categories));
+                    }
 
                     if (q != null && !q.isBlank()) {
                         root.add(f.bool().must(f.simpleQueryString()

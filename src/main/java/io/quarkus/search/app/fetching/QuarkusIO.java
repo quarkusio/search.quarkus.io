@@ -62,6 +62,7 @@ public class QuarkusIO implements AutoCloseable {
         Asciidoc.parse(path, title -> guide.title = title,
                 Map.of("summary", summary -> guide.summary = summary,
                         "keywords", keywords -> guide.keywords = keywords,
+                        "categories", categories -> guide.categories = toSet(categories),
                         "topics", topics -> guide.topics = toSet(topics),
                         "extensions", extensions -> guide.extensions = toSet(extensions)));
         return guide;

@@ -217,4 +217,17 @@ class SearchServiceTest {
                 .allSatisfy(hit -> assertThat(hit).extracting(SearchHit::id, InstanceOfAssertFactories.STRING)
                         .startsWith("/versions/main/guides/"));
     }
+
+    @Test
+    void categories() {
+        var result = given()
+                .queryParam("q", "orm")
+                .queryParam("categories", "alt-languages")
+                .when().get()
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(
+                GuideIds.HIBERNATE_ORM_PANACHE_KOTLIN);
+    }
 }

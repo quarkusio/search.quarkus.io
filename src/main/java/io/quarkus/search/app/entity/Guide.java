@@ -49,12 +49,15 @@ public class Guide {
     // Using PathWrapper because of https://hibernate.atlassian.net/browse/HSEARCH-4988
     public PathWrapper fullContentPath;
 
+    @KeywordField(name = "categories")
+    public Set<String> categories = Set.of();
+
     @FullTextField(name = "topics")
     @KeywordField(name = "topics_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
-    public Set<String> topics;
+    public Set<String> topics = Set.of();
 
     @KeywordField(name = "extensions_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
-    public Set<String> extensions;
+    public Set<String> extensions = Set.of();
 
     @Override
     public String toString() {

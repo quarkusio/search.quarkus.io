@@ -90,6 +90,7 @@ class FetchingServiceTest {
                                             "Some title",
                                             "This is a summary",
                                             "keyword1, keyword2",
+                                            Set.of("category1", "category2"),
                                             Set.of("topic1", "topic2"),
                                             Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                             FETCHED_GUIDE_1_CONTENT),
@@ -97,6 +98,7 @@ class FetchingServiceTest {
                                             "Some other title",
                                             null,
                                             "keyword3, keyword4",
+                                            Set.of(),
                                             Set.of("topic3", "topic4"),
                                             Set.of("io.quarkus:extension3"),
                                             FETCHED_GUIDE_2_CONTENT));
@@ -168,6 +170,7 @@ class FetchingServiceTest {
     private static final String FETCHED_GUIDE_1_CONTENT = """
             = Some title
             :irrelevant: foo
+            :categories: category1, category2
             :keywords: keyword1, keyword2
             :summary: This is a summary
             :topics: topic1, topic2
@@ -193,13 +196,15 @@ class FetchingServiceTest {
             """;
 
     private static Consumer<Guide> isGuide(String relativePath, String title, String summary, String keywords,
-            Set<String> topics, Set<String> extensions, String content) {
+            Set<String> categories, Set<String> topics, Set<String> extensions, String content) {
         return guide -> {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(guide).extracting("relativePath").isEqualTo(relativePath);
                 softly.assertThat(guide).extracting("title").isEqualTo(title);
                 softly.assertThat(guide).extracting("summary").isEqualTo(summary);
                 softly.assertThat(guide).extracting("keywords").isEqualTo(keywords);
+                softly.assertThat(guide).extracting("categories", InstanceOfAssertFactories.COLLECTION)
+                        .containsExactlyInAnyOrderElementsOf(categories);
                 softly.assertThat(guide).extracting("topics", InstanceOfAssertFactories.COLLECTION)
                         .containsExactlyInAnyOrderElementsOf(topics);
                 softly.assertThat(guide).extracting("extensions", InstanceOfAssertFactories.COLLECTION)
