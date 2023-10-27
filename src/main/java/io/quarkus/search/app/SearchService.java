@@ -23,6 +23,8 @@ import io.quarkus.search.app.entity.Guide;
 @Path("/")
 public class SearchService {
 
+    private static final Integer PAGE_SIZE = 20;
+
     @Inject
     SearchSession session;
 
@@ -31,7 +33,8 @@ public class SearchService {
     @Operation(summary = "Search for any resource")
     @Transactional
     public SearchResult<SearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
-            @RestQuery String q) {
+            @RestQuery String q,
+            @RestQuery @DefaultValue("0") int page) {
         var result = session.search(Guide.class)
                 .select(SearchHit.class)
                 .where((f, root) -> {
@@ -57,7 +60,7 @@ public class SearchService {
                     }
                 })
                 .sort(f -> f.score().then().field("title_sort"))
-                .fetch(20);
+                .fetch(page * PAGE_SIZE, PAGE_SIZE);
         return new SearchResult<>(result.total().hitCount(), result.hits());
     }
 }
