@@ -1,8 +1,11 @@
 package io.quarkus.search.app;
 
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -22,6 +25,8 @@ import io.quarkus.search.app.entity.Guide;
 @Path("/")
 public class SearchService {
 
+    private static final Integer PAGE_SIZE = 20;
+
     @Inject
     SearchSession session;
 
@@ -29,29 +34,40 @@ public class SearchService {
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Search for any resource")
     @Transactional
-    public SearchResult<SearchHit> search(@RestQuery String q) {
+    public SearchResult<SearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
+            @RestQuery List<String> categories,
+            @RestQuery String q,
+            @RestQuery @DefaultValue("0") int page) {
         var result = session.search(Guide.class)
                 .select(SearchHit.class)
-                .where(f -> {
-                    if (q == null || q.isBlank()) {
-                        return f.matchAll();
+                .where((f, root) -> {
+                    // Match all documents by default
+                    root.add(f.matchAll());
+
+                    root.add(f.match().field("version").matching(version));
+
+                    if (categories != null && !categories.isEmpty()) {
+                        root.add(f.terms().field("categories").matchingAny(categories));
                     }
 
-                    return f.bool().must(f.simpleQueryString()
-                            .field("title").boost(10.0f)
-                            .field("topics").boost(10.0f)
-                            .field("keywords").boost(10.0f)
-                            .field("summary").boost(5.0f)
-                            .field("fullContent")
-                            .field("keywords_autocomplete").boost(1.0f)
-                            .field("title_autocomplete").boost(1.0f)
-                            .field("summary_autocomplete").boost(0.5f)
-                            .field("fullContent_autocomplete").boost(0.1f)
-                            .matching(q))
-                            .should(f.not(f.match().field("topics").matching("compatibility")).boost(50.0f));
+                    if (q != null && !q.isBlank()) {
+                        root.add(f.bool().must(f.simpleQueryString()
+                                .field("title").boost(10.0f)
+                                .field("topics").boost(10.0f)
+                                .field("keywords").boost(10.0f)
+                                .field("summary").boost(5.0f)
+                                .field("fullContent")
+                                .field("keywords_autocomplete").boost(1.0f)
+                                .field("title_autocomplete").boost(1.0f)
+                                .field("summary_autocomplete").boost(0.5f)
+                                .field("fullContent_autocomplete").boost(0.1f)
+                                .matching(q))
+                                .should(f.not(f.match().field("topics").matching("compatibility"))
+                                        .boost(50.0f)));
+                    }
                 })
                 .sort(f -> f.score().then().field("title_sort"))
-                .fetch(20);
+                .fetch(page * PAGE_SIZE, PAGE_SIZE);
         return new SearchResult<>(result.total().hitCount(), result.hits());
     }
 }
