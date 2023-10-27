@@ -204,7 +204,7 @@ class SearchServiceTest {
         assertThat(result.hits())
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(SearchHit::id, InstanceOfAssertFactories.STRING)
-                        .startsWith("/versions/2.7/guides/"));
+                        .startsWith("/version/2.7/guides/"));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
@@ -215,7 +215,7 @@ class SearchServiceTest {
         assertThat(result.hits())
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(SearchHit::id, InstanceOfAssertFactories.STRING)
-                        .startsWith("/versions/main/guides/"));
+                        .startsWith("/version/main/guides/"));
     }
 
     @Test
