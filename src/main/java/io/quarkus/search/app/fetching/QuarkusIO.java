@@ -46,18 +46,24 @@ public class QuarkusIO implements AutoCloseable {
     @SuppressWarnings("resource")
     private Stream<GuidesDirectory> guideDirectories() throws IOException {
         return Stream.concat(
-                Stream.of(new GuidesDirectory(QuarkusVersions.LATEST, directory.path().resolve("_guides"))),
+                Stream.of(new GuidesDirectory(directory.path().resolve("_guides"),
+                        QuarkusVersions.LATEST, "/guides/")),
                 Files.list(directory.path().resolve("_versions"))
-                        .map(p -> new GuidesDirectory(p.getFileName().toString(), p.resolve("guides"))));
+                        .map(p -> {
+                            var version = p.getFileName().toString();
+                            return new GuidesDirectory(p.resolve("guides"), version,
+                                    "/version/" + version + "/guides/");
+                        }));
     }
 
-    record GuidesDirectory(String version, Path path) {
+    record GuidesDirectory(Path path, String version, String htmlPathPrefix) {
     }
 
     private Guide parseGuide(GuidesDirectory guidesDirectory, Path path) {
         var guide = new Guide();
         guide.version = guidesDirectory.version;
-        guide.relativePath = toHttpPath(directory.path().relativize(path).toString());
+        guide.relativePath = guidesDirectory.htmlPathPrefix
+                + FilenameUtils.removeExtension(guidesDirectory.path.relativize(path).toString());
         guide.fullContentPath = new PathWrapper(path);
         Asciidoc.parse(path, title -> guide.title = title,
                 Map.of("summary", summary -> guide.summary = summary,
@@ -66,15 +72,6 @@ public class QuarkusIO implements AutoCloseable {
                         "topics", topics -> guide.topics = toSet(topics),
                         "extensions", extensions -> guide.extensions = toSet(extensions)));
         return guide;
-    }
-
-    private String toHttpPath(String asciiDocPath) {
-        String result = FilenameUtils.removeExtension(asciiDocPath);
-        if (result.startsWith("_")) {
-            result = result.substring(1);
-        }
-        result = "/" + result;
-        return result;
     }
 
     private static Set<String> toSet(String value) {
