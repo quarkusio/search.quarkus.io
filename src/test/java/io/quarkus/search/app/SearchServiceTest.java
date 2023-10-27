@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import io.restassured.RestAssured;
+import io.restassured.filter.log.LogDetail;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.awaitility.Awaitility;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -53,6 +56,7 @@ class SearchServiceTest {
                     .then()
                     .statusCode(200);
         });
+        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails(LogDetail.BODY);
     }
 
     @Test
@@ -152,9 +156,9 @@ class SearchServiceTest {
                         GuideIds.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideIds.HIBERNATE_REACTIVE_PANACHE,
                         GuideIds.HIBERNATE_ORM_PANACHE,
-                        GuideIds.HIBERNATE_REACTIVE,
                         GuideIds.HIBERNATE_ORM,
                         GuideIds.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideIds.HIBERNATE_REACTIVE,
                         GuideIds.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideIds.SPRING_DATA_JPA)),
                 Arguments.of("jpa", List.of(
@@ -174,9 +178,43 @@ class SearchServiceTest {
 
     @Test
     void projections() {
-        var result = search("hibernate + elasticsearch");
-        assertThat(result.hits()).containsExactlyInAnyOrder(
-                new SearchHit(GuideIds.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
-                        "Hibernate Search guide"));
+        var result = search("hiber");
+        // We check order in another test
+        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(
+                GuideIds.HIBERNATE_ORM,
+                GuideIds.HIBERNATE_ORM_PANACHE,
+                GuideIds.HIBERNATE_ORM_PANACHE_KOTLIN,
+                GuideIds.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                GuideIds.HIBERNATE_REACTIVE,
+                GuideIds.HIBERNATE_REACTIVE_PANACHE,
+                GuideIds.SPRING_DATA_JPA,
+                GuideIds.DUPLICATED_CONTEXT);
+        assertThat(result.total()).isEqualTo(8);
+    }
+
+    @Test
+    void version() {
+        var result = given()
+                .queryParam("q", "orm")
+                .queryParam("version", "2.7")
+                .when().get()
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits())
+                .isNotEmpty()
+                .allSatisfy(hit -> assertThat(hit).extracting(SearchHit::id, InstanceOfAssertFactories.STRING)
+                        .startsWith("/versions/2.7/guides/"));
+        result = given()
+                .queryParam("q", "orm")
+                .queryParam("version", "main")
+                .when().get()
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits())
+                .isNotEmpty()
+                .allSatisfy(hit -> assertThat(hit).extracting(SearchHit::id, InstanceOfAssertFactories.STRING)
+                        .startsWith("/versions/main/guides/"));
     }
 }

@@ -24,6 +24,9 @@ public class Guide {
     @Id
     public String relativePath;
 
+    @KeywordField
+    public String version;
+
     @FullTextField
     @FullTextField(name = "title_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
     @KeywordField(name = "title_sort", normalizer = AnalysisConfigurer.SORT, searchable = Searchable.NO, sortable = Sortable.YES)

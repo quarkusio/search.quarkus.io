@@ -17,7 +17,9 @@ import org.assertj.core.api.SoftAssertions;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.util.SystemReader;
+
 import org.jboss.logging.Logger;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -82,16 +84,22 @@ class FetchingServiceTest {
             try (QuarkusIO quarkusIO = service.fetchQuarkusIo()) {
                 try (var guides = quarkusIO.guides()) {
                     assertThat(guides)
-                            .hasSize(1)
-                            .first()
-                            .satisfies(isGuide(
-                                    "/guides/" + FETCHED_GUIDE_NAME,
-                                    "Some title",
-                                    "This is a summary",
-                                    "keyword1, keyword2",
-                                    Set.of("topic1", "topic2"),
-                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    FETCHED_GUIDE_CONTENT));
+                            .hasSize(2)
+                            .satisfiesExactly(
+                                    isGuide("/guides/" + FETCHED_GUIDE_1_NAME,
+                                            "Some title",
+                                            "This is a summary",
+                                            "keyword1, keyword2",
+                                            Set.of("topic1", "topic2"),
+                                            Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                            FETCHED_GUIDE_1_CONTENT),
+                                    isGuide("/versions/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                            "Some other title",
+                                            null,
+                                            "keyword3, keyword4",
+                                            Set.of("topic3", "topic4"),
+                                            Set.of("io.quarkus:extension3"),
+                                            FETCHED_GUIDE_2_CONTENT));
                 }
             }
         }
@@ -108,10 +116,13 @@ class FetchingServiceTest {
 
         @BeforeAll
         static void initLocalRepo() throws IOException {
-            Path guideToFetch = sourceDir.resolve("_guides/" + FETCHED_GUIDE_NAME + ".adoc");
+            Path guide1ToFetch = sourceDir.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
+            Path guide2ToFetch = sourceDir.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
             Path adocToIgnore = sourceDir.resolve("_guides/_attributes.adoc");
-            PathUtils.createParentDirectories(guideToFetch);
-            Files.writeString(guideToFetch, FETCHED_GUIDE_CONTENT);
+            PathUtils.createParentDirectories(guide1ToFetch);
+            Files.writeString(guide1ToFetch, FETCHED_GUIDE_1_CONTENT);
+            PathUtils.createParentDirectories(guide2ToFetch);
+            Files.writeString(guide2ToFetch, FETCHED_GUIDE_2_CONTENT);
             PathUtils.createParentDirectories(adocToIgnore);
             Files.writeString(adocToIgnore, "ignored");
         }
@@ -130,27 +141,31 @@ class FetchingServiceTest {
 
         @BeforeAll
         static void initOrigin() throws IOException, GitAPIException {
-            Path guideToFetch = sourceRepoDir.resolve("_guides/" + FETCHED_GUIDE_NAME + ".adoc");
+            Path guide1ToFetch = sourceRepoDir.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
+            Path guide2ToFetch = sourceRepoDir.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
             Path adocToIgnore = sourceRepoDir.resolve("_guides/_attributes.adoc");
             try (Git git = Git.init().setDirectory(sourceRepoDir.toFile()).call()) {
                 cleanGitUserConfig();
 
-                PathUtils.createParentDirectories(guideToFetch);
-                Files.writeString(guideToFetch, "initial");
+                PathUtils.createParentDirectories(guide1ToFetch);
+                Files.writeString(guide1ToFetch, "initial");
                 PathUtils.createParentDirectories(adocToIgnore);
                 Files.writeString(adocToIgnore, "ignored");
                 git.add().addFilepattern(".").call();
                 git.commit().setMessage("First commit").call();
 
-                Files.writeString(guideToFetch, FETCHED_GUIDE_CONTENT);
+                Files.writeString(guide1ToFetch, FETCHED_GUIDE_1_CONTENT);
+                PathUtils.createParentDirectories(guide2ToFetch);
+                Files.writeString(guide2ToFetch, FETCHED_GUIDE_2_CONTENT);
                 git.add().addFilepattern(".").call();
                 git.commit().setMessage("Second commit").call();
             }
         }
     }
 
-    private static final String FETCHED_GUIDE_NAME = "foo";
-    private static final String FETCHED_GUIDE_CONTENT = """
+    private static final String FETCHED_GUIDE_1_NAME = "foo";
+    private static final String FETCHED_GUIDE_2_NAME = "bar";
+    private static final String FETCHED_GUIDE_1_CONTENT = """
             = Some title
             :irrelevant: foo
             :keywords: keyword1, keyword2
@@ -167,6 +182,14 @@ class FetchingServiceTest {
 
             == Some other subsection
             This is another subsection
+            """;
+    private static final String FETCHED_GUIDE_2_CONTENT = """
+            = Some other title
+            :keywords: keyword3, keyword4
+            :topics: topic3, topic4
+            :extensions: io.quarkus:extension3
+
+            This is the other guide body
             """;
 
     private static Consumer<Guide> isGuide(String relativePath, String title, String summary, String keywords,
