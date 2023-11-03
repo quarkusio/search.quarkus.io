@@ -94,7 +94,7 @@ spec:
             - name: xpack.security.enabled
               value: "false"
             - name: bootstrap.memory_lock
-              value: "false"
+              value: "true"
             # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_configure_and_start_the_cluster
             - name: ES_PORT
               value: 127.0.0.1:9200
