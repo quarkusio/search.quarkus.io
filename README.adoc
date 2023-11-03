@@ -64,7 +64,7 @@ podman pod create -p 8080:8080 -p 9000:9000 -p 9200:9200 --name search.quarkus.i
 podman container run -d --name elasticearch --pod search.quarkus.io \
     -e "discovery.type=single-node" -e "xpack.security.enabled=false" \
     -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    elastic/elasticsearch:8.10.2
+    docker.io/opensearchproject/opensearch:2.11.0
 # Then the app; this will fetch the actual data on startup (might take a while):
 podman container run -it --rm --pod search.quarkus.io search-quarkus-io:999-SNAPSHOT
 # OR, if you already have a local clone of quarkus.io:
@@ -107,10 +107,10 @@ you will need to set up a few things manually:
     Secret environment variables for the application.
     Put in there whatever secret configuration you need for your specific cluster.
   `search-backend-config`::
-    Environment variables for the Elasticsearch instances.
+    Environment variables for the OpenSearch instances.
     Put in there whatever configuration you need for your specific cluster.
   `search-backend-secret`::
-    Secret environment variables for the Elasticsearch instances.
+    Secret environment variables for the OpenSearch instances.
     Put in there whatever secret configuration you need for your specific cluster.
 
 [[license]]
