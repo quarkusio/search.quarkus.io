@@ -106,10 +106,10 @@ you will need to set up a few things manually:
   `search-quarkus-io-secret`::
     Secret environment variables for the application.
     Put in there whatever secret configuration you need for your specific cluster.
-  `elasticsearch-config`::
+  `search-backend-config`::
     Environment variables for the Elasticsearch instances.
     Put in there whatever configuration you need for your specific cluster.
-  `elasticsearch-secret`::
+  `search-backend-secret`::
     Secret environment variables for the Elasticsearch instances.
     Put in there whatever secret configuration you need for your specific cluster.
 
