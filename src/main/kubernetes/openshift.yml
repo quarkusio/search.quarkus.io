@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
         - name: search-backend
-          image: opensearch:2.11.0
+          image: elasticsearch:8.10.2
           imagePullPolicy: Always
           resources:
             limits:
@@ -75,7 +75,7 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: data
-              mountPath: /usr/share/opensearch/data
+              mountPath: /usr/share/elasticsearch/data
           env:
             - name: cluster.name
               value: search-quarkus-io
@@ -83,18 +83,21 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            # https://opensearch.org/docs/latest/install-and-configure/install-opensearch/docker/#sample-docker-composeyml
+            # https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#discovery-settings
             # Rely on OpenShift's internal DNS to address the other hosts
             - name: discovery.seed_hosts
               value: "search-backend-0.search-backend,search-backend-1.search-backend,search-backend-2.search-backend"
-            - name: cluster.initial_cluster_manager_nodes
+            - name: cluster.initial_master_nodes
               value: "search-backend-0,search-backend-1,search-backend-2"
             # Not exposed to the internet, no sensitive data
             # => We don't bother with HTTPS and pesky self-signed certificates
-            - name: plugins.security.disabled
-              value: "true"
+            - name: xpack.security.enabled
+              value: "false"
             - name: bootstrap.memory_lock
               value: "true"
+            # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_configure_and_start_the_cluster
+            - name: ES_PORT
+              value: 127.0.0.1:9200
           envFrom:
             - configMapRef:
                 name: search-backend-config
@@ -124,12 +127,12 @@ spec:
           - search-backend
         from:
           kind: ImageStreamTag
-          name: opensearch:2.11.0
+          name: elasticsearch:8.10.2
 ---
 apiVersion: "v1"
 kind: "ImageStream"
 metadata:
-  name: opensearch
+  name: elasticsearch
   labels:
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
@@ -137,7 +140,7 @@ metadata:
     app.kubernetes.io/managed-by: quarkus
 spec:
   tags:
-    - name: 2.11.0
+    - name: 8.10.2
       from:
         kind: DockerImage
-        name: docker.io/opensearchproject/opensearch:2.11.0
+        name: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
