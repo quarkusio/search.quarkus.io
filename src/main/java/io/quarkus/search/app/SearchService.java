@@ -25,7 +25,7 @@ import io.quarkus.search.app.entity.Guide;
 @Path("/")
 public class SearchService {
 
-    private static final Integer PAGE_SIZE = 20;
+    private static final Integer PAGE_SIZE = 50;
 
     @Inject
     SearchSession session;
