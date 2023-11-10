@@ -13,6 +13,7 @@ import jakarta.ws.rs.core.MediaType;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 
+import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import org.jboss.resteasy.reactive.RestQuery;
@@ -61,7 +62,8 @@ public class SearchService {
                                 .field("title_autocomplete").boost(1.0f)
                                 .field("summary_autocomplete").boost(0.5f)
                                 .field("fullContent_autocomplete").boost(0.1f)
-                                .matching(q))
+                                .matching(q)
+                                .defaultOperator(BooleanOperator.AND))
                                 .should(f.not(f.match().field("topics").matching("compatibility"))
                                         .boost(50.0f)));
                     }
