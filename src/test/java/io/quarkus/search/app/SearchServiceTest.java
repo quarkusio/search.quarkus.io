@@ -98,6 +98,15 @@ class SearchServiceTest {
     }
 
     @Test
+    void queryMatchingTwoTerms() {
+        var result = search("orm elasticsearch");
+        // We expect an AND by default
+        assertThat(result.hits()).extracting(SearchHit::id)
+                .containsExactlyInAnyOrder(GuideIds.HIBERNATE_SEARCH_ORM_ELASTICSEARCH);
+        assertThat(result.total()).isEqualTo(1);
+    }
+
+    @Test
     void queryEmptyString() {
         var result = search("");
         assertThat(result.hits()).extracting(SearchHit::id)
