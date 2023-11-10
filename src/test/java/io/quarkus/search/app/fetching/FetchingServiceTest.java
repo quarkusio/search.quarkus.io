@@ -16,151 +16,107 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.SoftAssertions;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.util.SystemReader;
-
-import org.jboss.logging.Logger;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import org.mockito.Mockito;
 
 import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.testsupport.GitTestUtils;
+import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.test.component.QuarkusComponentTestExtension;
 
 class FetchingServiceTest {
 
-    private static final Logger LOG = Logger.getLogger(FetchingServiceTest.class);
-
     // Unfortunately we can't use @TempDir here,
     // because we need the path initialized before we create the extension below.
-    static Path tmpDir;
+    static CloseableDirectory tmpDir;
     static {
         try {
-            tmpDir = Files.createTempDirectory("search-fetching");
+            tmpDir = CloseableDirectory.temp("fetching-service-test");
         } catch (IOException e) {
             throw new RuntimeException("Could not init temp directory: " + e.getMessage(), e);
         }
     }
 
-    @AfterAll
-    static void deleteTmpDir() throws IOException {
-        PathUtils.deleteDirectory(tmpDir);
-    }
+    @BeforeAll
+    static void initOrigin() throws IOException, GitAPIException {
+        Path sourceRepoPath = tmpDir.path();
+        Path guide1ToFetch = sourceRepoPath.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
+        Path guide2ToFetch = sourceRepoPath.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
+        Path adocToIgnore = sourceRepoPath.resolve("_guides/_attributes.adoc");
+        try (Git git = Git.init().setDirectory(sourceRepoPath.toFile()).call()) {
+            GitTestUtils.cleanGitUserConfig();
 
-    @SuppressWarnings("JUnitMalformedDeclaration")
-    static abstract class AbstractTest {
-        protected static QuarkusComponentTestExtension extension(FetchingConfig.Source.Method quarkusIOMethod,
-                URI quarkusIOURI) {
-            return QuarkusComponentTestExtension.builder()
-                    // It seems injecting config mappings isn't supported at the moment;
-                    // see https://quarkusio.zulipchat.com/#narrow/stream/187038-dev/topic/QuarkusComponentTest.20and.20ConfigMapping
-                    .mock(FetchingConfig.class)
-                    .createMockitoMock(mock -> {
-                        Mockito.when(mock.quarkusio())
-                                .thenReturn(new FetchingConfig.Source() {
-                                    @Override
-                                    public Method method() {
-                                        return quarkusIOMethod;
-                                    }
-
-                                    @Override
-                                    public URI uri() {
-                                        return quarkusIOURI;
-                                    }
-                                });
-                    })
-                    .build();
-        }
-
-        @Inject
-        FetchingService service;
-
-        @Test
-        void fetchQuarkusIo() throws Exception {
-            try (QuarkusIO quarkusIO = service.fetchQuarkusIo()) {
-                try (var guides = quarkusIO.guides()) {
-                    assertThat(guides)
-                            .hasSize(2)
-                            .satisfiesExactly(
-                                    isGuide("/guides/" + FETCHED_GUIDE_1_NAME,
-                                            "Some title",
-                                            "This is a summary",
-                                            "keyword1, keyword2",
-                                            Set.of("category1", "category2"),
-                                            Set.of("topic1", "topic2"),
-                                            Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                            FETCHED_GUIDE_1_CONTENT),
-                                    isGuide("/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                            "Some other title",
-                                            null,
-                                            "keyword3, keyword4",
-                                            Set.of(),
-                                            Set.of("topic3", "topic4"),
-                                            Set.of("io.quarkus:extension3"),
-                                            FETCHED_GUIDE_2_CONTENT));
-                }
-            }
-        }
-    }
-
-    @Nested
-    class LocalDirectoryTest extends AbstractTest {
-        static final Path sourceDir = tmpDir.resolve("local");
-
-        @RegisterExtension
-        static final QuarkusComponentTestExtension extension = extension(
-                FetchingConfig.Source.Method.LOCAL,
-                URI.create("file:" + sourceDir));
-
-        @BeforeAll
-        static void initLocalRepo() throws IOException {
-            Path guide1ToFetch = sourceDir.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
-            Path guide2ToFetch = sourceDir.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
-            Path adocToIgnore = sourceDir.resolve("_guides/_attributes.adoc");
             PathUtils.createParentDirectories(guide1ToFetch);
+            Files.writeString(guide1ToFetch, "initial");
+            PathUtils.createParentDirectories(adocToIgnore);
+            Files.writeString(adocToIgnore, "ignored");
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("First commit").call();
+
             Files.writeString(guide1ToFetch, FETCHED_GUIDE_1_CONTENT);
             PathUtils.createParentDirectories(guide2ToFetch);
             Files.writeString(guide2ToFetch, FETCHED_GUIDE_2_CONTENT);
-            PathUtils.createParentDirectories(adocToIgnore);
-            Files.writeString(adocToIgnore, "ignored");
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("Second commit").call();
         }
     }
 
-    @Nested
-    class GitTest extends AbstractTest {
-        static final Path sourceRepoDir = tmpDir.resolve("git");
+    @AfterAll
+    static void deleteTmpDir() throws IOException {
+        if (tmpDir != null) {
+            tmpDir.close();
+        }
+    }
 
-        @RegisterExtension
-        static final QuarkusComponentTestExtension extension = extension(
-                FetchingConfig.Source.Method.GIT,
-                // We don't want to rely on external resources in tests,
-                // so we use a local git repo to simulate quarkus.io's git repository.
-                URI.create("file:" + sourceRepoDir));
+    @RegisterExtension
+    static final QuarkusComponentTestExtension extension = QuarkusComponentTestExtension.builder()
+            // It seems injecting config mappings isn't supported at the moment;
+            // see https://quarkusio.zulipchat.com/#narrow/stream/187038-dev/topic/QuarkusComponentTest.20and.20ConfigMapping
+            .mock(FetchingConfig.class)
+            .createMockitoMock(mock -> {
+                Mockito.when(mock.quarkusio())
+                        .thenReturn(new FetchingConfig.Source() {
+                            // We don't want to rely on external resources in tests,
+                            // so we use a local git repo to simulate quarkus.io's git repository.
+                            @Override
+                            public URI uri() {
+                                return tmpDir.path().toUri();
+                            }
+                        });
+            })
+            .build();
 
-        @BeforeAll
-        static void initOrigin() throws IOException, GitAPIException {
-            Path guide1ToFetch = sourceRepoDir.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
-            Path guide2ToFetch = sourceRepoDir.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
-            Path adocToIgnore = sourceRepoDir.resolve("_guides/_attributes.adoc");
-            try (Git git = Git.init().setDirectory(sourceRepoDir.toFile()).call()) {
-                cleanGitUserConfig();
+    @Inject
+    FetchingService service;
 
-                PathUtils.createParentDirectories(guide1ToFetch);
-                Files.writeString(guide1ToFetch, "initial");
-                PathUtils.createParentDirectories(adocToIgnore);
-                Files.writeString(adocToIgnore, "ignored");
-                git.add().addFilepattern(".").call();
-                git.commit().setMessage("First commit").call();
-
-                Files.writeString(guide1ToFetch, FETCHED_GUIDE_1_CONTENT);
-                PathUtils.createParentDirectories(guide2ToFetch);
-                Files.writeString(guide2ToFetch, FETCHED_GUIDE_2_CONTENT);
-                git.add().addFilepattern(".").call();
-                git.commit().setMessage("Second commit").call();
+    @Test
+    void fetchQuarkusIo() throws Exception {
+        try (QuarkusIO quarkusIO = service.fetchQuarkusIo()) {
+            try (var guides = quarkusIO.guides()) {
+                assertThat(guides)
+                        .hasSize(2)
+                        .satisfiesExactly(
+                                isGuide("/guides/" + FETCHED_GUIDE_1_NAME,
+                                        "Some title",
+                                        "This is a summary",
+                                        "keyword1, keyword2",
+                                        Set.of("category1", "category2"),
+                                        Set.of("topic1", "topic2"),
+                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                        FETCHED_GUIDE_1_CONTENT),
+                                isGuide("/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                        "Some other title",
+                                        null,
+                                        "keyword3, keyword4",
+                                        Set.of(),
+                                        Set.of("topic3", "topic4"),
+                                        Set.of("io.quarkus:extension3"),
+                                        FETCHED_GUIDE_2_CONTENT));
             }
         }
     }
@@ -214,13 +170,5 @@ class FetchingServiceTest {
                         .isEqualTo(content);
             });
         };
-    }
-
-    private static void cleanGitUserConfig() {
-        try {
-            SystemReader.getInstance().getUserConfig().clear();
-        } catch (Exception e) {
-            LOG.warn("Unable to clear the Git user config");
-        }
     }
 }

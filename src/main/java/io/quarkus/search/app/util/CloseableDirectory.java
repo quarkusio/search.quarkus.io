@@ -1,4 +1,4 @@
-package io.quarkus.search.app.fetching;
+package io.quarkus.search.app.util;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -7,19 +7,19 @@ import java.nio.file.Path;
 
 import org.apache.commons.io.file.PathUtils;
 
-final class FetchedDirectory implements Closeable {
-    public static FetchedDirectory temp() throws IOException {
-        return new FetchedDirectory(Files.createTempDirectory("search-quarkus-io-fetch"), true);
+public final class CloseableDirectory implements Closeable {
+    public static CloseableDirectory temp(String prefix) throws IOException {
+        return new CloseableDirectory(Files.createTempDirectory(prefix), true);
     }
 
-    public static FetchedDirectory of(Path path) {
-        return new FetchedDirectory(path, false);
+    public static CloseableDirectory of(Path path) {
+        return new CloseableDirectory(path, false);
     }
 
     private final Path path;
     private boolean shouldDelete;
 
-    private FetchedDirectory(Path path, boolean shouldDelete) {
+    private CloseableDirectory(Path path, boolean shouldDelete) {
         this.path = path;
         this.shouldDelete = shouldDelete;
     }

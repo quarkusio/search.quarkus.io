@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.quarkus.search.app.util.CloseableDirectory;
 import org.apache.commons.io.FilenameUtils;
 
 import io.quarkus.search.app.QuarkusVersions;
@@ -21,9 +22,19 @@ import io.quarkus.search.app.hibernate.PathWrapper;
 
 public class QuarkusIO implements AutoCloseable {
 
-    private final FetchedDirectory directory;
+    public static String httpPath(String version, String name) {
+        return QuarkusVersions.LATEST.equals(version) ? "/guides/" + name
+                : "/version/" + version + "/guides/" + name;
+    }
 
-    QuarkusIO(FetchedDirectory directory) {
+    public static String asciidocPath(String version, String name) {
+        return QuarkusVersions.LATEST.equals(version) ? "_guides/" + name + ".adoc"
+                : "_versions/" + version + "/guides/" + name + ".adoc";
+    }
+
+    private final CloseableDirectory directory;
+
+    QuarkusIO(CloseableDirectory directory) {
         this.directory = directory;
     }
 
@@ -47,24 +58,22 @@ public class QuarkusIO implements AutoCloseable {
     @SuppressWarnings("resource")
     private Stream<GuidesDirectory> guideDirectories() throws IOException {
         return Stream.concat(
-                Stream.of(new GuidesDirectory(directory.path().resolve("_guides"),
-                        QuarkusVersions.LATEST, "/guides/")),
+                Stream.of(new GuidesDirectory(QuarkusVersions.LATEST, directory.path().resolve("_guides"))),
                 Files.list(directory.path().resolve("_versions"))
                         .map(p -> {
                             var version = p.getFileName().toString();
-                            return new GuidesDirectory(p.resolve("guides"), version,
-                                    "/version/" + version + "/guides/");
+                            return new GuidesDirectory(version, p.resolve("guides"));
                         }));
     }
 
-    record GuidesDirectory(Path path, String version, String htmlPathPrefix) {
+    record GuidesDirectory(String version, Path path) {
     }
 
     private Guide parseGuide(GuidesDirectory guidesDirectory, Path path) {
         var guide = new Guide();
         guide.version = guidesDirectory.version;
-        guide.relativePath = guidesDirectory.htmlPathPrefix
-                + FilenameUtils.removeExtension(guidesDirectory.path.relativize(path).toString());
+        String name = FilenameUtils.removeExtension(path.getFileName().toString());
+        guide.relativePath = httpPath(guidesDirectory.version, name);
         guide.fullContentPath = new PathWrapper(path);
         Asciidoc.parse(path, title -> guide.title = title,
                 Map.of("summary", summary -> guide.summary = summary,

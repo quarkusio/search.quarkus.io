@@ -5,6 +5,9 @@ import java.net.URI;
 import java.nio.file.Path;
 
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.LaunchMode;
+import io.quarkus.search.app.util.CloseableDirectory;
+import io.quarkus.search.app.util.FileUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -24,22 +27,37 @@ public class FetchingService {
         return new QuarkusIO(fetch("quarkus.io", fetchingConfig.quarkusio()));
     }
 
-    private FetchedDirectory fetch(String name, FetchingConfig.Source source) {
+    private CloseableDirectory fetch(String name, FetchingConfig.Source source) {
         try {
-            Log.infof("Fetching %s using method %s from %s.", name, source.method(), source.uri());
-            return switch (source.method()) {
-                case GIT -> gitClone(source.uri());
-                case LOCAL -> FetchedDirectory.of(Path.of(source.uri()));
-            };
+            var uri = source.uri();
+            if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current())
+                    && uri.getScheme().equals("file")
+                    && uri.getPath().endsWith(".zip")) {
+                var zipPath = Path.of(uri);
+                Log.warn(
+                        "Unzipping '%s': this application is most likely indexing only a sample of quarkus.io. See README to index the full website.");
+                try (CloseableDirectory unzipped = CloseableDirectory.temp(name + "-unzipped")) {
+                    FileUtils.unzip(zipPath, unzipped.path());
+                    uri = unzipped.path().toUri();
+                    // While technically unnecessary (we could use the unzipped directory directly),
+                    // this cloning ensures we run the same code in dev mode as in prod.
+                    return gitClone(name, uri);
+                } catch (RuntimeException | IOException e) {
+                    throw new IllegalStateException("Failed to unzip '" + uri + "': " + e.getMessage(), e);
+                }
+            } else {
+                return gitClone(name, uri);
+            }
         } catch (RuntimeException e) {
             throw new IllegalStateException("Failed to fetch '" + name + "': " + e.getMessage(), e);
         }
     }
 
-    private FetchedDirectory gitClone(URI gitUri) {
-        FetchedDirectory clone = null;
+    private CloseableDirectory gitClone(String name, URI gitUri) {
+        Log.infof("Fetching %s from %s.", name, gitUri);
+        CloseableDirectory clone = null;
         try {
-            clone = FetchedDirectory.temp();
+            clone = CloseableDirectory.temp(name);
             try (Git git = Git.cloneRepository()
                     .setURI(gitUri.toString())
                     .setDirectory(clone.path().toFile())

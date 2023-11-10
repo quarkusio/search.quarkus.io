@@ -9,13 +9,6 @@ interface FetchingConfig {
     Source quarkusio();
 
     interface Source {
-        Method method();
-
         URI uri();
-
-        enum Method {
-            GIT,
-            LOCAL;
-        }
     }
 }

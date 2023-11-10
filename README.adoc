@@ -21,7 +21,7 @@ Then head over to http://0.0.0.0:9000/q/swagger-ui/ to try the service.
 Indexing happens on startup.
 
 Because there is a lot of data to fetch before indexing,
-by default dev mode will use a smaller test dataset included in this repository.
+by default dev mode will use a <<testing,small sample of quarkus.io included in this repository>>.
 
 To use the actual quarkus.io data,
 consider cloning the https://github.com/quarkusio/quarkusio.github.io[quarkus.io repository]
@@ -43,6 +43,22 @@ quarkus dev -Dfetching.quarkusio.method=git
 ./mvnw quarkus:dev -Dfetching.quarkusio.method=git
 ----
 ====
+
+[[testing]]
+== Testing
+
+Testing (and, by default <<development,dev mode>>) will use a small sample of quarkus.io included in this repository
+at `src/test/resources/quarkusio-sample.zip`.
+
+This sample must itself be a git repository, so generating it can get technical.
+
+Fortunately, there is a tool included in this project to generate the sample.
+To update the sample:
+
+* Add the references of the guides you want included in the sample to `GuidesRef`.
+* Run `QuarkusIOSample.main()` using your IDE,
+with the project root as the current working directory,
+and passing as first (and only) command-line argument the path to your clone of quarkus.io.
 
 [[production]]
 == Production

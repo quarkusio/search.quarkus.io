@@ -32,7 +32,6 @@
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.1</surefire-plugin.version>
-    <test.data.path>${project.basedir}/src/test/data/</test.data.path>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
   </properties>
   <dependencyManagement>
@@ -153,7 +152,7 @@
         </executions>
         <configuration>
           <systemProperties>
-            <maven.test.data.path>${test.data.path}</maven.test.data.path>
+            <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
           </systemProperties>
         </configuration>
       </plugin>
@@ -173,7 +172,7 @@
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
-            <maven.test.data.path>${test.data.path}</maven.test.data.path>
+            <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
           </systemPropertyVariables>
           <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
             <usePhrasedFileName>true</usePhrasedFileName>
