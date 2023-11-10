@@ -73,7 +73,7 @@ public class QuarkusIO implements AutoCloseable {
         var guide = new Guide();
         guide.version = guidesDirectory.version;
         String name = FilenameUtils.removeExtension(path.getFileName().toString());
-        guide.relativePath = httpPath(guidesDirectory.version, name);
+        guide.path = httpPath(guidesDirectory.version, name);
         guide.fullContentPath = new PathWrapper(path);
         Asciidoc.parse(path, title -> guide.title = title,
                 Map.of("summary", summary -> guide.summary = summary,

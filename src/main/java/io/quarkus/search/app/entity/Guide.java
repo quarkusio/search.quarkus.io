@@ -22,7 +22,7 @@ import io.quarkus.search.app.hibernate.PathWrapper;
 @Indexed
 public class Guide {
     @Id
-    public String relativePath;
+    public String path;
 
     @KeywordField
     public String version;
@@ -62,7 +62,7 @@ public class Guide {
     @Override
     public String toString() {
         return "Guide{" +
-                "relativePath='" + relativePath + '\'' +
+                "path='" + path + '\'' +
                 '}';
     }
 }
