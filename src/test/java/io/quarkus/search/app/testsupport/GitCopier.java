@@ -5,32 +5,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.eclipse.jgit.api.Git;
+import io.quarkus.search.app.util.GitUtils;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.OrTreeFilter;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 
 class GitCopier {
 
-    public static GitCopier create(Repository originalRepo, String originalBranch) throws IOException {
-        RevWalk revWalk = new RevWalk(originalRepo);
-        ObjectId original = originalRepo.resolve(originalBranch);
-        if (original == null) {
-            throw new IllegalStateException("Missing branch '%s' in '%s'".formatted(originalBranch, originalRepo));
-        }
-        return new GitCopier(originalRepo, revWalk.parseTree(original));
-
+    public static GitCopier create(Repository originalRepo, String... originalRefs) throws IOException {
+        return new GitCopier(originalRepo, GitUtils.firstExistingRevTree(originalRepo, originalRefs));
     }
 
     private final Repository originalRepo;
@@ -71,9 +63,10 @@ class GitCopier {
             }
         }
         if (!originalPathFilterToCopyPaths.isEmpty()) {
-            throw new IllegalStateException("Could not find some paths in original: %s"
-                    .formatted(originalPathFilterToCopyPaths.keySet().stream().map(PathFilter::getPath)
-                            .collect(Collectors.joining(", "))));
+            throw new IllegalStateException("Could not find some paths in original %s: %s"
+                    .formatted(originalTree.getName(),
+                            originalPathFilterToCopyPaths.keySet().stream().map(PathFilter::getPath)
+                                    .collect(Collectors.joining(", "))));
         }
     }
 

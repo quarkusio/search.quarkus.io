@@ -1,5 +1,6 @@
 package io.quarkus.search.app.fetching;
 
+import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -9,6 +10,8 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import io.quarkus.search.app.hibernate.InputProvider;
+import io.quarkus.search.app.util.UncheckedIOFunction;
 import jakarta.inject.Inject;
 
 import org.apache.commons.io.file.PathUtils;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.mockito.Mockito;
 
 import io.quarkus.search.app.entity.Guide;
@@ -45,24 +49,48 @@ class FetchingServiceTest {
     @BeforeAll
     static void initOrigin() throws IOException, GitAPIException {
         Path sourceRepoPath = tmpDir.path();
-        Path guide1ToFetch = sourceRepoPath.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
-        Path guide2ToFetch = sourceRepoPath.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
+        Path guide1AdocToFetch = sourceRepoPath.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
+        Path guide2AdocToFetch = sourceRepoPath.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
         Path adocToIgnore = sourceRepoPath.resolve("_guides/_attributes.adoc");
-        try (Git git = Git.init().setDirectory(sourceRepoPath.toFile()).call()) {
+        Path guide1HtmlToFetch = sourceRepoPath.resolve("guides/" + FETCHED_GUIDE_1_NAME + ".html");
+        Path guide2HtmlToFetch = sourceRepoPath.resolve("version/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".html");
+        try (Git git = Git.init().setDirectory(sourceRepoPath.toFile())
+                .setInitialBranch(QuarkusIO.PAGES_BRANCH).call()) {
             GitTestUtils.cleanGitUserConfig();
 
-            PathUtils.createParentDirectories(guide1ToFetch);
-            Files.writeString(guide1ToFetch, "initial");
+            RevCommit initialCommit = git.commit().setMessage("Initial commit")
+                    .setAllowEmpty(true)
+                    .call();
+
+            PathUtils.createParentDirectories(guide1HtmlToFetch);
+            Files.writeString(guide1HtmlToFetch, "initial");
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("Pages first commit").call();
+
+            Files.writeString(guide1HtmlToFetch, FETCHED_GUIDE_1_CONTENT_HTML);
+            PathUtils.createParentDirectories(guide2HtmlToFetch);
+            Files.writeString(guide2HtmlToFetch, FETCHED_GUIDE_2_CONTENT_HTML);
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("Pages second commit").call();
+
+            git.checkout()
+                    .setName(QuarkusIO.SOURCE_BRANCH)
+                    .setCreateBranch(true)
+                    .setStartPoint(initialCommit)
+                    .call();
+
+            PathUtils.createParentDirectories(guide1AdocToFetch);
+            Files.writeString(guide1AdocToFetch, "initial");
             PathUtils.createParentDirectories(adocToIgnore);
             Files.writeString(adocToIgnore, "ignored");
             git.add().addFilepattern(".").call();
-            git.commit().setMessage("First commit").call();
+            git.commit().setMessage("Source first commit").call();
 
-            Files.writeString(guide1ToFetch, FETCHED_GUIDE_1_CONTENT);
-            PathUtils.createParentDirectories(guide2ToFetch);
-            Files.writeString(guide2ToFetch, FETCHED_GUIDE_2_CONTENT);
+            Files.writeString(guide1AdocToFetch, FETCHED_GUIDE_1_CONTENT_ADOC);
+            PathUtils.createParentDirectories(guide2AdocToFetch);
+            Files.writeString(guide2AdocToFetch, FETCHED_GUIDE_2_CONTENT_ADOC);
             git.add().addFilepattern(".").call();
-            git.commit().setMessage("Second commit").call();
+            git.commit().setMessage("Source second commit").call();
         }
     }
 
@@ -108,7 +136,7 @@ class FetchingServiceTest {
                                         Set.of("category1", "category2"),
                                         Set.of("topic1", "topic2"),
                                         Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        FETCHED_GUIDE_1_CONTENT),
+                                        FETCHED_GUIDE_1_CONTENT_HTML),
                                 isGuide("/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
                                         null,
@@ -116,14 +144,13 @@ class FetchingServiceTest {
                                         Set.of(),
                                         Set.of("topic3", "topic4"),
                                         Set.of("io.quarkus:extension3"),
-                                        FETCHED_GUIDE_2_CONTENT));
+                                        FETCHED_GUIDE_2_CONTENT_HTML));
             }
         }
     }
 
     private static final String FETCHED_GUIDE_1_NAME = "foo";
-    private static final String FETCHED_GUIDE_2_NAME = "bar";
-    private static final String FETCHED_GUIDE_1_CONTENT = """
+    private static final String FETCHED_GUIDE_1_CONTENT_ADOC = """
             = Some title
             :irrelevant: foo
             :categories: category1, category2
@@ -142,13 +169,32 @@ class FetchingServiceTest {
             == Some other subsection
             This is another subsection
             """;
-    private static final String FETCHED_GUIDE_2_CONTENT = """
+    private static final String FETCHED_GUIDE_1_CONTENT_HTML = """
+            <html>
+            <head></head>
+            <body>
+            <h1>Some title</h1>
+            <p>This is the guide body
+            <h2>Some subsection</h2>
+            This is a subsection
+            <h2>Some other subsection</h2>
+            This is another subsection
+            """;
+    private static final String FETCHED_GUIDE_2_NAME = "bar";
+    private static final String FETCHED_GUIDE_2_CONTENT_ADOC = """
             = Some other title
             :keywords: keyword3, keyword4
             :topics: topic3, topic4
             :extensions: io.quarkus:extension3
 
             This is the other guide body
+            """;
+    private static final String FETCHED_GUIDE_2_CONTENT_HTML = """
+            <html>
+            <head></head>
+            <body>
+            <h1>Some other title</h1>
+            <p>This is the other guide body
             """;
 
     private static Consumer<Guide> isGuide(String path, String title, String summary, String keywords,
@@ -165,9 +211,10 @@ class FetchingServiceTest {
                         .containsExactlyInAnyOrderElementsOf(topics);
                 softly.assertThat(guide).extracting("extensions", InstanceOfAssertFactories.COLLECTION)
                         .containsExactlyInAnyOrderElementsOf(extensions);
-                softly.assertThat(guide).extracting("fullContentPath.value", InstanceOfAssertFactories.PATH)
-                        .content()
-                        .isEqualTo(content);
+                softly.assertThat(guide)
+                        .extracting("htmlFullContentProvider", InstanceOfAssertFactories.type(InputProvider.class))
+                        .extracting(uncheckedIO(InputProvider::open), InstanceOfAssertFactories.INPUT_STREAM)
+                        .hasContent(content);
             });
         };
     }

@@ -9,9 +9,12 @@ import java.lang.annotation.Target;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.quarkus.search.app.fetching.QuarkusIO;
 import org.eclipse.jgit.api.Git;
@@ -25,6 +28,7 @@ import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.FileUtils;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
+import org.eclipse.jgit.revwalk.RevCommit;
 
 /**
  * Helper to create a simulated quarkus.io repository to use for fetching in test/dev mode.
@@ -34,7 +38,6 @@ public final class QuarkusIOSample {
     private QuarkusIOSample() {
     }
 
-    private static final String ASCIIDOC_BRANCH_NAME = "develop";
     public static final String SAMPLED_NON_LATEST_VERSION = "main";
 
     private static Path testResourcesSamplePath() {
@@ -43,20 +46,25 @@ public final class QuarkusIOSample {
                 .resolve("quarkusio-sample.zip");
     }
 
-    // Run this to update the bundle in src/test/resources
-    // Expects exactly one argument: the path to your local clone of quarkus.io
+    // Run this to update the bundle in src/test/resources.
     // Expects to be run with the project root as the current working directory.
+    // Expects at least one argument: the path to your local clone of quarkus.io,
+    // with the next arguments being interpreted as remotes to try to copy the data from
+    // ("origin" and the local branch will still be used as the last resort)
     public static void main(String[] args) throws IOException {
-        if (args.length != 1) {
-            throw new IllegalArgumentException("Expected exactly 1 argument, got: %s".formatted(Arrays.toString(args)));
+        if (args.length == 0) {
+            throw new IllegalArgumentException("Expected at least 1 argument, got none");
         }
         Path originalPath = Path.of(args[0]);
         if (!Files.isDirectory(originalPath)) {
             throw new IllegalArgumentException(originalPath + " is not a directory");
         }
+        List<String> remotes = Stream.concat(
+                Arrays.stream(args).skip(1),
+                Stream.of("upstream", "origin", null)).toList();
 
         try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-            copy(originalPath, copyRootDir.path(), new AllFilterDefinition());
+            copy(originalPath, remotes, copyRootDir.path(), new AllFilterDefinition());
 
             Path sampleAbsolutePath = testResourcesSamplePath();
             Files.deleteIfExists(sampleAbsolutePath);
@@ -69,7 +77,8 @@ public final class QuarkusIOSample {
         try (CloseableDirectory unzippedQuarkusIoSample = CloseableDirectory.temp("quarkusio-sample-unzipped")) {
             FileUtils.unzip(testResourcesSamplePath(), unzippedQuarkusIoSample.path());
             copyRootDir = CloseableDirectory.temp(filterDef.toString());
-            copy(unzippedQuarkusIoSample.path(), copyRootDir.path(), filterDef);
+            copy(unzippedQuarkusIoSample.path(), Collections.singletonList(null),
+                    copyRootDir.path(), filterDef);
             return copyRootDir;
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e).push(copyRootDir);
@@ -78,7 +87,8 @@ public final class QuarkusIOSample {
         }
     }
 
-    public static void copy(Path quarkusIoLocalPath, Path copyRootPath, FilterDefinition filterDef) {
+    public static void copy(Path quarkusIoLocalPath, List<String> originalRemotes,
+            Path copyRootPath, FilterDefinition filterDef) {
         try (Git originalGit = Git.open(quarkusIoLocalPath.toFile())) {
             GitTestUtils.cleanGitUserConfig();
 
@@ -86,26 +96,31 @@ public final class QuarkusIOSample {
 
             var collector = new FilterDefinitionCollector();
             filterDef.define(collector);
-            if (collector.copyPathToOriginalPath.isEmpty()) {
+            if (collector.sourceCopyPathToOriginalPath.isEmpty() && collector.pagesCopyPathToOriginalPath.isEmpty()) {
                 throw new IllegalStateException("No path to copy");
             }
 
-            GitCopier copier = GitCopier.create(originalRepo, ASCIIDOC_BRANCH_NAME);
-            try (Git copyGit = Git.init().setInitialBranch(ASCIIDOC_BRANCH_NAME).setDirectory(copyRootPath.toFile()).call()) {
+            try (Git copyGit = Git.init().setInitialBranch(QuarkusIO.PAGES_BRANCH)
+                    .setDirectory(copyRootPath.toFile()).call()) {
                 GitTestUtils.cleanGitUserConfig();
 
-                copier.copy(copyRootPath, collector.copyPathToOriginalPath);
-                copyGit.add().addFilepattern(".").call();
-                copyGit.commit().setMessage("""
-                        Copying from %s
-
-                        Copies:%s"""
-                        .formatted(
-                                quarkusIoLocalPath,
-                                collector.copyPathToOriginalPath.entrySet().stream()
-                                        .map(e -> e.getValue() + " => " + e.getKey())
-                                        .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
+                RevCommit initialCommit = copyGit.commit().setMessage("Initial commit")
+                        .setAllowEmpty(true)
                         .call();
+
+                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, QuarkusIO.PAGES_BRANCH,
+                        copyRootPath, copyGit,
+                        collector.pagesCopyPathToOriginalPath);
+
+                copyGit.checkout()
+                        .setName(QuarkusIO.SOURCE_BRANCH)
+                        .setCreateBranch(true)
+                        .setStartPoint(initialCommit)
+                        .call();
+                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, QuarkusIO.SOURCE_BRANCH,
+                        copyRootPath, copyGit,
+                        collector.sourceCopyPathToOriginalPath);
+
             }
         } catch (RuntimeException | IOException | GitAPIException e) {
             throw new IllegalStateException(
@@ -113,6 +128,31 @@ public final class QuarkusIOSample {
                             .formatted(quarkusIoLocalPath, copyRootPath, filterDef, e.getMessage()),
                     e);
         }
+    }
+
+    private static void copyIfNecessary(Path quarkusIoLocalPath, Repository originalRepo,
+            List<String> originalRemotes, String originalBranch,
+            Path copyRootPath, Git copyGit, Map<String, String> copyPathToOriginalPath)
+            throws IOException, GitAPIException {
+        if (copyPathToOriginalPath.isEmpty()) {
+            return;
+        }
+        GitCopier copier = GitCopier.create(originalRepo,
+                // For convenience, we try multiple origins
+                originalRemotes.stream()
+                        .map(r -> r != null ? r + "/" + originalBranch : originalBranch)
+                        .toArray(String[]::new));
+        copier.copy(copyRootPath, copyPathToOriginalPath);
+        copyGit.add().addFilepattern(".").call();
+        copyGit.commit().setMessage("""
+                Copying from %s
+
+                Copies:%s"""
+                .formatted(quarkusIoLocalPath,
+                        copyPathToOriginalPath.entrySet().stream()
+                                .map(e -> e.getValue() + " => " + e.getKey())
+                                .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
+                .call();
     }
 
     public abstract static class FilterDefinition {
@@ -145,7 +185,8 @@ public final class QuarkusIOSample {
     }
 
     public static class FilterDefinitionCollector {
-        private final Map<String, String> copyPathToOriginalPath = new LinkedHashMap<>();
+        private final Map<String, String> sourceCopyPathToOriginalPath = new LinkedHashMap<>();
+        private final Map<String, String> pagesCopyPathToOriginalPath = new LinkedHashMap<>();
 
         FilterDefinitionCollector() {
         }
@@ -156,16 +197,27 @@ public final class QuarkusIOSample {
 
         public FilterDefinitionCollector addGuide(GuideRef ref, String version) {
             String asciidocPath = QuarkusIO.asciidocPath(version, ref.name());
-            add(asciidocPath, asciidocPath);
+            addOnSourceBranch(asciidocPath, asciidocPath);
+            String htmlPath = QuarkusIO.htmlPath(version, ref.name());
+            addOnPagesBranch(htmlPath, htmlPath);
             return this;
         }
 
-        public void add(String originalPath, String copyPath) {
+        public void addOnSourceBranch(String originalPath, String copyPath) {
+            add("source", sourceCopyPathToOriginalPath, originalPath, copyPath);
+        }
+
+        public void addOnPagesBranch(String originalPath, String copyPath) {
+            add("pages", pagesCopyPathToOriginalPath, originalPath, copyPath);
+        }
+
+        private static void add(String branch, Map<String, String> copyPathToOriginalPath,
+                String originalPath, String copyPath) {
             var previous = copyPathToOriginalPath.put(copyPath, originalPath);
             if (previous != null) {
                 throw new IllegalArgumentException(
-                        "Copying multiple original paths to %s: %s, %s"
-                                .formatted(copyPath, previous, originalPath));
+                        "Copying multiple original paths on branch %s to %s: %s, %s"
+                                .formatted(branch, copyPath, previous, originalPath));
             }
         }
     }

@@ -84,6 +84,18 @@ class SearchServiceTest {
     }
 
     @Test
+    void queryMatchingIncludedAdoc() {
+        // This property is mentioned in the configuration reference only,
+        // not in the main body of the guide,
+        // so we can only get a match if we correctly index included asciidoc files
+        // (or... the full rendered HTML).
+        var result = search("quarkus.hibernate-orm.validate-in-dev-mode");
+        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(GuideRef.ids(
+                GuideRef.HIBERNATE_ORM, GuideRef.HIBERNATE_REACTIVE));
+        assertThat(result.total()).isEqualTo(2);
+    }
+
+    @Test
     void queryMatchingPrefixTerm() {
         var result = search("hiber");
         // We check order in another test
@@ -94,9 +106,11 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
+                GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
                 GuideRef.SPRING_DATA_JPA,
-                GuideRef.DUPLICATED_CONTEXT));
-        assertThat(result.total()).isEqualTo(8);
+                GuideRef.DUPLICATED_CONTEXT,
+                GuideRef.STORK_REFERENCE));
+        assertThat(result.total()).isEqualTo(10);
     }
 
     @Test
@@ -155,10 +169,12 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
-                        GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.STORK_REFERENCE,
+                        GuideRef.HIBERNATE_ORM_PANACHE,
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_ORM,
+                        GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("hiber", GuideRef.ids(
                         // TODO Hibernate Reactive/Search should be after ORM...
@@ -170,6 +186,8 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
+                        GuideRef.STORK_REFERENCE,
+                        GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("jpa", GuideRef.ids(
                         // TODO we'd probably want ORM before Panache?
@@ -198,8 +216,10 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
-                GuideRef.DUPLICATED_CONTEXT));
-        assertThat(result.total()).isEqualTo(8);
+                GuideRef.DUPLICATED_CONTEXT,
+                GuideRef.STORK_REFERENCE,
+                GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION));
+        assertThat(result.total()).isEqualTo(10);
     }
 
     @Test

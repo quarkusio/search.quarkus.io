@@ -12,19 +12,31 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.hibernate.search.util.common.impl.Closer;
+
 import io.quarkus.search.app.util.CloseableDirectory;
+import io.quarkus.search.app.util.GitInputProvider;
+import io.quarkus.search.app.util.GitUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.asciidoc.Asciidoc;
 import io.quarkus.search.app.entity.Guide;
-import io.quarkus.search.app.hibernate.PathWrapper;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.revwalk.RevTree;
 
 public class QuarkusIO implements AutoCloseable {
+
+    public static final String SOURCE_BRANCH = "develop";
+    public static final String PAGES_BRANCH = "master";
 
     public static String httpPath(String version, String name) {
         return QuarkusVersions.LATEST.equals(version) ? "/guides/" + name
                 : "/version/" + version + "/guides/" + name;
+    }
+
+    public static String htmlPath(String version, String name) {
+        return httpPath(version, name).substring(1) + ".html";
     }
 
     public static String asciidocPath(String version, String name) {
@@ -33,14 +45,21 @@ public class QuarkusIO implements AutoCloseable {
     }
 
     private final CloseableDirectory directory;
+    private final Git git;
+    private final RevTree pagesTree;
 
-    QuarkusIO(CloseableDirectory directory) {
+    QuarkusIO(CloseableDirectory directory, Git git) throws IOException {
         this.directory = directory;
+        this.git = git;
+        this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(), "origin/" + PAGES_BRANCH);
     }
 
     @Override
     public void close() throws Exception {
-        directory.close();
+        try (var closer = new Closer<Exception>()) {
+            closer.push(Git::close, git);
+            closer.push(CloseableDirectory::close, directory);
+        }
     }
 
     @SuppressWarnings("resource")
@@ -74,7 +93,7 @@ public class QuarkusIO implements AutoCloseable {
         guide.version = guidesDirectory.version;
         String name = FilenameUtils.removeExtension(path.getFileName().toString());
         guide.path = httpPath(guidesDirectory.version, name);
-        guide.fullContentPath = new PathWrapper(path);
+        guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, guide.path + ".html");
         Asciidoc.parse(path, title -> guide.title = title,
                 Map.of("summary", summary -> guide.summary = summary,
                         "keywords", keywords -> guide.keywords = keywords,
