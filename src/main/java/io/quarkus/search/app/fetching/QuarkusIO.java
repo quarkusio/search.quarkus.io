@@ -38,7 +38,8 @@ public class QuarkusIO implements AutoCloseable {
                 .flatMap(uncheckedIO(guidesDirectory -> Files.list(guidesDirectory.path)
                         .filter(path -> {
                             String filename = path.getFileName().toString();
-                            return !filename.startsWith("_") && FilenameUtils.isExtension(filename, "adoc");
+                            return !filename.startsWith("_") && !FilenameUtils.getBaseName(filename).equals("README")
+                                    && FilenameUtils.isExtension(filename, "adoc");
                         })
                         .map(path -> parseGuide(guidesDirectory, path))));
     }
