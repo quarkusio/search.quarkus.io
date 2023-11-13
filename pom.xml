@@ -31,7 +31,7 @@
     <quarkus.version>3.5.0</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
-    <surefire-plugin.version>3.2.1</surefire-plugin.version>
+    <surefire-plugin.version>3.2.2</surefire-plugin.version>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
   </properties>
   <dependencyManagement>
