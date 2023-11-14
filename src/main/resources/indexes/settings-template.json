@@ -1,4 +1,6 @@
 {
-  "auto_expand_replicas": "0-all"
+  "auto_expand_replicas": "0-all",
+  "highlight": {
+    "max_analyzed_offset": 5000000
+  }
 }
-
