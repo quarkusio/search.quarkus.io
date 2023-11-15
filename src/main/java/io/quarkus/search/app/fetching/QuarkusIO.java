@@ -6,9 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -17,6 +19,7 @@ import org.hibernate.search.util.common.impl.Closer;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
 import io.quarkus.search.app.util.GitUtils;
+import io.quarkus.search.app.yml.QuarkusMetadata;
 import org.apache.commons.io.FilenameUtils;
 
 import io.quarkus.search.app.QuarkusVersions;
@@ -47,6 +50,7 @@ public class QuarkusIO implements AutoCloseable {
     private final CloseableDirectory directory;
     private final Git git;
     private final RevTree pagesTree;
+    private final Map<GuidesDirectory, BiConsumer<Path, Guide>> guidesMetadata = new HashMap<>();
 
     QuarkusIO(CloseableDirectory directory, Git git) throws IOException {
         this.directory = directory;
@@ -59,6 +63,7 @@ public class QuarkusIO implements AutoCloseable {
         try (var closer = new Closer<Exception>()) {
             closer.push(Git::close, git);
             closer.push(CloseableDirectory::close, directory);
+            closer.push(Map::clear, guidesMetadata);
         }
     }
 
@@ -94,13 +99,30 @@ public class QuarkusIO implements AutoCloseable {
         String name = FilenameUtils.removeExtension(path.getFileName().toString());
         guide.path = httpPath(guidesDirectory.version, name);
         guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, guide.path + ".html");
-        Asciidoc.parse(path, title -> guide.title = title,
-                Map.of("summary", summary -> guide.summary = summary,
-                        "keywords", keywords -> guide.keywords = keywords,
-                        "categories", categories -> guide.categories = toSet(categories),
-                        "topics", topics -> guide.topics = toSet(topics),
-                        "extensions", extensions -> guide.extensions = toSet(extensions)));
+        getMetadata(guidesDirectory).accept(path, guide);
         return guide;
+    }
+
+    private BiConsumer<Path, Guide> getMetadata(GuidesDirectory guidesDirectory) {
+        return guidesMetadata.computeIfAbsent(guidesDirectory, key -> {
+            try {
+                QuarkusMetadata quarkusMetadata = parseMetadata(key);
+                return quarkusMetadata::addMetadata;
+            } catch (Exception e) {
+                // not all versions (e.g. 2.7) have the quarkus.yml file. For those we are falling back to parsing all the data from an asciidoc file
+                return (path, guide) -> Asciidoc.parse(path, title -> guide.title = title,
+                        Map.of("summary", summary -> guide.summary = summary,
+                                "keywords", keywords -> guide.keywords = keywords,
+                                "categories", categories -> guide.categories = toSet(categories),
+                                "topics", topics -> guide.topics = toSet(topics),
+                                "extensions", extensions -> guide.extensions = toSet(extensions)));
+            }
+        });
+    }
+
+    private QuarkusMetadata parseMetadata(GuidesDirectory guidesDirectory) {
+        return QuarkusMetadata.parseYamlMetadata(directory.path().resolve("_data").resolve("versioned")
+                .resolve(guidesDirectory.version().replace('.', '-')).resolve("index").resolve("quarkus.yaml"));
     }
 
     private static Set<String> toSet(String value) {
