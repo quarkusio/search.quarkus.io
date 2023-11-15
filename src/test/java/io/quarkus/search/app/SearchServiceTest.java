@@ -106,11 +106,9 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
-                GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
                 GuideRef.SPRING_DATA_JPA,
-                GuideRef.DUPLICATED_CONTEXT,
-                GuideRef.STORK_REFERENCE));
-        assertThat(result.total()).isEqualTo(10);
+                GuideRef.DUPLICATED_CONTEXT));
+        assertThat(result.total()).isEqualTo(8);
     }
 
     @Test
@@ -169,12 +167,10 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
-                        GuideRef.STORK_REFERENCE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideRef.STORK_REFERENCE,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_ORM,
-                        GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("hiber", GuideRef.ids(
                         // TODO Hibernate Reactive/Search should be after ORM...
@@ -186,14 +182,12 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
-                        GuideRef.STORK_REFERENCE,
-                        GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("jpa", GuideRef.ids(
                         // TODO we'd probably want ORM before Panache?
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
+                        GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("search", GuideRef.ids(
@@ -216,10 +210,8 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
-                GuideRef.DUPLICATED_CONTEXT,
-                GuideRef.STORK_REFERENCE,
-                GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION));
-        assertThat(result.total()).isEqualTo(10);
+                GuideRef.DUPLICATED_CONTEXT));
+        assertThat(result.total()).isEqualTo(8);
     }
 
     @Test
