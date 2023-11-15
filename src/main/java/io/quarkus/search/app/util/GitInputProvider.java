@@ -22,4 +22,11 @@ public class GitInputProvider implements InputProvider {
     public InputStream open() throws IOException {
         return GitUtils.file(git.getRepository(), tree, path);
     }
+
+    @Override
+    public String toString() {
+        return "GitInputProvider{" +
+                "path='" + path + '\'' +
+                '}';
+    }
 }
