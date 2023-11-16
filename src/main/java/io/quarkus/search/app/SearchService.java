@@ -20,7 +20,7 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import org.jboss.resteasy.reactive.RestQuery;
 
-import io.quarkus.search.app.dto.SearchHit;
+import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.entity.Guide;
 
@@ -37,7 +37,8 @@ public class SearchService {
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Search for any resource")
     @Transactional
-    public SearchResult<SearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
+    @Path("/guides/search")
+    public SearchResult<GuideSearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
             @RestQuery List<String> categories,
             @RestQuery String q,
             @RestQuery String highlightCssClass,
@@ -45,7 +46,7 @@ public class SearchService {
             @RestQuery @DefaultValue("1") int contentSnippets,
             @RestQuery @DefaultValue("100") int contentSnippetsLength) {
         var result = session.search(Guide.class)
-                .select(SearchHit.class)
+                .select(GuideSearchHit.class)
                 .where((f, root) -> {
                     // Match all documents by default
                     root.add(f.matchAll());

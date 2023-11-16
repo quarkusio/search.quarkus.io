@@ -28,10 +28,16 @@ import jakarta.persistence.Transient;
 @Indexed
 public class Guide {
     @Id
-    public String path;
+    public String url;
 
     @KeywordField
     public String version;
+
+    @KeywordField
+    public String type;
+
+    @KeywordField
+    public String origin;
 
     @FullTextField(highlightable = Highlightable.UNIFIED)
     @FullTextField(name = "title_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
@@ -68,7 +74,7 @@ public class Guide {
     @Override
     public String toString() {
         return "Guide{" +
-                "path='" + path + '\'' +
+                "url='" + url + '\'' +
                 '}';
     }
 }
