@@ -78,6 +78,26 @@
       <artifactId>quarkus-resteasy-reactive</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.quarkiverse.web-bundler</groupId>
+      <artifactId>quarkus-web-bundler</artifactId>
+      <version>1.1.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mvnpm</groupId>
+      <artifactId>lit</artifactId>
+      <version>2.7.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mvnpm</groupId>
+      <artifactId>lodash</artifactId>
+      <version>4.17.21</version>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkiverse.qute.web</groupId>
+      <artifactId>quarkus-qute-web</artifactId>
+      <version>3.0.0.CR2</version>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-openapi</artifactId>
     </dependency>
@@ -133,6 +153,13 @@
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkiverse.playwright</groupId>
+      <artifactId>quarkus-playwright</artifactId>
+      <version>0.0.1</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.awaitility</groupId>
