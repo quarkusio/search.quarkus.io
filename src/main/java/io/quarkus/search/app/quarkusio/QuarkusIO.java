@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -56,6 +57,10 @@ public class QuarkusIO implements AutoCloseable {
         return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkus.yaml");
     }
 
+    public static Path yamlQuarkiverseMetadataPath(String version) {
+        return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkiverse.yaml");
+    }
+
     private final URI webUri;
     private final CloseableDirectory directory;
     private final Git git;
@@ -80,14 +85,33 @@ public class QuarkusIO implements AutoCloseable {
 
     @SuppressWarnings("resource")
     public Stream<Guide> guides() throws IOException {
+        return Stream.concat(
+                localGuides(),
+                quarkiverseGuides());
+    }
+
+    private Stream<Guide> localGuides() throws IOException {
         return guideDirectories()
                 .flatMap(uncheckedIO(guidesDirectory -> Files.list(guidesDirectory.path)
                         .filter(path -> {
                             String filename = path.getFileName().toString();
-                            return !filename.startsWith("_") && !FilenameUtils.getBaseName(filename).equals("README")
+                            return !filename.startsWith("_") && !FilenameUtils.getBaseName(filename).equals(
+                                    "README")
                                     && FilenameUtils.isExtension(filename, "adoc");
                         })
                         .map(path -> parseGuide(guidesDirectory, path))));
+    }
+
+    private Stream<Guide> quarkiverseGuides() throws IOException {
+        return Stream.concat(
+                quarkiverseDirectories()
+                        .flatMap(quarkiverse -> QuarkiverseMetadata
+                                .parseYamlMetadata(webUri, quarkiverse.path, quarkiverse.version)
+                                .createQuarkiverseGuides()),
+                quarkiverseLegacyDirectories()
+                        .flatMap(quarkiverse -> QuarkiverseMetadata
+                                .parseYamlLegacyMetadata(webUri, quarkiverse.path, quarkiverse.version)
+                                .createQuarkiverseGuides()));
     }
 
     @SuppressWarnings("resource")
@@ -99,6 +123,25 @@ public class QuarkusIO implements AutoCloseable {
                             var version = p.getFileName().toString();
                             return new GuidesDirectory(version, p.resolve("guides"));
                         }));
+    }
+
+    private Stream<GuidesDirectory> quarkiverseDirectories() throws IOException {
+        return Files.list(directory.path().resolve("_data").resolve("versioned"))
+                .map(p -> {
+                    var version = p.getFileName().toString().replace('-', '.');
+                    Path quarkiverse = p.resolve("index").resolve("quarkiverse.yaml");
+                    return Files.exists(quarkiverse) ? new GuidesDirectory(version, quarkiverse) : null;
+                })
+                .filter(Objects::nonNull);
+    }
+
+    private Stream<GuidesDirectory> quarkiverseLegacyDirectories() throws IOException {
+        return Files.list(directory.path().resolve("_data"))
+                .filter(p -> !Files.isDirectory(p) && p.getFileName().toString().startsWith("guides-"))
+                .map(p -> {
+                    var version = p.getFileName().toString().replaceAll("guides-|\\.yaml", "").replace('-', '.');
+                    return new GuidesDirectory(version, p);
+                });
     }
 
     record GuidesDirectory(String version, Path path) {

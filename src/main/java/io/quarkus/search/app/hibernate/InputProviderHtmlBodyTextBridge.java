@@ -23,8 +23,15 @@ public class InputProviderHtmlBodyTextBridge implements ValueBridge<InputProvide
                 // Means we've found a guide content column. hence let's use that to have only real content:
                 return content.text();
             } else {
-                Log.warn("Was unable to find the content section of a guide. Using whole document as text. " + provider);
-                return body.text();
+                // we might be looking at a quarkiverse guide; in such case:
+                content = body.selectFirst("article.doc");
+                if (content != null) {
+                    // Means we've found a guide content column. hence let's use that to have only real content:
+                    return content.text();
+                } else {
+                    Log.warnf("Was unable to find the content section of a guide. Using whole document as text. %s", provider);
+                    return body.text();
+                }
             }
         } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to read '" + provider + "' for indexing: " + e.getMessage(), e);

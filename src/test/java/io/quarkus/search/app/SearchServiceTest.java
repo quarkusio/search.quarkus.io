@@ -175,8 +175,8 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
-                        GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.STORK_REFERENCE,
+                        GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.SPRING_DATA_JPA)),
@@ -235,7 +235,11 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .startsWith("https://quarkus.io/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"));
+                        .satisfiesAnyOf(
+                                uri -> assertThat(uri)
+                                        .startsWith("https://quarkus.io/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION
+                                                + "/guides/"),
+                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
@@ -247,7 +251,9 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .startsWith("https://quarkus.io/version/main/guides/"));
+                        .satisfiesAnyOf(
+                                uri -> assertThat(uri).startsWith("https://quarkus.io/version/main/guides/"),
+                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
     }
 
     @Test

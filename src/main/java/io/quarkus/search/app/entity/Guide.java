@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
 import java.net.URI;
+import java.util.Objects;
 import java.util.Set;
 
 import org.hibernate.Length;
@@ -74,6 +75,23 @@ public class Guide {
 
     @KeywordField(name = "extensions_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
     public Set<String> extensions = Set.of();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Guide guide = (Guide) o;
+        return Objects.equals(url, guide.url);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(url);
+    }
 
     @Override
     public String toString() {
