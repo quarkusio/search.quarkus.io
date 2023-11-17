@@ -35,13 +35,13 @@ public class SearchService {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Search for any resource")
+    @Operation(summary = "Search for Guides")
     @Transactional
     @Path("/guides/search")
     public SearchResult<GuideSearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
             @RestQuery List<String> categories,
             @RestQuery String q,
-            @RestQuery String highlightCssClass,
+            @RestQuery @DefaultValue("highlighted") String highlightCssClass,
             @RestQuery @DefaultValue("0") int page,
             @RestQuery @DefaultValue("1") int contentSnippets,
             @RestQuery @DefaultValue("100") int contentSnippetsLength) {
