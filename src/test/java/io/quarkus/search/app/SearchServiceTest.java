@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -53,7 +54,7 @@ class SearchServiceTest {
 
     @BeforeAll
     void waitForIndexing() {
-        Awaitility.await().untilAsserted(() -> {
+        Awaitility.await().timeout(Duration.ofMinutes(1)).untilAsserted(() -> {
             when().get("http://localhost:" + managementPort() + "/q/health/ready")
                     .then()
                     .statusCode(200);
