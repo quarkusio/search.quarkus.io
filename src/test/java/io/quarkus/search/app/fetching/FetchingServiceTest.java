@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import io.quarkus.search.app.hibernate.InputProvider;
-import io.quarkus.search.app.util.UncheckedIOFunction;
 import jakarta.inject.Inject;
 
 import org.apache.commons.io.file.PathUtils;
@@ -49,6 +48,7 @@ class FetchingServiceTest {
     @BeforeAll
     static void initOrigin() throws IOException, GitAPIException {
         Path sourceRepoPath = tmpDir.path();
+        Path metadataToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/quarkus.yaml");
         Path guide1AdocToFetch = sourceRepoPath.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
         Path guide2AdocToFetch = sourceRepoPath.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
         Path adocToIgnore = sourceRepoPath.resolve("_guides/_attributes.adoc");
@@ -86,6 +86,8 @@ class FetchingServiceTest {
             git.add().addFilepattern(".").call();
             git.commit().setMessage("Source first commit").call();
 
+            PathUtils.createParentDirectories(metadataToFetch);
+            Files.writeString(metadataToFetch, METADATA_YAML);
             Files.writeString(guide1AdocToFetch, FETCHED_GUIDE_1_CONTENT_ADOC);
             PathUtils.createParentDirectories(guide2AdocToFetch);
             Files.writeString(guide2AdocToFetch, FETCHED_GUIDE_2_CONTENT_ADOC);
@@ -132,7 +134,7 @@ class FetchingServiceTest {
                                 isGuide("/guides/" + FETCHED_GUIDE_1_NAME,
                                         "Some title",
                                         "This is a summary",
-                                        "keyword1, keyword2",
+                                        "keyword1 keyword2",
                                         Set.of("category1", "category2"),
                                         Set.of("topic1", "topic2"),
                                         Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
@@ -149,15 +151,36 @@ class FetchingServiceTest {
         }
     }
 
+    private static final String METADATA_YAML = """
+            # Generated file. Do not edit
+            ---
+            types:
+              reference:
+              - title: Some title
+                filename: foo.adoc
+                summary: This is a summary
+                categories: "category1, category2"
+                keywords: keyword1 keyword2
+                topics:
+                - topic1
+                - topic2
+                extensions:
+                - io.quarkus:extension1
+                - io.quarkus:extension2
+                id: foo
+                type: reference
+                url: /guides/security-authorize-web-endpoints-reference
+            """;
+
     private static final String FETCHED_GUIDE_1_NAME = "foo";
     private static final String FETCHED_GUIDE_1_CONTENT_ADOC = """
-            = Some title
+            = Some title that won't be used because metadata is preferred
             :irrelevant: foo
-            :categories: category1, category2
-            :keywords: keyword1, keyword2
-            :summary: This is a summary
-            :topics: topic1, topic2
-            :extensions: io.quarkus:extension1,io.quarkus:extension2
+            :categories: category1, category2, not-used-because-prefer-yaml
+            :keywords: keyword1 keyword2 not-used-because-prefer-yaml
+            :summary: This is a summary that won't be used because metadata is preferred
+            :topics: topic1, topic2, not-used-because-prefer-yaml
+            :extensions: io.quarkus:extension1,io.quarkus:extension2,not-used-because-prefer-yaml
 
             This is the guide body
 

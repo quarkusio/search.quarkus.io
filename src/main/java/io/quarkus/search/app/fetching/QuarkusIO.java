@@ -47,6 +47,10 @@ public class QuarkusIO implements AutoCloseable {
                 : "_versions/" + version + "/guides/" + name + ".adoc";
     }
 
+    public static Path yamlMetadataPath(String version) {
+        return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkus.yaml");
+    }
+
     private final CloseableDirectory directory;
     private final Git git;
     private final RevTree pagesTree;
@@ -121,8 +125,7 @@ public class QuarkusIO implements AutoCloseable {
     }
 
     private QuarkusMetadata parseMetadata(GuidesDirectory guidesDirectory) {
-        return QuarkusMetadata.parseYamlMetadata(directory.path().resolve("_data").resolve("versioned")
-                .resolve(guidesDirectory.version().replace('.', '-')).resolve("index").resolve("quarkus.yaml"));
+        return QuarkusMetadata.parseYamlMetadata(directory.path().resolve(yamlMetadataPath(guidesDirectory.version())));
     }
 
     private static Set<String> toSet(String value) {

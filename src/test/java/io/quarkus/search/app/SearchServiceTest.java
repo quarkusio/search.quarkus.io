@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -53,7 +54,7 @@ class SearchServiceTest {
 
     @BeforeAll
     void waitForIndexing() {
-        Awaitility.await().untilAsserted(() -> {
+        Awaitility.await().timeout(Duration.ofMinutes(1)).untilAsserted(() -> {
             when().get("http://localhost:" + managementPort() + "/q/health/ready")
                     .then()
                     .statusCode(200);
@@ -159,13 +160,13 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
+                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("reactive", GuideRef.ids(
-                        GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.STORK_REFERENCE,
@@ -175,8 +176,8 @@ class SearchServiceTest {
                 Arguments.of("hiber", GuideRef.ids(
                         // TODO Hibernate Reactive/Search should be after ORM...
                         // TODO Shouldn't the ORM guide be before Panache?
-                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE,
+                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
