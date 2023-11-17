@@ -159,13 +159,13 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
+                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("reactive", GuideRef.ids(
-                        GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.STORK_REFERENCE,
@@ -175,8 +175,8 @@ class SearchServiceTest {
                 Arguments.of("hiber", GuideRef.ids(
                         // TODO Hibernate Reactive/Search should be after ORM...
                         // TODO Shouldn't the ORM guide be before Panache?
-                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE,
+                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,

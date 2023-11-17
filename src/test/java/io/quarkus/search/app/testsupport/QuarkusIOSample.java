@@ -177,6 +177,8 @@ public final class QuarkusIOSample {
 
         @Override
         public void define(FilterDefinitionCollector c) {
+            c.addMetadata(QuarkusVersions.LATEST);
+            c.addMetadata(SAMPLED_NON_LATEST_VERSION);
             for (GuideRef guideRef : GuideRef.all()) {
                 c.addGuide(guideRef);
                 c.addGuide(guideRef, SAMPLED_NON_LATEST_VERSION);
@@ -200,6 +202,12 @@ public final class QuarkusIOSample {
             addOnSourceBranch(asciidocPath, asciidocPath);
             String htmlPath = QuarkusIO.htmlPath(version, ref.name());
             addOnPagesBranch(htmlPath, htmlPath);
+            return this;
+        }
+
+        public FilterDefinitionCollector addMetadata(String version) {
+            String metadataPath = QuarkusIO.yamlMetadataPath(version).toString();
+            addOnSourceBranch(metadataPath, metadataPath);
             return this;
         }
 
