@@ -32,6 +32,7 @@ public class QuarkusIO implements AutoCloseable {
 
     public static final String SOURCE_BRANCH = "develop";
     public static final String PAGES_BRANCH = "master";
+    private static final String QUARKUS_ORIGIN = "quarkus";
 
     public static String httpPath(String version, String name) {
         return QuarkusVersions.LATEST.equals(version) ? "/guides/" + name
@@ -100,9 +101,10 @@ public class QuarkusIO implements AutoCloseable {
     private Guide parseGuide(GuidesDirectory guidesDirectory, Path path) {
         var guide = new Guide();
         guide.version = guidesDirectory.version;
+        guide.origin = QUARKUS_ORIGIN;
         String name = FilenameUtils.removeExtension(path.getFileName().toString());
-        guide.path = httpPath(guidesDirectory.version, name);
-        guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, guide.path + ".html");
+        guide.url = httpPath(guidesDirectory.version, name);
+        guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, guide.url + ".html");
         getMetadata(guidesDirectory).accept(path, guide);
         return guide;
     }

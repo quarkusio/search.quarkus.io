@@ -220,11 +220,11 @@ class FetchingServiceTest {
             <p>This is the other guide body
             """;
 
-    private static Consumer<Guide> isGuide(String path, String title, String summary, String keywords,
+    private static Consumer<Guide> isGuide(String url, String title, String summary, String keywords,
             Set<String> categories, Set<String> topics, Set<String> extensions, String content) {
         return guide -> {
             SoftAssertions.assertSoftly(softly -> {
-                softly.assertThat(guide).extracting("path").isEqualTo(path);
+                softly.assertThat(guide).extracting("url").asString().isEqualTo(url);
                 softly.assertThat(guide).extracting("title").isEqualTo(title);
                 softly.assertThat(guide).extracting("summary").isEqualTo(summary);
                 softly.assertThat(guide).extracting("keywords").isEqualTo(keywords);

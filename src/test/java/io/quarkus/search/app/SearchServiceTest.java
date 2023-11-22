@@ -6,8 +6,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.api.ThrowingConsumer;
 import org.awaitility.Awaitility;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -17,7 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.quarkus.search.app.dto.SearchHit;
+import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.testsupport.GuideRef;
 import io.quarkus.search.app.testsupport.QuarkusIOSample;
@@ -32,8 +37,9 @@ import io.restassured.filter.log.LogDetail;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @QuarkusIOSample.Setup
 class SearchServiceTest {
-    private static final TypeRef<SearchResult<SearchHit>> SEARCH_RESULT_SEARCH_HITS = new TypeRef<>() {
+    private static final TypeRef<SearchResult<GuideSearchHit>> SEARCH_RESULT_SEARCH_HITS = new TypeRef<>() {
     };
+    private static final String GUIDES_SEARCH = "/guides/search";
 
     protected int managementPort() {
         if (getClass().getName().endsWith("IT")) {
@@ -43,10 +49,10 @@ class SearchServiceTest {
         }
     }
 
-    private SearchResult<SearchHit> search(String term) {
+    private SearchResult<GuideSearchHit> search(String term) {
         return given()
                 .queryParam("q", term)
-                .when().get()
+                .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
@@ -73,7 +79,7 @@ class SearchServiceTest {
     void queryMatchingFullTerm() {
         var result = search("orm");
         // We check order in another test
-        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(GuideRef.ids(
+        assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
                 GuideRef.HIBERNATE_ORM,
                 GuideRef.HIBERNATE_ORM_PANACHE,
                 GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
@@ -91,7 +97,7 @@ class SearchServiceTest {
         // so we can only get a match if we correctly index included asciidoc files
         // (or... the full rendered HTML).
         var result = search("quarkus.hibernate-orm.validate-in-dev-mode");
-        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(GuideRef.ids(
+        assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
                 GuideRef.HIBERNATE_ORM, GuideRef.HIBERNATE_REACTIVE));
         assertThat(result.total()).isEqualTo(2);
     }
@@ -100,7 +106,7 @@ class SearchServiceTest {
     void queryMatchingPrefixTerm() {
         var result = search("hiber");
         // We check order in another test
-        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(GuideRef.ids(
+        assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
                 GuideRef.HIBERNATE_ORM,
                 GuideRef.HIBERNATE_ORM_PANACHE,
                 GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
@@ -116,37 +122,37 @@ class SearchServiceTest {
     void queryMatchingTwoTerms() {
         var result = search("orm elasticsearch");
         // We expect an AND by default
-        assertThat(result.hits()).extracting(SearchHit::id)
-                .containsExactlyInAnyOrder(GuideRef.ids(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH));
+        assertThat(result.hits()).extracting(GuideSearchHit::url)
+                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH));
         assertThat(result.total()).isEqualTo(1);
     }
 
     @Test
     void queryEmptyString() {
         var result = search("");
-        assertThat(result.hits()).extracting(SearchHit::id)
-                .containsExactlyInAnyOrder(GuideRef.ids(GuideRef.all()));
+        assertThat(result.hits()).extracting(GuideSearchHit::url)
+                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.all()));
         assertThat(result.total()).isEqualTo(10);
     }
 
     @Test
     void queryNotProvided() {
-        var result = when().get()
+        var result = when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(SearchHit::id)
-                .containsExactlyInAnyOrder(GuideRef.ids(GuideRef.all()));
+        assertThat(result.hits()).extracting(GuideSearchHit::url)
+                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.all()));
         assertThat(result.total()).isEqualTo(10);
     }
 
     @ParameterizedTest
     @MethodSource
-    void relevance(String query, String[] expectedGuideIds) {
+    void relevance(String query, String[] expectedGuideUrls) {
         var result = search(query);
         // Using "startsWith" here, because what we want is to have the most relevant hits first.
         // We don't mind that much if there's a trail of not-so-relevant hits.
-        assertThat(result.hits()).extracting(SearchHit::id).startsWith(expectedGuideIds);
+        assertThat(result.hits()).extracting(GuideSearchHit::url).startsWith(expectedGuideUrls);
     }
 
     private static List<Arguments> relevance() {
@@ -155,7 +161,7 @@ class SearchServiceTest {
                 // to have some sort of weight in the documents and prioritize some of them
                 // problem will be to find the right balance because the weight would be always on
                 // another option could be to use the keywords to trick some searches
-                Arguments.of("orm", GuideRef.ids(
+                Arguments.of("orm", GuideRef.urls(
                         // TODO Shouldn't the ORM guide be before Panache?
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
@@ -164,7 +170,7 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.SPRING_DATA_JPA)),
-                Arguments.of("reactive", GuideRef.ids(
+                Arguments.of("reactive", GuideRef.urls(
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
@@ -173,7 +179,7 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.SPRING_DATA_JPA)),
-                Arguments.of("hiber", GuideRef.ids(
+                Arguments.of("hiber", GuideRef.urls(
                         // TODO Hibernate Reactive/Search should be after ORM...
                         // TODO Shouldn't the ORM guide be before Panache?
                         GuideRef.HIBERNATE_REACTIVE,
@@ -184,18 +190,18 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideRef.SPRING_DATA_JPA)),
-                Arguments.of("jpa", GuideRef.ids(
+                Arguments.of("jpa", GuideRef.urls(
                         // TODO we'd probably want ORM before Panache?
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.SPRING_DATA_JPA)),
-                Arguments.of("search", GuideRef.ids(
+                Arguments.of("search", GuideRef.urls(
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH)),
-                Arguments.of("stork", GuideRef.ids(
+                Arguments.of("stork", GuideRef.urls(
                         GuideRef.STORK_REFERENCE)),
-                Arguments.of("spring data", GuideRef.ids(
+                Arguments.of("spring data", GuideRef.urls(
                         GuideRef.SPRING_DATA_JPA)));
     }
 
@@ -203,7 +209,7 @@ class SearchServiceTest {
     void projections() {
         var result = search("hiber");
         // We check order in another test
-        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(GuideRef.ids(
+        assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
                 GuideRef.HIBERNATE_ORM,
                 GuideRef.HIBERNATE_ORM_PANACHE,
                 GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
@@ -220,24 +226,26 @@ class SearchServiceTest {
         var result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", QuarkusIOSample.SAMPLED_NON_LATEST_VERSION)
-                .when().get()
+                .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits())
                 .isNotEmpty()
-                .allSatisfy(hit -> assertThat(hit).extracting(SearchHit::id, InstanceOfAssertFactories.STRING)
+                .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.STRING)
+                        .asString()
                         .startsWith("/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
-                .when().get()
+                .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits())
                 .isNotEmpty()
-                .allSatisfy(hit -> assertThat(hit).extracting(SearchHit::id, InstanceOfAssertFactories.STRING)
+                .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.STRING)
+                        .asString()
                         .startsWith("/version/main/guides/"));
     }
 
@@ -246,11 +254,72 @@ class SearchServiceTest {
         var result = given()
                 .queryParam("q", "orm")
                 .queryParam("categories", "alt-languages")
-                .when().get()
+                .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(SearchHit::id).containsExactlyInAnyOrder(GuideRef.ids(
+        assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
                 GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN));
+    }
+
+    @Test
+    void highlightTitle() {
+        var result = given()
+                .queryParam("q", "orm")
+                .queryParam("highlightCssClass", "highlighted")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::title).contains(
+                "Simplified Hibernate <span class=\"highlighted\">ORM</span> with Panache",
+                "Using Hibernate <span class=\"highlighted\">ORM</span> and Jakarta Persistence",
+                "Simplified Hibernate <span class=\"highlighted\">ORM</span> with Panache and Kotlin");
+    }
+
+    @Test
+    void highlightSummary() {
+        var result = given()
+                .queryParam("q", "orm")
+                .queryParam("highlightCssClass", "highlighted-summary")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        AtomicInteger matches = new AtomicInteger(0);
+        assertThat(result.hits()).extracting(GuideSearchHit::summary)
+                .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-summary"));
+        assertThat(matches.get()).isEqualTo(7);
+    }
+
+    @Test
+    void highlightContent() {
+        var result = given()
+                .queryParam("q", "orm")
+                .queryParam("highlightCssClass", "highlighted-content")
+                .queryParam("contentSnippets", "1")
+                .queryParam("contentSnippetsLength", "50")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+
+        AtomicInteger matches = new AtomicInteger(0);
+        assertThat(result.hits()).extracting(GuideSearchHit::content).hasSize(7)
+                .allSatisfy(content -> assertThat(content).hasSize(1)
+                        .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
+        assertThat(matches.get()).isEqualTo(8);
+    }
+
+    private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
+            String cssClass) {
+        return sentence -> {
+            Matcher matcher = Pattern.compile("<span class=\"" + cssClass + "\">([^<]*)<\\/span>")
+                    .matcher(sentence);
+            while (matcher.find()) {
+                assertThat(matcher.group(1).toLowerCase(Locale.ROOT)).isEqualToIgnoringCase(word);
+                matches.incrementAndGet();
+            }
+        };
     }
 }

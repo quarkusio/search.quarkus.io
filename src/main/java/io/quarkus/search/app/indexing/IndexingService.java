@@ -183,7 +183,13 @@ public class IndexingService {
         try {
             while (docIterator.hasNext()) {
                 T doc = docIterator.next();
-                session.persist(doc);
+                try {
+                    Log.debugf("About to persist: %s", doc);
+                    session.persist(doc);
+                } catch (Exception e) {
+                    Log.errorf(e, "Failed to persist a guide: %s", doc);
+                    throw e;
+                }
 
                 ++i;
                 if (i % INDEXING_BATCH_SIZE == 0) {

@@ -60,6 +60,7 @@ public class QuarkusMetadata {
     public void addMetadata(Path path, Guide guide) {
         Metadata metadata = this.guides.get(path.getFileName().toString());
 
+        guide.type = metadata.type();
         guide.title = metadata.title();
         guide.summary = metadata.summary();
         guide.categories = metadata.categories();

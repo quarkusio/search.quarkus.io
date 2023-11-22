@@ -10,6 +10,7 @@ import java.util.Set;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.backend.types.Aggregable;
+import org.hibernate.search.engine.backend.types.Highlightable;
 import org.hibernate.search.engine.backend.types.Projectable;
 import org.hibernate.search.engine.backend.types.Searchable;
 import org.hibernate.search.engine.backend.types.Sortable;
@@ -27,18 +28,24 @@ import jakarta.persistence.Transient;
 @Indexed
 public class Guide {
     @Id
-    public String path;
+    public String url;
 
     @KeywordField
     public String version;
 
-    @FullTextField
+    @KeywordField
+    public String type;
+
+    @KeywordField
+    public String origin;
+
+    @FullTextField(highlightable = Highlightable.UNIFIED)
     @FullTextField(name = "title_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
     @KeywordField(name = "title_sort", normalizer = AnalysisConfigurer.SORT, searchable = Searchable.NO, sortable = Sortable.YES)
     @Column(length = Length.LONG)
     public String title;
 
-    @FullTextField
+    @FullTextField(highlightable = Highlightable.UNIFIED)
     @FullTextField(name = "summary_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
     @Column(length = Length.LONG32)
     public String summary;
@@ -48,7 +55,7 @@ public class Guide {
     @Column(length = Length.LONG32)
     public String keywords;
 
-    @FullTextField(name = "fullContent", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class))
+    @FullTextField(name = "fullContent", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), highlightable = Highlightable.UNIFIED)
     @FullTextField(name = "fullContent_autocomplete", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
     @Transient
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.NO)
@@ -67,7 +74,7 @@ public class Guide {
     @Override
     public String toString() {
         return "Guide{" +
-                "path='" + path + '\'' +
+                "url='" + url + '\'' +
                 '}';
     }
 }

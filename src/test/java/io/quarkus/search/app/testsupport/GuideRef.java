@@ -28,11 +28,11 @@ public record GuideRef(String name) {
         return ALL.toArray(GuideRef[]::new);
     }
 
-    public static String[] ids(GuideRef... refs) {
-        return ids(QuarkusVersions.LATEST, refs);
+    public static String[] urls(GuideRef... refs) {
+        return urls(QuarkusVersions.LATEST, refs);
     }
 
-    public static String[] ids(String version, GuideRef... refs) {
+    public static String[] urls(String version, GuideRef... refs) {
         return Arrays.stream(refs).map(g -> QuarkusIO.httpPath(version, g.name)).toArray(String[]::new);
     }
 
