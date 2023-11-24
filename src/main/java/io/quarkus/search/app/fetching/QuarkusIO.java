@@ -31,13 +31,13 @@ import org.eclipse.jgit.revwalk.RevTree;
 
 public class QuarkusIO implements AutoCloseable {
 
-    private static final String QUARKUS_IO_URL_BASE = "https://quarkus.io";
+    private static final URI QUARKUS_IO_URL_BASE = URI.create("https://quarkus.io");
     public static final String SOURCE_BRANCH = "develop";
     public static final String PAGES_BRANCH = "master";
     private static final String QUARKUS_ORIGIN = "quarkus";
 
-    public static String httpUrl(String version, String name) {
-        return QUARKUS_IO_URL_BASE + "/" + httpPath(version, name);
+    public static URI httpUrl(String version, String name) {
+        return QUARKUS_IO_URL_BASE.resolve(httpPath(version, name));
     }
 
     public static String htmlPath(String version, String name) {

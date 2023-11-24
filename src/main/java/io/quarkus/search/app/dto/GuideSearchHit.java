@@ -10,10 +10,10 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.HighlightP
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IdProjection;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.ProjectionConstructor;
 
-public record GuideSearchHit(String url, String type, String origin, String title, String summary, Set<String> content) {
+public record GuideSearchHit(URI url, String type, String origin, String title, String summary, Set<String> content) {
 
     @ProjectionConstructor
-    public GuideSearchHit(@IdProjection String url,
+    public GuideSearchHit(@IdProjection URI url,
             @FieldProjection String type,
             @FieldProjection String origin,
             @HighlightProjection List<String> title,

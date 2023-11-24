@@ -1,5 +1,6 @@
 package io.quarkus.search.app.testsupport;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,12 +29,12 @@ public record GuideRef(String name) {
         return ALL.toArray(GuideRef[]::new);
     }
 
-    public static String[] urls(GuideRef... refs) {
+    public static URI[] urls(GuideRef... refs) {
         return urls(QuarkusVersions.LATEST, refs);
     }
 
-    public static String[] urls(String version, GuideRef... refs) {
-        return Arrays.stream(refs).map(g -> QuarkusIO.httpUrl(version, g.name)).toArray(String[]::new);
+    public static URI[] urls(String version, GuideRef... refs) {
+        return Arrays.stream(refs).map(g -> QuarkusIO.httpUrl(version, g.name)).toArray(URI[]::new);
     }
 
     private static GuideRef create(String name) {
