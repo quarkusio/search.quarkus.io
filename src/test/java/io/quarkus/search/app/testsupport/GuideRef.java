@@ -33,7 +33,7 @@ public record GuideRef(String name) {
     }
 
     public static String[] urls(String version, GuideRef... refs) {
-        return Arrays.stream(refs).map(g -> QuarkusIO.httpPath(version, g.name)).toArray(String[]::new);
+        return Arrays.stream(refs).map(g -> QuarkusIO.httpUrl(version, g.name)).toArray(String[]::new);
     }
 
     private static GuideRef create(String name) {

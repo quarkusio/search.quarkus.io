@@ -234,7 +234,7 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.STRING)
                         .asString()
-                        .startsWith("/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"));
+                        .startsWith("https://quarkus.io/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
@@ -246,7 +246,7 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.STRING)
                         .asString()
-                        .startsWith("/version/main/guides/"));
+                        .startsWith("https://quarkus.io/version/main/guides/"));
     }
 
     @Test

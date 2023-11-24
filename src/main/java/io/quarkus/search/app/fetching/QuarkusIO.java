@@ -3,6 +3,7 @@ package io.quarkus.search.app.fetching;
 import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -30,17 +31,22 @@ import org.eclipse.jgit.revwalk.RevTree;
 
 public class QuarkusIO implements AutoCloseable {
 
+    private static final String QUARKUS_IO_URL_BASE = "https://quarkus.io";
     public static final String SOURCE_BRANCH = "develop";
     public static final String PAGES_BRANCH = "master";
     private static final String QUARKUS_ORIGIN = "quarkus";
 
-    public static String httpPath(String version, String name) {
-        return QuarkusVersions.LATEST.equals(version) ? "/guides/" + name
-                : "/version/" + version + "/guides/" + name;
+    public static String httpUrl(String version, String name) {
+        return QUARKUS_IO_URL_BASE + "/" + httpPath(version, name);
     }
 
     public static String htmlPath(String version, String name) {
-        return httpPath(version, name).substring(1) + ".html";
+        return httpPath(version, name) + ".html";
+    }
+
+    private static String httpPath(String version, String name) {
+        return QuarkusVersions.LATEST.equals(version) ? "guides/" + name
+                : "version/" + version + "/guides/" + name;
     }
 
     public static String asciidocPath(String version, String name) {
@@ -103,8 +109,8 @@ public class QuarkusIO implements AutoCloseable {
         guide.version = guidesDirectory.version;
         guide.origin = QUARKUS_ORIGIN;
         String name = FilenameUtils.removeExtension(path.getFileName().toString());
-        guide.url = httpPath(guidesDirectory.version, name);
-        guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, guide.url + ".html");
+        guide.url = httpUrl(guidesDirectory.version, name);
+        guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, htmlPath(guidesDirectory.version, name));
         getMetadata(guidesDirectory).accept(path, guide);
         return guide;
     }

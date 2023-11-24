@@ -131,7 +131,7 @@ class FetchingServiceTest {
                 assertThat(guides)
                         .hasSize(2)
                         .satisfiesExactly(
-                                isGuide("/guides/" + FETCHED_GUIDE_1_NAME,
+                                isGuide("https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
                                         "Some title",
                                         "This is a summary",
                                         "keyword1 keyword2",
@@ -139,7 +139,7 @@ class FetchingServiceTest {
                                         Set.of("topic1", "topic2"),
                                         Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                         FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                isGuide("https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
                                         null,
                                         "keyword3, keyword4",
