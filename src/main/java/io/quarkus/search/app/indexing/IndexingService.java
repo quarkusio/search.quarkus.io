@@ -184,11 +184,10 @@ public class IndexingService {
             while (docIterator.hasNext()) {
                 T doc = docIterator.next();
                 try {
-                    Log.debugf("About to persist: %s", doc);
+                    Log.tracef("About to persist: %s", doc);
                     session.persist(doc);
                 } catch (Exception e) {
-                    Log.errorf(e, "Failed to persist a guide: %s", doc);
-                    throw e;
+                    throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
                 }
 
                 ++i;
@@ -200,6 +199,7 @@ public class IndexingService {
             }
         } catch (Throwable t) {
             failure = t;
+            throw t;
         } finally {
             if (failure == null) {
                 QuarkusTransaction.commit();
