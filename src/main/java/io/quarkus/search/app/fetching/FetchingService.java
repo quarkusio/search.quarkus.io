@@ -5,6 +5,8 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -24,18 +26,17 @@ import io.quarkus.search.app.util.FileUtils;
 public class FetchingService {
 
     @Inject
-    FetchingConfig fetchingConfig;
+    QuarkusIOConfig quarkusIOConfig;
 
     public QuarkusIO fetchQuarkusIo() {
-        return fetch("quarkus.io", fetchingConfig.quarkusio(),
+        return fetch("quarkus.io", quarkusIOConfig.gitUri(),
                 List.of(QuarkusIO.SOURCE_BRANCH, QuarkusIO.PAGES_BRANCH),
                 QuarkusIO::new);
     }
 
-    private <T> T fetch(String name, FetchingConfig.Source source, List<String> branches,
+    private <T> T fetch(String name, URI uri, List<String> branches,
             IOBiFunction<CloseableDirectory, Git, T> function) {
         try {
-            var uri = source.uri();
             if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current())
                     && uri.getScheme().equals("file")
                     && uri.getPath().endsWith(".zip")) {

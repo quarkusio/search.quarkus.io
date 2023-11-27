@@ -30,17 +30,7 @@ manually and adding a `.env` file to your working directory
 
 [source,properties]
 ----
-_DEV_FETCHING_QUARKUSIO_URI=file:/home/myself/path/to/quarkusio.github.io
-----
-
-Alternatively, to test actual retrieval from a git repository,
-pass `-Dfetching.quarkusio.type=git` to the startup command:
-
-[source,shell]
-----
-quarkus dev -Dfetching.quarkusio.method=git
-# OR
-./mvnw quarkus:dev -Dfetching.quarkusio.method=git
+_DEV_QUARKUSIO_GIT_URI=file:/home/myself/path/to/quarkusio.github.io
 ----
 ====
 
@@ -86,7 +76,7 @@ podman container run -it --rm --pod search.quarkus.io search-quarkus-io:999-SNAP
 # OR, if you already have a local clone of quarkus.io:
 podman container run -it --rm --pod search.quarkus.io \
     -v $HOME/path/to/quarkusio.github.io:/mnt/quarkus-io:ro,z \
-    -e FETCHING_QUARKUSIO_URI=file:/mnt/quarkus-io \
+    -e QUARKUSIO_GIT_URI=file:/mnt/quarkus-io \
     search-quarkus-io:999-SNAPSHOT
 ----
 

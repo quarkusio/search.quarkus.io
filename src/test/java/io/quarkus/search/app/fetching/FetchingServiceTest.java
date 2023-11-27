@@ -4,13 +4,14 @@ import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Consumer;
 
 import io.quarkus.search.app.hibernate.InputProvider;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import jakarta.inject.Inject;
 
 import org.apache.commons.io.file.PathUtils;
@@ -107,17 +108,10 @@ class FetchingServiceTest {
     static final QuarkusComponentTestExtension extension = QuarkusComponentTestExtension.builder()
             // It seems injecting config mappings isn't supported at the moment;
             // see https://quarkusio.zulipchat.com/#narrow/stream/187038-dev/topic/QuarkusComponentTest.20and.20ConfigMapping
-            .mock(FetchingConfig.class)
+            .mock(QuarkusIOConfig.class)
             .createMockitoMock(mock -> {
-                Mockito.when(mock.quarkusio())
-                        .thenReturn(new FetchingConfig.Source() {
-                            // We don't want to rely on external resources in tests,
-                            // so we use a local git repo to simulate quarkus.io's git repository.
-                            @Override
-                            public URI uri() {
-                                return tmpDir.path().toUri();
-                            }
-                        });
+                Mockito.when(mock.gitUri())
+                        .thenReturn(tmpDir.path().toUri());
             })
             .build();
 

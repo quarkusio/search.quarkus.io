@@ -21,7 +21,7 @@ import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.search.app.fetching.FetchingService;
-import io.quarkus.search.app.fetching.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.vertx.http.ManagementInterface;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;

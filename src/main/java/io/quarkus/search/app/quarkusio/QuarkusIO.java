@@ -1,4 +1,4 @@
-package io.quarkus.search.app.fetching;
+package io.quarkus.search.app.quarkusio;
 
 import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 
@@ -20,7 +20,6 @@ import org.hibernate.search.util.common.impl.Closer;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
 import io.quarkus.search.app.util.GitUtils;
-import io.quarkus.search.app.yml.QuarkusMetadata;
 import org.apache.commons.io.FilenameUtils;
 
 import io.quarkus.search.app.QuarkusVersions;
@@ -63,7 +62,7 @@ public class QuarkusIO implements AutoCloseable {
     private final RevTree pagesTree;
     private final Map<GuidesDirectory, BiConsumer<Path, Guide>> guidesMetadata = new HashMap<>();
 
-    QuarkusIO(CloseableDirectory directory, Git git) throws IOException {
+    public QuarkusIO(CloseableDirectory directory, Git git) throws IOException {
         this.directory = directory;
         this.git = git;
         this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(), "origin/" + PAGES_BRANCH);
@@ -118,8 +117,8 @@ public class QuarkusIO implements AutoCloseable {
     private BiConsumer<Path, Guide> getMetadata(GuidesDirectory guidesDirectory) {
         return guidesMetadata.computeIfAbsent(guidesDirectory, key -> {
             try {
-                QuarkusMetadata quarkusMetadata = parseMetadata(key);
-                return quarkusMetadata::addMetadata;
+                QuarkusIOMetadata quarkusIOMetadata = parseMetadata(key);
+                return quarkusIOMetadata::addMetadata;
             } catch (Exception e) {
                 // not all versions (e.g. 2.7) have the quarkus.yml file. For those we are falling back to parsing all the data from an asciidoc file
                 return (path, guide) -> Asciidoc.parse(path, title -> guide.title = title,
@@ -132,8 +131,8 @@ public class QuarkusIO implements AutoCloseable {
         });
     }
 
-    private QuarkusMetadata parseMetadata(GuidesDirectory guidesDirectory) {
-        return QuarkusMetadata.parseYamlMetadata(directory.path().resolve(yamlMetadataPath(guidesDirectory.version())));
+    private QuarkusIOMetadata parseMetadata(GuidesDirectory guidesDirectory) {
+        return QuarkusIOMetadata.parseYamlMetadata(directory.path().resolve(yamlMetadataPath(guidesDirectory.version())));
     }
 
     private static Set<String> toSet(String value) {

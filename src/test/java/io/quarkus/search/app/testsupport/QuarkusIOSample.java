@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.quarkus.search.app.fetching.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
@@ -253,7 +253,7 @@ public final class QuarkusIOSample {
         @Override
         public Map<String, String> start() {
             fixture = QuarkusIOSample.createFromTestResourcesSample(filterDef);
-            return Map.of("fetching.quarkusio.uri", fixture.path().toUri().toString());
+            return Map.of("quarkusio.git-uri", fixture.path().toUri().toString());
         }
 
         @Override

@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import io.quarkus.search.app.QuarkusVersions;
-import io.quarkus.search.app.fetching.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
 
 public record GuideRef(String name) {
     private static final List<GuideRef> ALL = new ArrayList<>();
