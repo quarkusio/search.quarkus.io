@@ -21,7 +21,7 @@ import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.search.app.fetching.FetchingService;
-import io.quarkus.search.app.fetching.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.vertx.http.ManagementInterface;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -184,11 +184,10 @@ public class IndexingService {
             while (docIterator.hasNext()) {
                 T doc = docIterator.next();
                 try {
-                    Log.debugf("About to persist: %s", doc);
+                    Log.tracef("About to persist: %s", doc);
                     session.persist(doc);
                 } catch (Exception e) {
-                    Log.errorf(e, "Failed to persist a guide: %s", doc);
-                    throw e;
+                    throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
                 }
 
                 ++i;
@@ -200,6 +199,7 @@ public class IndexingService {
             }
         } catch (Throwable t) {
             failure = t;
+            throw t;
         } finally {
             if (failure == null) {
                 QuarkusTransaction.commit();

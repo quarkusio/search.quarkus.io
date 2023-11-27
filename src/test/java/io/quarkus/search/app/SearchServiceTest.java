@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
@@ -148,7 +149,7 @@ class SearchServiceTest {
 
     @ParameterizedTest
     @MethodSource
-    void relevance(String query, String[] expectedGuideUrls) {
+    void relevance(String query, URI[] expectedGuideUrls) {
         var result = search(query);
         // Using "startsWith" here, because what we want is to have the most relevant hits first.
         // We don't mind that much if there's a trail of not-so-relevant hits.
@@ -232,9 +233,9 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits())
                 .isNotEmpty()
-                .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.STRING)
+                .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .startsWith("/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"));
+                        .startsWith("https://quarkus.io/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
@@ -244,9 +245,9 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits())
                 .isNotEmpty()
-                .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.STRING)
+                .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .startsWith("/version/main/guides/"));
+                        .startsWith("https://quarkus.io/version/main/guides/"));
     }
 
     @Test

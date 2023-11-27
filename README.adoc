@@ -5,6 +5,18 @@
 [[development]]
 == Development
 
+[[development-sample]]
+=== Using the built-in quarkus.io sample
+
+[NOTE]
+====
+By default, this will use a <<testing,small sample of quarkus.io included in this repository>>,
+which has the advantage of being faster to index on startup,
+but is incomplete.
+
+To index the actual data, see <<development-full>>.
+====
+
 To launch the application in dev mode:
 
 [source,shell]
@@ -16,33 +28,28 @@ quarkus dev
 
 Then head over to http://0.0.0.0:9000/q/swagger-ui/ to try the service.
 
-[NOTE]
-====
-Indexing happens on startup.
+[[development-full]]
+=== Using the actual quarkus.io data
 
-Because there is a lot of data to fetch before indexing,
-by default dev mode will use a <<testing,small sample of quarkus.io included in this repository>>.
-
-To use the actual quarkus.io data,
-consider cloning the https://github.com/quarkusio/quarkusio.github.io[quarkus.io repository]
-manually and adding a `.env` file to your working directory
-(it will be ignored by git if you try to contribute something):
+To use the actual quarkus.io data without downloading it on each startup,
+you should clone the https://github.com/quarkusio/quarkusio.github.io[quarkus.io repository]
+manually and add a `.env` file to your working directory:
 
 [source,properties]
 ----
-_DEV_FETCHING_QUARKUSIO_URI=file:/home/myself/path/to/quarkusio.github.io
+_DEV_QUARKUSIO_GIT_URI=file:/home/myself/path/to/quarkusio.github.io
 ----
 
-Alternatively, to test actual retrieval from a git repository,
-pass `-Dfetching.quarkusio.type=git` to the startup command:
+Then the application will use data from that clone when indexing on startup.
 
-[source,shell]
+If you also intend to run quarkus.io locally,
+and want links of search hits to redirect to your local instance of quarkus.io,
+you should also add this property:
+
+[source,properties]
 ----
-quarkus dev -Dfetching.quarkusio.method=git
-# OR
-./mvnw quarkus:dev -Dfetching.quarkusio.method=git
+_DEV_QUARKUSIO_WEB_URI=http://localhost:4000
 ----
-====
 
 [[testing]]
 == Testing
@@ -86,7 +93,7 @@ podman container run -it --rm --pod search.quarkus.io search-quarkus-io:999-SNAP
 # OR, if you already have a local clone of quarkus.io:
 podman container run -it --rm --pod search.quarkus.io \
     -v $HOME/path/to/quarkusio.github.io:/mnt/quarkus-io:ro,z \
-    -e FETCHING_QUARKUSIO_URI=file:/mnt/quarkus-io \
+    -e QUARKUSIO_GIT_URI=file:/mnt/quarkus-io \
     search-quarkus-io:999-SNAPSHOT
 ----
 

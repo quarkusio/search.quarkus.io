@@ -1,4 +1,4 @@
-package io.quarkus.search.app.yml;
+package io.quarkus.search.app.quarkusio;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,16 +16,16 @@ import java.util.stream.Collectors;
 import io.quarkus.search.app.entity.Guide;
 import org.yaml.snakeyaml.Yaml;
 
-public class QuarkusMetadata {
+class QuarkusIOMetadata {
 
     private final Map<String, Metadata> guides;
 
-    private QuarkusMetadata(Map<String, Metadata> guides) {
+    private QuarkusIOMetadata(Map<String, Metadata> guides) {
         this.guides = guides;
     }
 
     @SuppressWarnings("unchecked")
-    public static QuarkusMetadata parseYamlMetadata(Path quarkusYamlPath) {
+    public static QuarkusIOMetadata parseYamlMetadata(Path quarkusYamlPath) {
         Map<String, Object> quarkusYaml;
         try (InputStream inputStream = Files.newInputStream(quarkusYamlPath)) {
             Yaml yaml = new Yaml();
@@ -54,7 +54,7 @@ public class QuarkusMetadata {
             parsed.put(metadata.filename, metadata);
         }
 
-        return new QuarkusMetadata(parsed);
+        return new QuarkusIOMetadata(parsed);
     }
 
     public void addMetadata(Path path, Guide guide) {
@@ -77,6 +77,7 @@ public class QuarkusMetadata {
         return value == null ? null : value.toString();
     }
 
+    @SuppressWarnings("unchecked")
     private static Set<String> toSet(Object value) {
         if (value == null) {
             return Set.of();

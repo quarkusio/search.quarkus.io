@@ -4,13 +4,14 @@ import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Consumer;
 
 import io.quarkus.search.app.hibernate.InputProvider;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import jakarta.inject.Inject;
 
 import org.apache.commons.io.file.PathUtils;
@@ -107,17 +108,12 @@ class FetchingServiceTest {
     static final QuarkusComponentTestExtension extension = QuarkusComponentTestExtension.builder()
             // It seems injecting config mappings isn't supported at the moment;
             // see https://quarkusio.zulipchat.com/#narrow/stream/187038-dev/topic/QuarkusComponentTest.20and.20ConfigMapping
-            .mock(FetchingConfig.class)
+            .mock(QuarkusIOConfig.class)
             .createMockitoMock(mock -> {
-                Mockito.when(mock.quarkusio())
-                        .thenReturn(new FetchingConfig.Source() {
-                            // We don't want to rely on external resources in tests,
-                            // so we use a local git repo to simulate quarkus.io's git repository.
-                            @Override
-                            public URI uri() {
-                                return tmpDir.path().toUri();
-                            }
-                        });
+                Mockito.when(mock.gitUri())
+                        .thenReturn(tmpDir.path().toUri());
+                Mockito.when(mock.webUri())
+                        .thenReturn(QuarkusIOConfig.WEB_URI_DEFAULT);
             })
             .build();
 
@@ -131,7 +127,7 @@ class FetchingServiceTest {
                 assertThat(guides)
                         .hasSize(2)
                         .satisfiesExactly(
-                                isGuide("/guides/" + FETCHED_GUIDE_1_NAME,
+                                isGuide("https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
                                         "Some title",
                                         "This is a summary",
                                         "keyword1 keyword2",
@@ -139,7 +135,7 @@ class FetchingServiceTest {
                                         Set.of("topic1", "topic2"),
                                         Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                         FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                isGuide("https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
                                         null,
                                         "keyword3, keyword4",

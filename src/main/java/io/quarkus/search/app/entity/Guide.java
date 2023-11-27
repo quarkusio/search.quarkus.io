@@ -2,13 +2,16 @@ package io.quarkus.search.app.entity;
 
 import io.quarkus.search.app.hibernate.InputProvider;
 import io.quarkus.search.app.hibernate.InputProviderHtmlBodyTextBridge;
+import io.quarkus.search.app.hibernate.URIType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
+import java.net.URI;
 import java.util.Set;
 
 import org.hibernate.Length;
+import org.hibernate.annotations.JavaType;
 import org.hibernate.search.engine.backend.types.Aggregable;
 import org.hibernate.search.engine.backend.types.Highlightable;
 import org.hibernate.search.engine.backend.types.Projectable;
@@ -28,7 +31,8 @@ import jakarta.persistence.Transient;
 @Indexed
 public class Guide {
     @Id
-    public String url;
+    @JavaType(URIType.class)
+    public URI url;
 
     @KeywordField
     public String version;

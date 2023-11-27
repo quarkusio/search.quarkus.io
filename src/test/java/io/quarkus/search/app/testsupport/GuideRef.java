@@ -1,11 +1,13 @@
 package io.quarkus.search.app.testsupport;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import io.quarkus.search.app.QuarkusVersions;
-import io.quarkus.search.app.fetching.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 
 public record GuideRef(String name) {
     private static final List<GuideRef> ALL = new ArrayList<>();
@@ -28,12 +30,14 @@ public record GuideRef(String name) {
         return ALL.toArray(GuideRef[]::new);
     }
 
-    public static String[] urls(GuideRef... refs) {
+    public static URI[] urls(GuideRef... refs) {
         return urls(QuarkusVersions.LATEST, refs);
     }
 
-    public static String[] urls(String version, GuideRef... refs) {
-        return Arrays.stream(refs).map(g -> QuarkusIO.httpPath(version, g.name)).toArray(String[]::new);
+    public static URI[] urls(String version, GuideRef... refs) {
+        return Arrays.stream(refs)
+                .map(g -> QuarkusIO.httpUrl(QuarkusIOConfig.WEB_URI_DEFAULT, version, g.name))
+                .toArray(URI[]::new);
     }
 
     private static GuideRef create(String name) {
