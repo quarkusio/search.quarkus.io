@@ -31,7 +31,7 @@ public class FetchingService {
     public QuarkusIO fetchQuarkusIo() {
         return fetch("quarkus.io", quarkusIOConfig.gitUri(),
                 List.of(QuarkusIO.SOURCE_BRANCH, QuarkusIO.PAGES_BRANCH),
-                QuarkusIO::new);
+                (directory, git) -> new QuarkusIO(quarkusIOConfig, directory, git));
     }
 
     private <T> T fetch(String name, URI uri, List<String> branches,

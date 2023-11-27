@@ -112,6 +112,8 @@ class FetchingServiceTest {
             .createMockitoMock(mock -> {
                 Mockito.when(mock.gitUri())
                         .thenReturn(tmpDir.path().toUri());
+                Mockito.when(mock.webUri())
+                        .thenReturn(QuarkusIOConfig.WEB_URI_DEFAULT);
             })
             .build();
 

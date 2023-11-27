@@ -30,13 +30,12 @@ import org.eclipse.jgit.revwalk.RevTree;
 
 public class QuarkusIO implements AutoCloseable {
 
-    private static final URI QUARKUS_IO_URL_BASE = URI.create("https://quarkus.io");
     public static final String SOURCE_BRANCH = "develop";
     public static final String PAGES_BRANCH = "master";
     private static final String QUARKUS_ORIGIN = "quarkus";
 
-    public static URI httpUrl(String version, String name) {
-        return QUARKUS_IO_URL_BASE.resolve(httpPath(version, name));
+    public static URI httpUrl(URI urlBase, String version, String name) {
+        return urlBase.resolve(httpPath(version, name));
     }
 
     public static String htmlPath(String version, String name) {
@@ -57,12 +56,14 @@ public class QuarkusIO implements AutoCloseable {
         return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkus.yaml");
     }
 
+    private final URI webUri;
     private final CloseableDirectory directory;
     private final Git git;
     private final RevTree pagesTree;
     private final Map<GuidesDirectory, BiConsumer<Path, Guide>> guidesMetadata = new HashMap<>();
 
-    public QuarkusIO(CloseableDirectory directory, Git git) throws IOException {
+    public QuarkusIO(QuarkusIOConfig config, CloseableDirectory directory, Git git) throws IOException {
+        this.webUri = config.webUri();
         this.directory = directory;
         this.git = git;
         this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(), "origin/" + PAGES_BRANCH);
@@ -108,7 +109,7 @@ public class QuarkusIO implements AutoCloseable {
         guide.version = guidesDirectory.version;
         guide.origin = QUARKUS_ORIGIN;
         String name = FilenameUtils.removeExtension(path.getFileName().toString());
-        guide.url = httpUrl(guidesDirectory.version, name);
+        guide.url = httpUrl(webUri, guidesDirectory.version, name);
         guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, htmlPath(guidesDirectory.version, name));
         getMetadata(guidesDirectory).accept(path, guide);
         return guide;
