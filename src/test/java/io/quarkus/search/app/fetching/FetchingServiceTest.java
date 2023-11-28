@@ -9,9 +9,6 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import io.quarkus.search.app.hibernate.InputProvider;
-import io.quarkus.search.app.quarkusio.QuarkusIO;
-import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import jakarta.inject.Inject;
 
 import org.apache.commons.io.file.PathUtils;
@@ -19,16 +16,16 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.SoftAssertions;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.revwalk.RevCommit;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.mockito.Mockito;
-
 import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.hibernate.InputProvider;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.testsupport.GitTestUtils;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.test.component.QuarkusComponentTestExtension;
@@ -106,15 +103,7 @@ class FetchingServiceTest {
 
     @RegisterExtension
     static final QuarkusComponentTestExtension extension = QuarkusComponentTestExtension.builder()
-            // It seems injecting config mappings isn't supported at the moment;
-            // see https://quarkusio.zulipchat.com/#narrow/stream/187038-dev/topic/QuarkusComponentTest.20and.20ConfigMapping
-            .mock(QuarkusIOConfig.class)
-            .createMockitoMock(mock -> {
-                Mockito.when(mock.gitUri())
-                        .thenReturn(tmpDir.path().toUri());
-                Mockito.when(mock.webUri())
-                        .thenReturn(QuarkusIOConfig.WEB_URI_DEFAULT);
-            })
+            .configProperty("quarkusio.git-uri", tmpDir.path().toString())
             .build();
 
     @Inject
