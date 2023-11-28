@@ -1,19 +1,10 @@
 package io.quarkus.search.app.testsupport;
 
-import java.io.IOException;
-import java.nio.file.CopyOption;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Map;
+import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.util.SystemReader;
 
 import org.jboss.logging.Logger;
-
-import org.eclipse.jgit.util.SystemReader;
 
 public final class GitTestUtils {
 
@@ -24,9 +15,23 @@ public final class GitTestUtils {
 
     public static void cleanGitUserConfig() {
         try {
-            SystemReader.getInstance().getUserConfig().clear();
+            clearRecursively(SystemReader.getInstance().getUserConfig());
         } catch (Exception e) {
-            LOG.warn("Unable to clear the Git user config");
+            LOG.warn("Unable to get Git user config");
         }
+    }
+
+    private static void clearRecursively(Config config) {
+        if (config == null) {
+            return;
+        }
+        if (config instanceof StoredConfig) {
+            try {
+                ((StoredConfig) config).clear();
+            } catch (Exception e) {
+                LOG.warnf("Unable to clear Git config %s", config);
+            }
+        }
+        clearRecursively(config.getBaseConfig());
     }
 }
