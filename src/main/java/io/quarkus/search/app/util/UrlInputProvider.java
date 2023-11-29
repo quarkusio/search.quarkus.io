@@ -21,10 +21,12 @@ public class UrlInputProvider implements InputProvider {
     private final Path temporaryFile;
     private final URL url;
 
-    public UrlInputProvider(URI uri) {
+    public UrlInputProvider(CloseableDirectory directory, URI uri) {
         try {
             this.url = uri.toURL();
-            Path temporaryFile = Files.createTempDirectory("quarkiverse-")
+            // We are creating another tmp directory just to be safe in case multiple versions are targeting the same
+            // external guide or the same guide is referenced multiple times within the same file:
+            Path temporaryFile = Files.createTempDirectory(directory.path(), "quarkiverse-")
                     .resolve(this.url.getPath().replaceAll("[./]", "-"));
             try (InputStream inputStream = this.url.openStream()) {
                 Files.copy(inputStream, temporaryFile);

@@ -46,10 +46,8 @@ class FetchingServiceTest {
     @BeforeAll
     static void initOrigin() throws IOException, GitAPIException {
         Path sourceRepoPath = tmpDir.path();
-        Path metadataToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/quarkus.yaml");
-        Path guide1AdocToFetch = sourceRepoPath.resolve("_guides/" + FETCHED_GUIDE_1_NAME + ".adoc");
-        Path guide2AdocToFetch = sourceRepoPath.resolve("_versions/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".adoc");
-        Path adocToIgnore = sourceRepoPath.resolve("_guides/_attributes.adoc");
+        Path metadata1ToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/quarkus.yaml");
+        Path metadata2ToFetch = sourceRepoPath.resolve("_data/guides-2-7.yaml");
         Path guide1HtmlToFetch = sourceRepoPath.resolve("guides/" + FETCHED_GUIDE_1_NAME + ".html");
         Path guide2HtmlToFetch = sourceRepoPath.resolve("version/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".html");
         try (Git git = Git.init().setDirectory(sourceRepoPath.toFile())
@@ -77,20 +75,12 @@ class FetchingServiceTest {
                     .setStartPoint(initialCommit)
                     .call();
 
-            PathUtils.createParentDirectories(guide1AdocToFetch);
-            Files.writeString(guide1AdocToFetch, "initial");
-            PathUtils.createParentDirectories(adocToIgnore);
-            Files.writeString(adocToIgnore, "ignored");
+            PathUtils.createParentDirectories(metadata1ToFetch);
+            Files.writeString(metadata1ToFetch, METADATA_YAML);
+            PathUtils.createParentDirectories(metadata2ToFetch);
+            Files.writeString(metadata2ToFetch, METADATA_LEGACY_YAML);
             git.add().addFilepattern(".").call();
             git.commit().setMessage("Source first commit").call();
-
-            PathUtils.createParentDirectories(metadataToFetch);
-            Files.writeString(metadataToFetch, METADATA_YAML);
-            Files.writeString(guide1AdocToFetch, FETCHED_GUIDE_1_CONTENT_ADOC);
-            PathUtils.createParentDirectories(guide2AdocToFetch);
-            Files.writeString(guide2AdocToFetch, FETCHED_GUIDE_2_CONTENT_ADOC);
-            git.add().addFilepattern(".").call();
-            git.commit().setMessage("Source second commit").call();
         }
     }
 
@@ -126,11 +116,11 @@ class FetchingServiceTest {
                                         FETCHED_GUIDE_1_CONTENT_HTML),
                                 isGuide("https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
+                                        "This is a different summary.",
                                         null,
-                                        "keyword3, keyword4",
+                                        Set.of("getting-started"),
                                         Set.of(),
-                                        Set.of("topic3", "topic4"),
-                                        Set.of("io.quarkus:extension3"),
+                                        Set.of(),
                                         FETCHED_GUIDE_2_CONTENT_HTML));
             }
         }
@@ -154,29 +144,22 @@ class FetchingServiceTest {
                 - io.quarkus:extension2
                 id: foo
                 type: reference
-                url: /guides/security-authorize-web-endpoints-reference
+                url: /guides/foo
+            """;
+
+    private static final String METADATA_LEGACY_YAML = """
+            # Generated file. Do not edit
+            ---
+            categories:
+              - category: Getting Started
+                cat-id: getting-started
+                guides:
+                  - title: Some other title
+                    url: /guides/bar
+                    description: This is a different summary.
             """;
 
     private static final String FETCHED_GUIDE_1_NAME = "foo";
-    private static final String FETCHED_GUIDE_1_CONTENT_ADOC = """
-            = Some title that won't be used because metadata is preferred
-            :irrelevant: foo
-            :categories: category1, category2, not-used-because-prefer-yaml
-            :keywords: keyword1 keyword2 not-used-because-prefer-yaml
-            :summary: This is a summary that won't be used because metadata is preferred
-            :topics: topic1, topic2, not-used-because-prefer-yaml
-            :extensions: io.quarkus:extension1,io.quarkus:extension2,not-used-because-prefer-yaml
-
-            This is the guide body
-
-            == Some subsection
-            :irrelevant2: foo
-
-            This is a subsection
-
-            == Some other subsection
-            This is another subsection
-            """;
     private static final String FETCHED_GUIDE_1_CONTENT_HTML = """
             <html>
             <head></head>
@@ -189,14 +172,6 @@ class FetchingServiceTest {
             This is another subsection
             """;
     private static final String FETCHED_GUIDE_2_NAME = "bar";
-    private static final String FETCHED_GUIDE_2_CONTENT_ADOC = """
-            = Some other title
-            :keywords: keyword3, keyword4
-            :topics: topic3, topic4
-            :extensions: io.quarkus:extension3
-
-            This is the other guide body
-            """;
     private static final String FETCHED_GUIDE_2_CONTENT_HTML = """
             <html>
             <head></head>
