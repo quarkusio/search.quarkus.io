@@ -39,7 +39,7 @@ jobs:
       uses: redhat-actions/oc-login@v1
       with:
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
-        openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+        openshift_token: ${{ secrets.OPENSHIFT_TOKEN_DEV }}
         namespace: ${{ env.OPENSHIFT_NAMESPACE_DEV }}
 
     - name: Log in to OpenShift (Prod)
@@ -47,7 +47,7 @@ jobs:
       uses: redhat-actions/oc-login@v1
       with:
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
-        openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+        openshift_token: ${{ secrets.OPENSHIFT_TOKEN_PROD }}
         namespace: ${{ env.OPENSHIFT_NAMESPACE_PROD }}
 
     - name: Delete problematic image
