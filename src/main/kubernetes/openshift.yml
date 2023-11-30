@@ -1,7 +1,9 @@
 apiVersion: image.openshift.io/v1
 kind: "ImageStream"
 metadata:
-  name: elasticsearch
+  name: opensearch
+  annotations:
+    openshift.io/display-name: opensearch
   labels:
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
@@ -14,7 +16,55 @@ spec:
     - name: current
       from:
         kind: DockerImage
-        name: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+        name: docker.io/opensearchproject/opensearch:2.11.0
+---
+apiVersion: image.openshift.io/v1
+kind: "ImageStream"
+metadata:
+  name: opensearch-fixed
+  annotations:
+    openshift.io/display-name: opensearch-fixed
+  labels:
+    app.kubernetes.io/name: search-backend
+    app.kubernetes.io/component: datastore
+    app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/managed-by: quarkus
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: opensearch-fixed-build
+  labels:
+    app.kubernetes.io/name: search-backend
+    app.kubernetes.io/component: datastore
+    app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/managed-by: quarkus
+spec:
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChange:
+        from:
+          kind: ImageStreamTag
+          name: opensearch:current
+  source:
+    # Workaround for https://github.com/opensearch-project/opensearch-devops/issues/97
+    dockerfile: |-
+      FROM opensearch:current
+      RUN chmod -R go=u /usr/share/opensearch
+  strategy:
+    type: Docker
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: opensearch:current
+  output:
+    to:
+      kind: ImageStreamTag
+      name: opensearch-fixed:current
 ---
 apiVersion: v1
 kind: Service
@@ -68,8 +118,8 @@ spec:
         app.kubernetes.io/managed-by: quarkus
     spec:
       containers:
-        - name: elasticsearch
-          image: elasticsearch:current
+        - name: opensearch
+          image: opensearch-fixed:current
           imagePullPolicy: Always
           resources:
             limits:
@@ -93,7 +143,7 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: data
-              mountPath: /usr/share/elasticsearch/data
+              mountPath: /usr/share/opensearch/data
           env:
             - name: cluster.name
               value: search-quarkus-io
@@ -101,21 +151,34 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            # https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#discovery-settings
+            # https://opensearch.org/docs/latest/install-and-configure/install-opensearch/docker/#sample-docker-composeyml
             # Rely on OpenShift's internal DNS to address the other hosts
             - name: discovery.seed_hosts
               value: "search-backend-0.search-backend,search-backend-1.search-backend,search-backend-2.search-backend"
-            - name: cluster.initial_master_nodes
+            - name: cluster.initial_cluster_manager_nodes
               value: "search-backend-0,search-backend-1,search-backend-2"
             - name: bootstrap.memory_lock
               value: "false"
-            # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_configure_and_start_the_cluster
-            - name: ES_PORT
-              value: 127.0.0.1:9200
+            # OpenSearch doesn't seem to automatically adapt -Xmx to available memory, for some reason
+            - name: OPENSEARCH_JAVA_OPTS
+              value: -Xms512m -Xmx512m
+            # This is necessary to avoid OpenSearch trying to install various things on startup,
+            # which leads to filesystem operations (chmod/chown) that won't work
+            # because only user 1000 has the relevant permissions,
+            # and we can't run with user 1000 on OpenShift.
+            # See also:
+            # - https://github.com/opensearch-project/opensearch-devops/issues/97
+            # - BuildConfig opensearch-fixed-build
+            - name: DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI
+              value: 'true'
+            - name: DISABLE_INSTALL_DEMO_CONFIG
+              value: 'true'
             # Not exposed to the internet, no sensitive data
             # => We don't bother with HTTPS and pesky self-signed certificates
-            - name: xpack.security.enabled
-              value: "false"
+            # Setting this env variable is better than setting plugins.security.disabled
+            # because this skips installing the plugin altogether (see above)
+            - name: DISABLE_SECURITY_PLUGIN
+              value: 'true'
           envFrom:
             - configMapRef:
                 name: search-backend-config
@@ -145,4 +208,4 @@ spec:
           - search-backend
         from:
           kind: ImageStreamTag
-          name: elasticsearch:current
+          name: opensearch-fixed:current
