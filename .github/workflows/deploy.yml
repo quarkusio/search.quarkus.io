@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "main"
+      - "production"
     paths-ignore:
       - '.gitignore'
       - 'CODEOWNERS'
@@ -33,12 +34,21 @@ jobs:
         distribution: temurin
         java-version: 17
 
-    - name: Log in to OpenShift
+    - name: Log in to OpenShift (Dev)
+      if: ${{ github.ref == 'refs/heads/main' }}
       uses: redhat-actions/oc-login@v1
       with:
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
         openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
-        namespace: ${{ env.OPENSHIFT_NAMESPACE }}
+        namespace: ${{ env.OPENSHIFT_NAMESPACE_DEV }}
+
+    - name: Log in to OpenShift (Prod)
+      if: ${{ github.ref == 'refs/heads/production' }}
+      uses: redhat-actions/oc-login@v1
+      with:
+        openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
+        openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+        namespace: ${{ env.OPENSHIFT_NAMESPACE_PROD }}
 
     - name: Delete problematic image
       run: oc delete is ubi-quarkus-native-binary-s2i || true
