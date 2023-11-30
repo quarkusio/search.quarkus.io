@@ -149,12 +149,16 @@ public class IndexingService {
         Log.info("Indexing...");
         try (Rollover rollover = Rollover.start(searchMapping);
                 Closer<IOException> closer = new Closer<>()) {
-            // We don't use the database for searching, so let's make sure to clear it at the end.
-            closer.push(IndexingService::clearDatabaseWithoutIndexes, this);
+            // Reset the database before we start
+            clearDatabaseWithoutIndexes();
 
             try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo()) {
                 indexQuarkusIo(quarkusIO);
             }
+
+            // We don't use the database for searching,
+            // so let's make sure to clear it after we're done indexing.
+            closer.push(IndexingService::clearDatabaseWithoutIndexes, this);
 
             // Refresh BEFORE committing the rollover,
             // so that the new indexes are fully refreshed
@@ -215,10 +219,11 @@ public class IndexingService {
     }
 
     private void clearDatabaseWithoutIndexes() {
+        Log.info("Clearing database...");
         try {
             session.getSessionFactory().getSchemaManager().truncateMappedObjects();
         } catch (RuntimeException e) {
-            throw new RuntimeException("Failed to clear the database after indexing: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to clear the database: " + e.getMessage(), e);
         }
     }
 
