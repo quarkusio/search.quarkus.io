@@ -70,6 +70,7 @@ public class SearchService {
                                 .field("fullContent_autocomplete").boost(0.1f)
                                 .matching(q)
                                 .defaultOperator(BooleanOperator.AND))
+                                .should(f.match().field("origin").matching("quarkus").boost(50.0f))
                                 .should(f.not(f.match().field("topics").matching("compatibility"))
                                         .boost(50.0f)));
                     }
