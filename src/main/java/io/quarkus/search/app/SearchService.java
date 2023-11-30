@@ -15,7 +15,6 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
-import org.hibernate.search.engine.search.highlighter.dsl.HighlighterEncoder;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import org.jboss.resteasy.reactive.RestQuery;
@@ -82,8 +81,6 @@ public class SearchService {
                 .highlighter(
                         f -> f.unified().noMatchSize(Length.LONG).fragmentSize(0)
                                 .orderByScore(true)
-                                // just in case we have any "unsafe" content:
-                                .encoder(HighlighterEncoder.HTML)
                                 .numberOfFragments(1)
                                 .tag("<span class=\"" + highlightCssClass + "\">", "</span>")
                                 .boundaryScanner().sentence().end())
