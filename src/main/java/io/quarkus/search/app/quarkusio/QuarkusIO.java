@@ -1,5 +1,7 @@
 package io.quarkus.search.app.quarkusio;
 
+import static io.quarkus.search.app.util.MarkdownRenderer.renderMarkdown;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -213,10 +215,10 @@ public class QuarkusIO implements AutoCloseable {
             String summaryKey) {
         Guide guide = new Guide();
         guide.type = type;
-        guide.title = toString(parsedGuide.get("title"));
-        guide.summary = toString(parsedGuide.get(summaryKey));
+        guide.title = renderMarkdown(toString(parsedGuide.get("title")));
         guide.origin = toString(parsedGuide.get("origin"));
         guide.version = version;
+        guide.summary = renderMarkdown(toString(parsedGuide.get(summaryKey)));
         String parsedUrl = toString(parsedGuide.get("url"));
         URI uri;
         if (parsedUrl.startsWith("http")) {
