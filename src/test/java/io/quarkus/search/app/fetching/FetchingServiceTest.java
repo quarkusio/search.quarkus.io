@@ -105,7 +105,7 @@ class FetchingServiceTest {
         try (QuarkusIO quarkusIO = service.fetchQuarkusIo()) {
             try (var guides = quarkusIO.guides()) {
                 assertThat(guides)
-                        .hasSize(2)
+                        .hasSize(6)
                         .satisfiesExactly(
                                 isGuide("https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
                                         "Some title",
@@ -115,6 +115,10 @@ class FetchingServiceTest {
                                         Set.of("topic1", "topic2"),
                                         Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                         FETCHED_GUIDE_1_CONTENT_HTML),
+                                isLocalizedGuide("https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME),
+                                isLocalizedGuide("https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME),
+                                isLocalizedGuide("https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME),
+                                isLocalizedGuide("https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME),
                                 isGuide("https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
                                         "This is a different summary.",
@@ -180,6 +184,14 @@ class FetchingServiceTest {
             <h1>Some other title</h1>
             <p>This is the other guide body
             """;
+
+    private static Consumer<Guide> isLocalizedGuide(String url) {
+        return guide -> {
+            SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(guide).extracting("url").asString().isEqualTo(url);
+            });
+        };
+    }
 
     private static Consumer<Guide> isGuide(String url, String title, String summary, String keywords,
             Set<String> categories, Set<String> topics, Set<String> extensions, String content) {
