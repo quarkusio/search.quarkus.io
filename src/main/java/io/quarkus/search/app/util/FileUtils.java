@@ -26,7 +26,7 @@ public final class FileUtils {
     public static void unzip(Path sourceFile, Path targetDir) throws IOException {
         try (FileSystem sourceFs = FileSystems.newFileSystem(sourceFile)) {
             if (!Files.exists(targetDir)) {
-                Files.createDirectory(targetDir);
+                Files.createDirectories(targetDir);
             }
             copyRecursively(sourceFs.getRootDirectories().iterator().next(), targetDir);
         }

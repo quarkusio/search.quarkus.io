@@ -10,11 +10,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -23,22 +25,27 @@ import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.util.CloseableDirectory;
+import io.quarkus.search.app.util.GitCloneDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
-import io.quarkus.search.app.util.GitUtils;
 import io.quarkus.search.app.util.UrlInputProvider;
+
+import io.quarkus.logging.Log;
 
 import org.hibernate.search.util.common.impl.Closer;
 
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.revwalk.RevTree;
+import org.fedorahosted.tennera.jgettext.Catalog;
+import org.fedorahosted.tennera.jgettext.Message;
+import org.fedorahosted.tennera.jgettext.PoParser;
 import org.yaml.snakeyaml.Yaml;
 
 public class QuarkusIO implements AutoCloseable {
 
-    private static final String QUARKUS_ORIGIN = "quarkus";
+    public static final String QUARKUS_ORIGIN = "quarkus";
     private static final String QUARKIVERSE_ORIGIN = "quarkiverse";
     public static final String SOURCE_BRANCH = "develop";
     public static final String PAGES_BRANCH = "master";
+    public static final String LOCALIZED_SOURCE_BRANCH = "main";
+    public static final String LOCALIZED_PAGES_BRANCH = "docs";
 
     public static URI httpUrl(URI urlBase, String version, String name) {
         return urlBase.resolve(httpPath(version, name));
@@ -56,6 +63,10 @@ public class QuarkusIO implements AutoCloseable {
         return httpPath(version, name) + ".html";
     }
 
+    public static String localizedHtmlPath(String version, String path) {
+        return "docs" + path + ".html";
+    }
+
     private static String httpPath(String version, String name) {
         return QuarkusVersions.LATEST.equals(version) ? name
                 : "version/" + version + name;
@@ -70,24 +81,26 @@ public class QuarkusIO implements AutoCloseable {
     }
 
     private final URI webUri;
-    private final CloseableDirectory directory;
+    private final GitCloneDirectory mainRepository;
+    private final Map<Language, GitCloneDirectory> localizedSites;
+    private final Map<Language, URI> localizedSiteUris;
     private final CloseableDirectory prefetchedQuarkiverseGuides = CloseableDirectory.temp("quarkiverse-guides-");
-    private final Git git;
-    private final RevTree pagesTree;
 
-    public QuarkusIO(QuarkusIOConfig config, CloseableDirectory directory, Git git) throws IOException {
+    public QuarkusIO(QuarkusIOConfig config, GitCloneDirectory mainRepository,
+            Map<Language, GitCloneDirectory> localizedSites) throws IOException {
         this.webUri = config.webUri();
-        this.directory = directory;
-        this.git = git;
-        this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(), "origin/" + PAGES_BRANCH);
+        this.mainRepository = mainRepository;
+        this.localizedSites = Collections.unmodifiableMap(localizedSites);
+        this.localizedSiteUris = localizedSites.entrySet().stream().collect(
+                Collectors.toUnmodifiableMap(Map.Entry::getKey, e -> config.localized().get(e.getKey().code).webUri()));
     }
 
     @Override
     public void close() throws Exception {
         try (var closer = new Closer<Exception>()) {
-            closer.push(Git::close, git);
-            closer.push(CloseableDirectory::close, directory);
+            closer.push(GitCloneDirectory::close, mainRepository);
             closer.push(CloseableDirectory::close, prefetchedQuarkiverseGuides);
+            closer.pushAll(GitCloneDirectory::close, localizedSites.values());
         }
     }
 
@@ -99,64 +112,59 @@ public class QuarkusIO implements AutoCloseable {
     // guides based on the info from the _data/versioned/[version]/index/
     // may contain quarkus.yaml as well as quarkiverse.yml
     private Stream<Guide> versionedGuides() throws IOException {
-        return Files.list(directory.path().resolve("_data").resolve("versioned"))
+        return Files.list(mainRepository.directory().path().resolve("_data").resolve("versioned"))
                 .flatMap(p -> {
                     var version = p.getFileName().toString().replace('-', '.');
                     Path quarkiverse = p.resolve("index").resolve("quarkiverse.yaml");
                     Path quarkus = p.resolve("index").resolve("quarkus.yaml");
+                    Map<Language, Catalog> translations = translations(
+                            (directory, language) -> resolveTranslationPath(p.getFileName().toString(),
+                                    quarkus.getFileName().toString(), directory, language));
 
                     Stream<Guide> quarkusGuides = parseYamlMetadata(webUri, quarkus, version)
-                            .flatMap(this::translate);
+                            .flatMap(guide -> translateGuide(guide, translations));
                     if (Files.exists(quarkiverse)) {
+                        // the full content won't be translated, but the title/summary may be, so we want to get that info out if available
+                        // we also have to create "copies" of quarkiverse guides for other languages, otherwise we won't find them in search results
+                        // as we are using a `must` filter on language:
+                        Map<Language, Catalog> quarkiverseTranslations = translations(
+                                (directory, language) -> resolveTranslationPath(p.getFileName().toString(),
+                                        quarkiverse.getFileName().toString(), directory, language));
                         return Stream.concat(
                                 quarkusGuides,
-                                parseYamlQuarkiverseMetadata(webUri, quarkiverse, version));
+                                parseYamlQuarkiverseMetadata(webUri, quarkiverse, version)
+                                        .flatMap(guide -> translateGuide(guide, quarkiverseTranslations)));
                     } else {
                         return quarkusGuides;
                     }
                 });
     }
 
-    private Stream<? extends Guide> translate(Guide guide) {
-        return Stream.concat(
-                Stream.of(guide),
-                Language.nonDefault.stream().map(language -> {
-                    Guide translated = new Guide();
-                    translated.url = localizedUrl(language, guide.url);
-                    translated.language = language;
-                    translated.type = guide.type;
-                    translated.version = guide.version;
-                    translated.origin = guide.origin;
-                    translated.title = guide.title;
-                    translated.summary = guide.summary;
-                    translated.htmlFullContentProvider = guide.htmlFullContentProvider;
-                    translated.categories = guide.categories;
-                    translated.extensions = guide.extensions;
-                    translated.keywords = guide.keywords;
-                    translated.topics = guide.topics;
-
-                    return translated;
-                }));
-    }
-
-    private static URI localizedUrl(Language language, URI url) {
-        try {
-            return new URI(
-                    url.getScheme(), language.code + "." + url.getAuthority(), url.getPath(),
-                    url.getQuery(), url.getFragment());
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Cannot create a localized version of the URL: " + url, e);
-        }
+    private static Path resolveTranslationPath(String version, String filename, GitCloneDirectory directory,
+            Language language) {
+        return directory.directory().path().resolve(
+                Path.of("l10n", "po", language.locale, "_data", "versioned", version, "index", filename + ".po"));
     }
 
     // older version guides like guides-2-7.yaml or guides-2-13.yaml
     private Stream<Guide> legacyGuides() throws IOException {
-        return Files.list(directory.path().resolve("_data"))
+        return Files.list(mainRepository.directory().path().resolve("_data"))
                 .filter(p -> !Files.isDirectory(p) && p.getFileName().toString().startsWith("guides-"))
                 .flatMap(p -> {
                     var version = p.getFileName().toString().replaceAll("guides-|\\.yaml", "").replace('-', '.');
-                    return parseYamlLegacyMetadata(webUri, p, version);
+
+                    Map<Language, Catalog> translations = translations(
+                            (directory, language) -> resolveLegacyTranslationPath(p.getFileName().toString(), directory,
+                                    language));
+
+                    return parseYamlLegacyMetadata(webUri, p, version)
+                            .flatMap(guide -> translateGuide(guide, translations));
                 });
+    }
+
+    private static Path resolveLegacyTranslationPath(String filename, GitCloneDirectory directory, Language language) {
+        return directory.directory().path().resolve(
+                Path.of("l10n", "po", language.locale, "_data", filename + ".po"));
     }
 
     @SuppressWarnings("unchecked")
@@ -220,6 +228,90 @@ public class QuarkusIO implements AutoCloseable {
         });
     }
 
+    private Map<Language, Catalog> translations(BiFunction<GitCloneDirectory, Language, Path> translationPathResolver) {
+        Map<Language, Catalog> map = new HashMap<>();
+        for (Map.Entry<Language, GitCloneDirectory> entry : localizedSites.entrySet()) {
+            Language language = entry.getKey();
+            GitCloneDirectory directory = entry.getValue();
+            Path path = translationPathResolver.apply(directory, language);
+            Catalog messages;
+            try {
+                messages = new PoParser().parseCatalog(path.toFile());
+            } catch (IOException e) {
+                // it may be that not all localized sites are up-to-date, in that case we just assume that the translation is not there
+                // and the non-translated english text will be used.
+                Log.error("Unable to parse a translation file " + path + " : " + e.getMessage(), e);
+                messages = new Catalog();
+            }
+            map.put(language, messages);
+        }
+        return map;
+    }
+
+    private Stream<? extends Guide> translateGuide(Guide guide, Map<Language, Catalog> transaltions) {
+        return Stream.concat(
+                Stream.of(guide),
+                localizedSites.entrySet().stream().map(entry -> {
+                    Language language = entry.getKey();
+                    GitCloneDirectory repository = entry.getValue();
+                    Catalog messages = transaltions.get(language);
+
+                    Guide translated = new Guide();
+                    translated.url = localizedUrl(language, guide);
+                    translated.language = language;
+                    translated.type = guide.type;
+                    translated.version = guide.version;
+                    translated.origin = guide.origin;
+                    translated.title = translate(messages, guide.title);
+                    translated.summary = translate(messages, guide.summary);
+                    // If it is a quarkiverse guide, it means that it is an external url, we can't do much about it
+                    // and we just use the same provider/file that we've already used for the original guide in English;
+                    // otherwise we try to find a corresponding translated HTML:
+                    translated.htmlFullContentProvider = guide.quarkusGuide()
+                            ? new GitInputProvider(
+                                    repository.git(), repository.pagesTree(),
+                                    localizedHtmlPath(guide.version, guide.url.getPath()))
+                            : guide.htmlFullContentProvider;
+                    translated.categories = guide.categories;
+                    translated.extensions = guide.extensions;
+                    translated.keywords = translate(messages, guide.keywords);
+                    translated.topics = guide.topics;
+
+                    return translated;
+                }));
+    }
+
+    private static String translate(Catalog messages, String key) {
+        if (key == null || key.isBlank()) {
+            return key;
+        }
+        Message message = messages.locateMessage(null, key);
+        return message == null ? key : message.getMsgstr();
+    }
+
+    private URI localizedUrl(Language language, Guide guide) {
+        URI url = guide.url;
+        try {
+            // if we have a Quarkus "local" guide then we have to replace the "host" part to use the localized one
+            // that we store in the web uris:
+            if (guide.quarkusGuide()) {
+                URI localized = localizedSiteUris.get(language);
+                return new URI(
+                        localized.getScheme(), localized.getAuthority(), url.getPath(),
+                        url.getQuery(), url.getFragment());
+            } else {
+                // otherwise since the link for Quarkiverse (external) guides is exactly the same for all the languages/versions
+                // and we've already added a version parameter to the query part of the url, we just append the language to it
+                // to make it unique:
+                return new URI(
+                        url.getScheme(), url.getAuthority(), url.getPath(),
+                        url.getQuery() + "&language=" + language.code, url.getFragment());
+            }
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Cannot create a localized version of the URL: " + url, e);
+        }
+    }
+
     private static Set<String> combine(Set<String> a, Set<String> b) {
         if (a == null) {
             return b;
@@ -266,7 +358,8 @@ public class QuarkusIO implements AutoCloseable {
             }
         } else {
             uri = httpUrl(webUri, version, parsedUrl);
-            guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, htmlPath(version, parsedUrl));
+            guide.htmlFullContentProvider = new GitInputProvider(mainRepository.git(), mainRepository.pagesTree(),
+                    htmlPath(version, parsedUrl));
 
             if (guide.origin == null) {
                 guide.origin = QUARKUS_ORIGIN;
@@ -303,4 +396,5 @@ public class QuarkusIO implements AutoCloseable {
                 .map(String::trim)
                 .collect(Collectors.toCollection(HashSet::new));
     }
+
 }

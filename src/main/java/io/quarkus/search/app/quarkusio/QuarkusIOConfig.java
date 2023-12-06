@@ -1,6 +1,9 @@
 package io.quarkus.search.app.quarkusio;
 
 import java.net.URI;
+import java.util.Map;
+
+import io.quarkus.runtime.annotations.ConfigDocSection;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
@@ -14,4 +17,13 @@ public interface QuarkusIOConfig {
 
     @WithDefault(WEB_URI_DEFAULT_STRING)
     URI webUri();
+
+    @ConfigDocSection
+    Map<String, SiteConfig> localized();
+
+    interface SiteConfig {
+        URI gitUri();
+
+        URI webUri();
+    }
 }

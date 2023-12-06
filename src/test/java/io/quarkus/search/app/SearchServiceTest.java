@@ -335,6 +335,19 @@ class SearchServiceTest {
         assertThat(matches.get()).isEqualTo(8);
     }
 
+    @Test
+    void language() {
+        var result = given()
+                .queryParam("q", "搜索指南")
+                .queryParam("language", "cn")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::title).contains(
+                "Hibernate<span class=\"highlighted\">搜</span><span class=\"highlighted\">索</span><span class=\"highlighted\">指</span><span class=\"highlighted\">南</span>");
+    }
+
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
             String cssClass) {
         return sentence -> {

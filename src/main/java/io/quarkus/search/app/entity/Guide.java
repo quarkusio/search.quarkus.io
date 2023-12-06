@@ -1,5 +1,7 @@
 package io.quarkus.search.app.entity;
 
+import static io.quarkus.search.app.quarkusio.QuarkusIO.QUARKUS_ORIGIN;
+
 import java.net.URI;
 import java.util.Objects;
 import java.util.Set;
@@ -84,6 +86,13 @@ public class Guide {
 
     @KeywordField(name = "extensions_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
     public Set<String> extensions = Set.of();
+
+    /**
+     * @return {@code true} if the guide is a Quarkus guide, {@code false} if this guide is a Quarkiverse guide.
+     */
+    public boolean quarkusGuide() {
+        return QUARKUS_ORIGIN.equals(origin);
+    }
 
     @Override
     public boolean equals(Object o) {

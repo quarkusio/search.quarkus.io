@@ -66,6 +66,11 @@
         <artifactId>jsoup</artifactId>
         <version>1.17.1</version>
       </dependency>
+      <dependency>
+        <groupId>org.fedorahosted.tennera</groupId>
+        <artifactId>jgettext</artifactId>
+        <version>0.15.1</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <dependencies>
@@ -136,6 +141,10 @@
     <dependency>
       <groupId>org.commonmark</groupId>
       <artifactId>commonmark</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.fedorahosted.tennera</groupId>
+      <artifactId>jgettext</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
