@@ -40,12 +40,20 @@ public class SearchService {
     public SearchResult<GuideSearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
             @RestQuery List<String> categories,
             @RestQuery String q,
+            @RestQuery @DefaultValue("en") String language,
             @RestQuery @DefaultValue("highlighted") String highlightCssClass,
             @RestQuery @DefaultValue("0") int page,
             @RestQuery @DefaultValue("1") int contentSnippets,
             @RestQuery @DefaultValue("100") int contentSnippetsLength) {
         var result = session.search(Guide.class)
-                .select(GuideSearchHit.class)
+                .select(f -> f.composite().from(
+                        f.id(),
+                        f.field("type"),
+                        f.field("origin"),
+                        f.highlight("title_%s".formatted(language)),
+                        f.highlight("summary_%s".formatted(language)),
+                        f.highlight("fullContent_%s".formatted(language)).highlighter("highlighter_content"))
+                        .asList(GuideSearchHit::new))
                 .where((f, root) -> {
                     // Match all documents by default
                     root.add(f.matchAll());
@@ -58,15 +66,15 @@ public class SearchService {
 
                     if (q != null && !q.isBlank()) {
                         root.add(f.bool().must(f.simpleQueryString()
-                                .field("title").boost(10.0f)
+                                .field("title_%s".formatted(language)).boost(10.0f)
                                 .field("topics").boost(10.0f)
                                 .field("keywords").boost(10.0f)
-                                .field("summary").boost(5.0f)
-                                .field("fullContent")
+                                .field("summary_%s".formatted(language)).boost(5.0f)
+                                .field("fullContent_%s".formatted(language))
                                 .field("keywords_autocomplete").boost(1.0f)
-                                .field("title_autocomplete").boost(1.0f)
-                                .field("summary_autocomplete").boost(0.5f)
-                                .field("fullContent_autocomplete").boost(0.1f)
+                                .field("title_autocomplete_%s".formatted(language)).boost(1.0f)
+                                .field("summary_autocomplete_%s".formatted(language)).boost(0.5f)
+                                .field("fullContent_autocomplete_%s".formatted(language)).boost(0.1f)
                                 .matching(q)
                                 .defaultOperator(BooleanOperator.AND))
                                 .should(f.match().field("origin").matching("quarkus").boost(50.0f))
@@ -88,7 +96,7 @@ public class SearchService {
                 // * Also content is really huge, so we want to only get small parts of the sentences. We are allowing caller to pick the number of sentences and their length:
                 .highlighter("highlighter_content",
                         f -> f.unified().noMatchSize(0).numberOfFragments(contentSnippets).fragmentSize(contentSnippetsLength))
-                .sort(f -> f.score().then().field("title_sort"))
+                .sort(f -> f.score().then().field("title_sort_%s".formatted(language)))
                 .fetch(page * PAGE_SIZE, PAGE_SIZE);
         return new SearchResult<>(result.total().hitCount(), result.hits());
     }

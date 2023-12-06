@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import io.quarkus.search.app.entity.I18nData;
 import jakarta.inject.Inject;
 
 import org.apache.commons.io.file.PathUtils;
@@ -185,8 +186,10 @@ class FetchingServiceTest {
         return guide -> {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(guide).extracting("url").asString().isEqualTo(url);
-                softly.assertThat(guide).extracting("title").isEqualTo(title);
-                softly.assertThat(guide).extracting("summary").isEqualTo(summary);
+                softly.assertThat(guide).extracting("title", InstanceOfAssertFactories.type(I18nData.class))
+                        .extracting(d -> d.get("en")).isEqualTo(title);
+                softly.assertThat(guide).extracting("summary", InstanceOfAssertFactories.type(I18nData.class))
+                        .extracting(d -> d.get("en")).isEqualTo(summary);
                 softly.assertThat(guide).extracting("keywords").isEqualTo(keywords);
                 softly.assertThat(guide).extracting("categories", InstanceOfAssertFactories.COLLECTION)
                         .containsExactlyInAnyOrderElementsOf(categories);
@@ -195,7 +198,8 @@ class FetchingServiceTest {
                 softly.assertThat(guide).extracting("extensions", InstanceOfAssertFactories.COLLECTION)
                         .containsExactlyInAnyOrderElementsOf(extensions);
                 softly.assertThat(guide)
-                        .extracting("htmlFullContentProvider", InstanceOfAssertFactories.type(InputProvider.class))
+                        .extracting("htmlFullContentProvider", InstanceOfAssertFactories.type(I18nData.class))
+                        .extracting(d -> d.get("en"), InstanceOfAssertFactories.type(InputProvider.class))
                         .extracting(uncheckedIO(InputProvider::open), InstanceOfAssertFactories.INPUT_STREAM)
                         .hasContent(content);
             });

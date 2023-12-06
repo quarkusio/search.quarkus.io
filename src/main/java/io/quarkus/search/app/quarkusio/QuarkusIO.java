@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import org.hibernate.search.util.common.impl.Closer;
 
+import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
 import io.quarkus.search.app.util.GitUtils;
@@ -215,23 +216,30 @@ public class QuarkusIO implements AutoCloseable {
             String summaryKey) {
         Guide guide = new Guide();
         guide.type = type;
-        guide.title = renderMarkdown(toString(parsedGuide.get("title")));
+        String title = renderMarkdown(toString(parsedGuide.get("title")));
+        guide.title = new I18nData<>(title)
+                .add("es", title)
+                .add("ja", title);
         guide.origin = toString(parsedGuide.get("origin"));
         guide.version = version;
-        guide.summary = renderMarkdown(toString(parsedGuide.get(summaryKey)));
+        String summary = renderMarkdown(toString(parsedGuide.get(summaryKey)));
+        guide.summary = new I18nData<>(summary)
+                .add("es", summary)
+                .add("ja", summary);
+        ;
         String parsedUrl = toString(parsedGuide.get("url"));
         URI uri;
         if (parsedUrl.startsWith("http")) {
             // we are looking at a quarkiverse guide:
             uri = httpUrl(version, parsedUrl);
-            guide.htmlFullContentProvider = new UrlInputProvider(prefetchedQuarkiverseGuides, uri);
+            guide.htmlFullContentProvider = new I18nData<>(new UrlInputProvider(prefetchedQuarkiverseGuides, uri));
 
             if (guide.origin == null) {
                 guide.origin = QUARKIVERSE_ORIGIN;
             }
         } else {
             uri = httpUrl(webUri, version, parsedUrl);
-            guide.htmlFullContentProvider = new GitInputProvider(git, pagesTree, htmlPath(version, parsedUrl));
+            guide.htmlFullContentProvider = new I18nData<>(new GitInputProvider(git, pagesTree, htmlPath(version, parsedUrl)));
 
             if (guide.origin == null) {
                 guide.origin = QUARKUS_ORIGIN;
