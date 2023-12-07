@@ -55,6 +55,9 @@ spec:
     dockerfile: |-
       FROM opensearch:current
       RUN chmod -R go=u /usr/share/opensearch
+      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-kuromoji
+      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-smartcn
+      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-icu
   strategy:
     type: Docker
     dockerStrategy:

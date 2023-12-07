@@ -34,6 +34,7 @@
     <surefire-plugin.version>3.2.2</surefire-plugin.version>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
+    <version.docker.plugin>0.43.4</version.docker.plugin>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -270,6 +271,33 @@
               <goal>sort</goal>
             </goals>
             <phase>process-sources</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>${version.docker.plugin}</version>
+        <configuration>
+          <images>
+            <image>
+              <name>opensearch-custom-plugin</name>
+              <build>
+                <dockerFile>${project.basedir}/Dockerfile</dockerFile>
+                <tags>
+                  <tag>2.11.0</tag>
+                </tags>
+              </build>
+            </image>
+          </images>
+        </configuration>
+        <executions>
+          <execution>
+            <id>build</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

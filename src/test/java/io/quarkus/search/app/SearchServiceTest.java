@@ -189,8 +189,8 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideRef.HIBERNATE_ORM,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("jpa", GuideRef.urls(
@@ -344,8 +344,8 @@ class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::title).contains(
-                "Hibernate<span class=\"highlighted\">搜</span><span class=\"highlighted\">索</span><span class=\"highlighted\">指</span><span class=\"highlighted\">南</span>");
+        assertThat(result.hits()).extracting(GuideSearchHit::title)
+                .contains("Hibernate<span class=\"highlighted\">搜索</span><span class=\"highlighted\">指南</span>");
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
