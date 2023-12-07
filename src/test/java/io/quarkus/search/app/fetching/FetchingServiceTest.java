@@ -217,7 +217,9 @@ class FetchingServiceTest {
                                         FETCHED_GUIDE_2_CONTENT_HTML),
                                 isGuide("https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
-                                        "別のまとめです",
+                                        // Even though there's a translation available it is "fuzzy", hence we ignore it
+                                        // and use the original message:
+                                        "This is a different summary.",
                                         null,
                                         Set.of("getting-started"),
                                         Set.of(),
@@ -225,7 +227,7 @@ class FetchingServiceTest {
                                         JA_FETCHED_GUIDE_2_CONTENT_HTML),
                                 isGuide("https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
-                                        "別のまとめです",
+                                        "This is a different summary.",
                                         null,
                                         Set.of("getting-started"),
                                         Set.of(),
@@ -233,7 +235,7 @@ class FetchingServiceTest {
                                         JA_FETCHED_GUIDE_2_CONTENT_HTML),
                                 isGuide("https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
-                                        "別のまとめです",
+                                        "This is a different summary.",
                                         null,
                                         Set.of("getting-started"),
                                         Set.of(),
@@ -241,7 +243,7 @@ class FetchingServiceTest {
                                         JA_FETCHED_GUIDE_2_CONTENT_HTML),
                                 isGuide("https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
                                         "Some other title",
-                                        "別のまとめです",
+                                        "This is a different summary.",
                                         null,
                                         Set.of("getting-started"),
                                         Set.of(),
@@ -331,6 +333,9 @@ class FetchingServiceTest {
             "Content-Transfer-Encoding: 8bit\\n"
             "X-Generator: doc-l10n-kit\\n"
 
+            #. type: Hash Value: types tutorial title
+            #: upstream/_data/versioned/latest/index/quarkus.yaml:0
+            #, fuzzy, no-wrap
             msgid "This is a different summary."
             msgstr "別のまとめです"
             """;

@@ -286,7 +286,9 @@ public class QuarkusIO implements AutoCloseable {
             return key;
         }
         Message message = messages.locateMessage(null, key);
-        return message == null ? key : message.getMsgstr();
+        // > If an entry is marked with "fuzzy", it is not reviewed by human, not published to the localized site,
+        // so the original english text should be indexed instead.
+        return message == null || message.isFuzzy() ? key : message.getMsgstr();
     }
 
     private URI localizedUrl(Language language, Guide guide) {
