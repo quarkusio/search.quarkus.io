@@ -288,7 +288,10 @@ public class QuarkusIO implements AutoCloseable {
         Message message = messages.locateMessage(null, key);
         // > If an entry is marked with "fuzzy", it is not reviewed by human, not published to the localized site,
         // so the original english text should be indexed instead.
-        return message == null || message.isFuzzy() ? key : message.getMsgstr();
+        return message == null || message.isFuzzy()
+                ? key
+                // sometimes message might be an empty string. In that case we will return the original text
+                : message.getMsgstr() == null || message.getMsgstr().isBlank() ? key : message.getMsgstr();
     }
 
     private URI localizedUrl(Language language, Guide guide) {
