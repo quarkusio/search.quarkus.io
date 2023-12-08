@@ -24,7 +24,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Language;
@@ -69,42 +68,45 @@ public final class QuarkusIOSample {
     // Run this to update the bundle in src/test/resources.
     // Expects to be run with the project root as the current working directory.
     // Expects at least one argument: the path to your local clone of quarkus.io,
-    // with the next arguments being interpreted as remotes to try to copy the data from
-    // ("origin" and the local branch will still be used as the last resort)
+    // with the next arguments being interpreted as a pair of language code and localized site repository
+    // Remotes to try to copy the data from are
+    // "origin" and the local branch.
     public static void main(String[] args) throws IOException {
-        if (args.length == 0) {
-            throw new IllegalArgumentException("Expected at least 1 argument, got none");
+        if (args.length % 2 == 0) {
+            throw new IllegalArgumentException("Expected at least 1 argument, got none."
+                    + " Arguments must follow the pattern: main-repository [lang1 lang1-repository ... [langN langN-repository ]]."
+                    + " Where language-specific repositories are optional and if provided must provide a language and its repository.");
         }
         Path originalPath = Path.of(args[0]);
         if (!Files.isDirectory(originalPath)) {
             throw new IllegalArgumentException(originalPath + " is not a directory");
         }
-        List<String> remotes = Stream.concat(
-                Arrays.stream(args).skip(1),
-                Stream.of("upstream", "origin", null)).toList();
-
-        Language language = null;
-        if (args.length > 1) {
-            language = Language.fromString(args[1]);
-            if (language == null) {
-                throw new IllegalArgumentException(args[1] + " is not a supported language.");
-            }
-        }
+        List<String> remotes = Arrays.asList("upstream", "origin", null);
 
         try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-            Path sampleAbsolutePath;
-            if (language == null) {
-                copy(originalPath, remotes, copyRootDir.path(), new AllFilterDefinition(), QuarkusIO.PAGES_BRANCH,
-                        QuarkusIO.SOURCE_BRANCH, true);
-                sampleAbsolutePath = testResourcesSamplePath();
-            } else {
-                copy(originalPath, remotes, copyRootDir.path(), new AllLocalizedFilterDefinition(language),
-                        QuarkusIO.LOCALIZED_PAGES_BRANCH, QuarkusIO.LOCALIZED_SOURCE_BRANCH, false);
-                sampleAbsolutePath = testResourcesSamplePath(language);
-            }
+            copy(originalPath, remotes, copyRootDir.path(), new AllFilterDefinition(), QuarkusIO.PAGES_BRANCH,
+                    QuarkusIO.SOURCE_BRANCH, true);
+            Path sampleAbsolutePath = testResourcesSamplePath();
 
             Files.deleteIfExists(sampleAbsolutePath);
             FileUtils.zip(copyRootDir.path(), sampleAbsolutePath);
+        }
+
+        for (int i = 1; i < args.length; i += 2) {
+            Language language = Language.fromString(args[i]);
+            if (language == null) {
+                throw new IllegalArgumentException(args[i] + " is not a supported language.");
+            }
+            Path originalLocalizedPath = Path.of(args[i + 1]);
+
+            try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
+                copy(originalLocalizedPath, remotes, copyRootDir.path(), new AllLocalizedFilterDefinition(language),
+                        QuarkusIO.LOCALIZED_PAGES_BRANCH, QuarkusIO.LOCALIZED_SOURCE_BRANCH, false);
+                Path sampleAbsolutePath = testResourcesSamplePath(language);
+
+                Files.deleteIfExists(sampleAbsolutePath);
+                FileUtils.zip(copyRootDir.path(), sampleAbsolutePath);
+            }
         }
     }
 
