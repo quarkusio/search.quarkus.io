@@ -45,24 +45,24 @@ public class Guide {
     @KeywordField
     public String origin;
 
-    @FullTextField(highlightable = Highlightable.UNIFIED, termVector = TermVector.WITH_POSITIONS_OFFSETS)
-    @FullTextField(name = "title_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
+    @FullTextField(highlightable = Highlightable.UNIFIED, termVector = TermVector.WITH_POSITIONS_OFFSETS, analyzer = AnalysisConfigurer.DEFAULT, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
+    @FullTextField(name = "title_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
     @KeywordField(name = "title_sort", normalizer = AnalysisConfigurer.SORT, searchable = Searchable.NO, sortable = Sortable.YES)
     @Column(length = Length.LONG)
     public String title;
 
-    @FullTextField(highlightable = Highlightable.UNIFIED, termVector = TermVector.WITH_POSITIONS_OFFSETS)
-    @FullTextField(name = "summary_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
+    @FullTextField(highlightable = Highlightable.UNIFIED, termVector = TermVector.WITH_POSITIONS_OFFSETS, analyzer = AnalysisConfigurer.DEFAULT, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
+    @FullTextField(name = "summary_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
     @Column(length = Length.LONG32)
     public String summary;
 
-    @FullTextField
-    @FullTextField(name = "keywords_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
+    @FullTextField(analyzer = AnalysisConfigurer.DEFAULT, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
+    @FullTextField(name = "keywords_autocomplete", analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
     @Column(length = Length.LONG32)
     public String keywords;
 
-    @FullTextField(name = "fullContent", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), highlightable = Highlightable.UNIFIED)
-    @FullTextField(name = "fullContent_autocomplete", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT)
+    @FullTextField(name = "fullContent", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), highlightable = Highlightable.UNIFIED, analyzer = AnalysisConfigurer.DEFAULT, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
+    @FullTextField(name = "fullContent_autocomplete", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzer = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
     @Transient
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.NO)
     public InputProvider htmlFullContentProvider;
@@ -70,7 +70,7 @@ public class Guide {
     @KeywordField(name = "categories")
     public Set<String> categories = Set.of();
 
-    @FullTextField(name = "topics")
+    @FullTextField(name = "topics", analyzer = AnalysisConfigurer.DEFAULT, searchAnalyzer = AnalysisConfigurer.DEFAULT_SEARCH)
     @KeywordField(name = "topics_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
     public Set<String> topics = Set.of();
 
