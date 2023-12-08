@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -181,7 +180,7 @@ public final class QuarkusIOSample {
 
         copyGit.add().addFilepattern(".").call();
         copyGit.commit().setMessage("""
-                Edit Quarkus metadata yaml files
+                Edit Quarkus metadata yaml files %s
 
                 Edited:%s"""
                 .formatted(
@@ -192,9 +191,9 @@ public final class QuarkusIOSample {
                 .call();
     }
 
-    private static void yamlQuarkusEditor(Path fileToEdit) {
+    private static void yamlQuarkusEditor(Path fileToEdit, GuideRef[] refs) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
-            Set<String> guideRefs = Arrays.stream(GuideRef.local()).map(GuideRef::name).collect(Collectors.toSet());
+            Set<String> guideRefs = Arrays.stream(refs).map(GuideRef::name).collect(Collectors.toSet());
 
             Map<String, Object> filtered = new HashMap<>();
             Map<String, List<Object>> guides = new HashMap<>();
@@ -267,17 +266,65 @@ public final class QuarkusIOSample {
         public abstract void define(FilterDefinitionCollector c);
     }
 
-    public static class AllFilterDefinition extends FilterDefinition {
+    public static class AllFilterDefinition extends AbstractGuideRefSetFilterDefinition {
         public AllFilterDefinition() {
-            super("all");
+            super("all", GuideRef.local());
+        }
+    }
+
+    public static class SearchServiceFilterDefinition extends AbstractGuideRefSetFilterDefinition {
+        private static final GuideRef[] GUIDES = new GuideRef[] {
+                GuideRef.HIBERNATE_ORM,
+                GuideRef.HIBERNATE_ORM_PANACHE,
+                GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                GuideRef.HIBERNATE_REACTIVE,
+                GuideRef.HIBERNATE_REACTIVE_PANACHE,
+                GuideRef.SPRING_DATA_JPA,
+                GuideRef.DUPLICATED_CONTEXT,
+                GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
+                GuideRef.STORK_REFERENCE
+        };
+
+        public static GuideRef[] guides() {
+            return GUIDES;
+        }
+
+        public SearchServiceFilterDefinition() {
+            super("search-service-subset", GUIDES);
+        }
+    }
+
+    public static class SearchServiceSynonymsFilterDefinition extends AbstractGuideRefSetFilterDefinition {
+        private static final GuideRef[] GUIDES = new GuideRef[] {
+                GuideRef.RESTEASY_REACTIVE_REFERENCE,
+                GuideRef.VERTX_REFERENCE,
+                GuideRef.DEV_SERVICES_REFERENCE
+        };
+
+        public static GuideRef[] guides() {
+            return GUIDES;
+        }
+
+        public SearchServiceSynonymsFilterDefinition() {
+            super("search-service-synonyms-subset", GUIDES);
+        }
+    }
+
+    private static abstract class AbstractGuideRefSetFilterDefinition extends FilterDefinition {
+        private final GuideRef[] guides;
+
+        protected AbstractGuideRefSetFilterDefinition(String name, GuideRef... guides) {
+            super(name);
+            this.guides = guides;
         }
 
         @Override
         public void define(FilterDefinitionCollector c) {
-            c.addMetadata(QuarkusVersions.LATEST);
-            c.addMetadata(SAMPLED_NON_LATEST_VERSION);
+            c.addMetadata(QuarkusVersions.LATEST, guides);
+            c.addMetadata(SAMPLED_NON_LATEST_VERSION, guides);
             c.addQuarkiverseMetadata(SAMPLED_NON_LATEST_VERSION);
-            for (GuideRef guideRef : GuideRef.local()) {
+            for (GuideRef guideRef : guides) {
                 c.addGuide(guideRef);
                 c.addGuide(guideRef, SAMPLED_NON_LATEST_VERSION);
             }
@@ -303,10 +350,10 @@ public final class QuarkusIOSample {
             return this;
         }
 
-        public FilterDefinitionCollector addMetadata(String version) {
+        public FilterDefinitionCollector addMetadata(String version, GuideRef[] guides) {
             String metadataPath = QuarkusIO.yamlMetadataPath(version).toString();
             addOnSourceBranch(metadataPath, metadataPath);
-            addMetadataToFilter(metadataPath, QuarkusIOSample::yamlQuarkusEditor);
+            addMetadataToFilter(metadataPath, path -> yamlQuarkusEditor(path, guides));
             return this;
         }
 

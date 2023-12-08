@@ -25,6 +25,9 @@ public record GuideRef(String name) {
     public static final GuideRef HIBERNATE_ORM = create("hibernate-orm");
     public static final GuideRef HIBERNATE_REACTIVE = create("hibernate-reactive");
     public static final GuideRef STORK_REFERENCE = create("stork-reference");
+    public static final GuideRef DEV_SERVICES_REFERENCE = create("dev-services");
+    public static final GuideRef RESTEASY_REACTIVE_REFERENCE = create("resteasy-reactive");
+    public static final GuideRef VERTX_REFERENCE = create("vertx-reference");
     public static final GuideRef QUARKIVERSE_AMAZON_S3 = createQuarkiverse(
             "https://quarkiverse.github.io/quarkiverse-docs/quarkus-amazon-services/dev/amazon-s3.html");
     // NOTE: when adding new constants here, don't forget to run the main() method in QuarkusIOFigure

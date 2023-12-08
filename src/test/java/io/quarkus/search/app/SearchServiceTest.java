@@ -36,7 +36,7 @@ import io.restassured.filter.log.LogDetail;
 @QuarkusTest
 @TestHTTPEndpoint(SearchService.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@QuarkusIOSample.Setup
+@QuarkusIOSample.Setup(filter = QuarkusIOSample.SearchServiceFilterDefinition.class)
 class SearchServiceTest {
     private static final TypeRef<SearchResult<GuideSearchHit>> SEARCH_RESULT_SEARCH_HITS = new TypeRef<>() {
     };
@@ -132,7 +132,7 @@ class SearchServiceTest {
     void queryEmptyString() {
         var result = search("");
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.local()));
+                .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
         assertThat(result.total()).isEqualTo(10);
     }
 
@@ -143,7 +143,7 @@ class SearchServiceTest {
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.local()));
+                .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
         assertThat(result.total()).isEqualTo(10);
     }
 
