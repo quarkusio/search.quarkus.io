@@ -9,20 +9,22 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RestClient;
+import io.quarkus.search.app.fetching.FetchingService;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+
+import io.quarkus.logging.Log;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.runtime.StartupEvent;
+import io.quarkus.vertx.http.ManagementInterface;
 
 import org.hibernate.Session;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.mapper.orm.mapping.SearchMapping;
 import org.hibernate.search.util.common.impl.Closer;
 
-import io.quarkus.logging.Log;
-import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.runtime.StartupEvent;
-import io.quarkus.search.app.fetching.FetchingService;
-import io.quarkus.search.app.quarkusio.QuarkusIO;
-import io.quarkus.vertx.http.ManagementInterface;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.RestClient;
+
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;

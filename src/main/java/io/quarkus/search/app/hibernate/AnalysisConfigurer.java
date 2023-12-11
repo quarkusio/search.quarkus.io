@@ -1,9 +1,9 @@
 package io.quarkus.search.app.hibernate;
 
+import io.quarkus.hibernate.search.orm.elasticsearch.SearchExtension;
+
 import org.hibernate.search.backend.elasticsearch.analysis.ElasticsearchAnalysisConfigurationContext;
 import org.hibernate.search.backend.elasticsearch.analysis.ElasticsearchAnalysisConfigurer;
-
-import io.quarkus.hibernate.search.orm.elasticsearch.SearchExtension;
 
 @SearchExtension
 public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {

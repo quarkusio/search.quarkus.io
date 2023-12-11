@@ -8,21 +8,24 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
+import io.quarkus.search.app.dto.GuideSearchHit;
+import io.quarkus.search.app.dto.SearchResult;
+import io.quarkus.search.app.testsupport.QuarkusIOSample;
+
+import io.quarkus.test.common.http.TestHTTPEndpoint;
+import io.quarkus.test.junit.QuarkusTest;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.quarkus.search.app.dto.GuideSearchHit;
-import io.quarkus.search.app.dto.SearchResult;
-import io.quarkus.search.app.testsupport.QuarkusIOSample;
-import io.quarkus.test.common.http.TestHTTPEndpoint;
-import io.quarkus.test.junit.QuarkusTest;
+import org.awaitility.Awaitility;
+
 import io.restassured.RestAssured;
 import io.restassured.common.mapper.TypeRef;
 import io.restassured.filter.log.LogDetail;
-import org.awaitility.Awaitility;
 
 @QuarkusTest
 @TestHTTPEndpoint(SearchService.class)

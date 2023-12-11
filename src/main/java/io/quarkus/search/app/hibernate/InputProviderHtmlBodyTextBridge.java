@@ -3,10 +3,11 @@ package io.quarkus.search.app.hibernate;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import io.quarkus.logging.Log;
+
 import org.hibernate.search.mapper.pojo.bridge.ValueBridge;
 import org.hibernate.search.mapper.pojo.bridge.runtime.ValueBridgeToIndexedValueContext;
 
-import io.quarkus.logging.Log;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 

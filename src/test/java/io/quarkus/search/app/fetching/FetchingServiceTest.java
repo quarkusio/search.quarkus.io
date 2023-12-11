@@ -11,24 +11,25 @@ import java.util.function.Consumer;
 
 import jakarta.inject.Inject;
 
-import org.apache.commons.io.file.PathUtils;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.api.SoftAssertions;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.revwalk.RevCommit;
+import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.hibernate.InputProvider;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.testsupport.GitTestUtils;
+import io.quarkus.search.app.util.CloseableDirectory;
+
+import io.quarkus.test.component.QuarkusComponentTestExtension;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.quarkus.search.app.entity.Guide;
-import io.quarkus.search.app.hibernate.InputProvider;
-import io.quarkus.search.app.quarkusio.QuarkusIO;
-import io.quarkus.search.app.testsupport.GitTestUtils;
-import io.quarkus.search.app.util.CloseableDirectory;
-import io.quarkus.test.component.QuarkusComponentTestExtension;
+import org.apache.commons.io.file.PathUtils;
+import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.api.SoftAssertions;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.revwalk.RevCommit;
 
 class FetchingServiceTest {
 
