@@ -2,13 +2,13 @@ package io.quarkus.search.app.hibernate;
 
 import java.net.URI;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.AbstractClassJavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
-
-import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * A Hibernate ORM {@link org.hibernate.type.descriptor.java.JavaType} for {@link URI}.

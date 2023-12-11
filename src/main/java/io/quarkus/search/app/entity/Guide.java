@@ -1,15 +1,18 @@
 package io.quarkus.search.app.entity;
 
-import io.quarkus.search.app.hibernate.InputProvider;
-import io.quarkus.search.app.hibernate.InputProviderHtmlBodyTextBridge;
-import io.quarkus.search.app.hibernate.URIType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-
 import java.net.URI;
 import java.util.Objects;
 import java.util.Set;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Transient;
+
+import io.quarkus.search.app.hibernate.AnalysisConfigurer;
+import io.quarkus.search.app.hibernate.InputProvider;
+import io.quarkus.search.app.hibernate.InputProviderHtmlBodyTextBridge;
+import io.quarkus.search.app.hibernate.URIType;
 
 import org.hibernate.Length;
 import org.hibernate.annotations.JavaType;
@@ -25,9 +28,6 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextFi
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexingDependency;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
-
-import io.quarkus.search.app.hibernate.AnalysisConfigurer;
-import jakarta.persistence.Transient;
 
 @Entity
 @Indexed

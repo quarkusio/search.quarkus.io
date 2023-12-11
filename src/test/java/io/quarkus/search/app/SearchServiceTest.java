@@ -12,9 +12,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.api.ThrowingConsumer;
-import org.awaitility.Awaitility;
+import io.quarkus.search.app.dto.GuideSearchHit;
+import io.quarkus.search.app.dto.SearchResult;
+import io.quarkus.search.app.testsupport.GuideRef;
+import io.quarkus.search.app.testsupport.QuarkusIOSample;
+
+import io.quarkus.test.common.http.TestHTTPEndpoint;
+import io.quarkus.test.junit.QuarkusTest;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,12 +27,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.quarkus.search.app.dto.GuideSearchHit;
-import io.quarkus.search.app.dto.SearchResult;
-import io.quarkus.search.app.testsupport.GuideRef;
-import io.quarkus.search.app.testsupport.QuarkusIOSample;
-import io.quarkus.test.common.http.TestHTTPEndpoint;
-import io.quarkus.test.junit.QuarkusTest;
+import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.api.ThrowingConsumer;
+import org.awaitility.Awaitility;
+
 import io.restassured.RestAssured;
 import io.restassured.common.mapper.TypeRef;
 import io.restassured.filter.log.LogDetail;

@@ -19,15 +19,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.hibernate.search.util.common.impl.Closer;
-
+import io.quarkus.search.app.QuarkusVersions;
+import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
 import io.quarkus.search.app.util.GitUtils;
 import io.quarkus.search.app.util.UrlInputProvider;
 
-import io.quarkus.search.app.QuarkusVersions;
-import io.quarkus.search.app.entity.Guide;
+import org.hibernate.search.util.common.impl.Closer;
+
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.yaml.snakeyaml.Yaml;

@@ -10,8 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import io.quarkus.logging.Log;
 import io.quarkus.search.app.hibernate.InputProvider;
+
+import io.quarkus.logging.Log;
 
 public class UrlInputProvider implements InputProvider {
 

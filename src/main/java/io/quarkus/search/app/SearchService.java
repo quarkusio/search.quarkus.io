@@ -11,18 +11,17 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import org.eclipse.microprofile.openapi.annotations.Operation;
+import io.quarkus.search.app.dto.GuideSearchHit;
+import io.quarkus.search.app.dto.SearchResult;
+import io.quarkus.search.app.entity.Guide;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestQuery;
-
-import io.quarkus.search.app.dto.GuideSearchHit;
-import io.quarkus.search.app.dto.SearchResult;
-import io.quarkus.search.app.entity.Guide;
 
 @ApplicationScoped
 @Path("/")

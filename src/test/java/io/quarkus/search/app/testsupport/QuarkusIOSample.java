@@ -24,18 +24,19 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.Repository;
+import io.quarkus.search.app.util.CloseableDirectory;
+import io.quarkus.search.app.util.FileUtils;
+
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
 
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 
-import io.quarkus.search.app.QuarkusVersions;
-import io.quarkus.search.app.util.CloseableDirectory;
-import io.quarkus.search.app.util.FileUtils;
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.yaml.snakeyaml.Yaml;
 
