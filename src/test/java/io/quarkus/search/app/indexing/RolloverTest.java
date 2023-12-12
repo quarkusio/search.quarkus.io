@@ -12,8 +12,12 @@ import java.util.stream.Collectors;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RestClient;
+import io.quarkus.search.app.entity.Guide;
+
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 
 import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.backend.elasticsearch.index.ElasticsearchIndexManager;
@@ -26,13 +30,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
-import com.google.gson.Gson;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.RestClient;
 
-import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.search.app.entity.Guide;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
+import com.google.gson.Gson;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

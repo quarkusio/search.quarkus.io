@@ -11,18 +11,17 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import org.eclipse.microprofile.openapi.annotations.Operation;
-
-import org.hibernate.Length;
-import org.hibernate.search.engine.search.common.BooleanOperator;
-import org.hibernate.search.engine.search.highlighter.dsl.HighlighterEncoder;
-import org.hibernate.search.mapper.orm.session.SearchSession;
-
-import org.jboss.resteasy.reactive.RestQuery;
-
 import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.entity.Guide;
+
+import org.hibernate.Length;
+import org.hibernate.search.engine.search.common.BooleanOperator;
+import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
+import org.hibernate.search.mapper.orm.session.SearchSession;
+
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.jboss.resteasy.reactive.RestQuery;
 
 @ApplicationScoped
 @Path("/")
@@ -69,7 +68,11 @@ public class SearchService {
                                 .field("summary_autocomplete").boost(0.5f)
                                 .field("fullContent_autocomplete").boost(0.1f)
                                 .matching(q)
+                                // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
+                                // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side:
+                                .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR)
                                 .defaultOperator(BooleanOperator.AND))
+                                .should(f.match().field("origin").matching("quarkus").boost(50.0f))
                                 .should(f.not(f.match().field("topics").matching("compatibility"))
                                         .boost(50.0f)));
                     }
@@ -81,8 +84,6 @@ public class SearchService {
                 .highlighter(
                         f -> f.unified().noMatchSize(Length.LONG).fragmentSize(0)
                                 .orderByScore(true)
-                                // just in case we have any "unsafe" content:
-                                .encoder(HighlighterEncoder.HTML)
                                 .numberOfFragments(1)
                                 .tag("<span class=\"" + highlightCssClass + "\">", "</span>")
                                 .boundaryScanner().sentence().end())

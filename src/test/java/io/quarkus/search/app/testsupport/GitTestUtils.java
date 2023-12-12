@@ -3,7 +3,6 @@ package io.quarkus.search.app.testsupport;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.util.SystemReader;
-
 import org.jboss.logging.Logger;
 
 public final class GitTestUtils {

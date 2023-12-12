@@ -5,22 +5,23 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 
-import io.quarkus.search.app.quarkusio.QuarkusIO;
-import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
+import io.quarkus.search.app.util.CloseableDirectory;
+import io.quarkus.search.app.util.FileUtils;
+
+import io.quarkus.logging.Log;
+import io.quarkus.runtime.LaunchMode;
+
+import org.hibernate.search.util.common.impl.SuppressingCloser;
 
 import org.apache.commons.io.function.IOBiFunction;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.TextProgressMonitor;
-
-import org.hibernate.search.util.common.impl.SuppressingCloser;
-
-import io.quarkus.logging.Log;
-import io.quarkus.runtime.LaunchMode;
-import io.quarkus.search.app.util.CloseableDirectory;
-import io.quarkus.search.app.util.FileUtils;
 
 @ApplicationScoped
 public class FetchingService {

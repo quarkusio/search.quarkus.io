@@ -1,6 +1,9 @@
 package io.quarkus.search.app.testsupport;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -8,27 +11,34 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.Repository;
+import io.quarkus.search.app.util.CloseableDirectory;
+import io.quarkus.search.app.util.FileUtils;
+
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
 
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 
-import io.quarkus.search.app.QuarkusVersions;
-import io.quarkus.search.app.util.CloseableDirectory;
-import io.quarkus.search.app.util.FileUtils;
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * Helper to create a simulated quarkus.io repository to use for fetching in test/dev mode.
@@ -121,6 +131,10 @@ public final class QuarkusIOSample {
                         copyRootPath, copyGit,
                         collector.sourceCopyPathToOriginalPath);
 
+                editIfNecessary(quarkusIoLocalPath,
+                        copyRootPath, copyGit,
+                        collector.yamlQuarkusFilesToFilter);
+
             }
         } catch (RuntimeException | IOException | GitAPIException e) {
             throw new IllegalStateException(
@@ -155,6 +169,89 @@ public final class QuarkusIOSample {
                 .call();
     }
 
+    private static void editIfNecessary(Path quarkusIoLocalPath, Path copyRootPath, Git copyGit,
+            Map<String, Consumer<Path>> yamlQuarkusFilesToFilter)
+            throws IOException, GitAPIException {
+        if (yamlQuarkusFilesToFilter.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Consumer<Path>> entry : yamlQuarkusFilesToFilter.entrySet()) {
+            entry.getValue().accept(copyRootPath.resolve(entry.getKey()));
+        }
+
+        copyGit.add().addFilepattern(".").call();
+        copyGit.commit().setMessage("""
+                Edit Quarkus metadata yaml files %s
+
+                Edited:%s"""
+                .formatted(
+                        quarkusIoLocalPath,
+                        yamlQuarkusFilesToFilter.values().stream()
+                                .map(Object::toString)
+                                .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
+                .call();
+    }
+
+    private static void yamlQuarkusEditor(Path fileToEdit, GuideRef[] refs) {
+        yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
+            Set<String> guideRefs = Arrays.stream(refs).map(GuideRef::name).collect(Collectors.toSet());
+
+            Map<String, Object> filtered = new HashMap<>();
+            Map<String, List<Object>> guides = new HashMap<>();
+            filtered.put("categories", quarkusYaml.get("categories"));
+            filtered.put("types", guides);
+            for (Map.Entry<String, List<Map<String, Object>>> entry : ((Map<String, List<Map<String, Object>>>) quarkusYaml
+                    .get("types")).entrySet()) {
+                for (Map<String, Object> guide : entry.getValue()) {
+                    if (guideRefs.contains(guide.get("url"))) {
+                        guides.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
+                                .add(guide);
+                    }
+                }
+            }
+            return filtered;
+        });
+    }
+
+    private static void yamlQuarkiverseEditor(Path fileToEdit) {
+        yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
+            Set<String> guideRefs = Arrays.stream(GuideRef.quarkiverse()).map(GuideRef::name).collect(Collectors.toSet());
+
+            Map<String, Object> filtered = new HashMap<>();
+            Map<String, List<Object>> guides = new HashMap<>();
+            filtered.put("types", guides);
+            for (Map.Entry<String, List<Map<String, Object>>> entry : ((Map<String, List<Map<String, Object>>>) quarkusYaml
+                    .get("types")).entrySet()) {
+                for (Map<String, Object> guide : entry.getValue()) {
+                    if (guideRefs.contains(guide.get("url"))) {
+                        guides.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
+                                .add(guide);
+                    }
+                }
+            }
+            return filtered;
+        });
+    }
+
+    private static void yamlQuarkusEditor(Path fileToEdit, Function<Map<String, Object>, Map<String, Object>> editor) {
+        Map<String, Object> filtered;
+        try (InputStream inputStream = Files.newInputStream(fileToEdit)) {
+            Yaml yaml = new Yaml();
+            Map<String, Object> quarkusYaml = yaml.load(inputStream);
+            filtered = editor.apply(quarkusYaml);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to load " + fileToEdit, e);
+        }
+
+        try (OutputStream outputStream = Files.newOutputStream(fileToEdit);
+                OutputStreamWriter writer = new OutputStreamWriter(outputStream)) {
+            Yaml yaml = new Yaml();
+            yaml.dump(filtered, writer);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to save " + fileToEdit, e);
+        }
+    }
+
     public abstract static class FilterDefinition {
         private final String name;
 
@@ -170,16 +267,65 @@ public final class QuarkusIOSample {
         public abstract void define(FilterDefinitionCollector c);
     }
 
-    public static class AllFilterDefinition extends FilterDefinition {
+    public static class AllFilterDefinition extends AbstractGuideRefSetFilterDefinition {
         public AllFilterDefinition() {
-            super("all");
+            super("all", GuideRef.local());
+        }
+    }
+
+    public static class SearchServiceFilterDefinition extends AbstractGuideRefSetFilterDefinition {
+        private static final GuideRef[] GUIDES = new GuideRef[] {
+                GuideRef.HIBERNATE_ORM,
+                GuideRef.HIBERNATE_ORM_PANACHE,
+                GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                GuideRef.HIBERNATE_REACTIVE,
+                GuideRef.HIBERNATE_REACTIVE_PANACHE,
+                GuideRef.SPRING_DATA_JPA,
+                GuideRef.DUPLICATED_CONTEXT,
+                GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
+                GuideRef.STORK_REFERENCE
+        };
+
+        public static GuideRef[] guides() {
+            return GUIDES;
+        }
+
+        public SearchServiceFilterDefinition() {
+            super("search-service-subset", GUIDES);
+        }
+    }
+
+    public static class SearchServiceSynonymsFilterDefinition extends AbstractGuideRefSetFilterDefinition {
+        private static final GuideRef[] GUIDES = new GuideRef[] {
+                GuideRef.RESTEASY_REACTIVE_REFERENCE,
+                GuideRef.VERTX_REFERENCE,
+                GuideRef.DEV_SERVICES_REFERENCE
+        };
+
+        public static GuideRef[] guides() {
+            return GUIDES;
+        }
+
+        public SearchServiceSynonymsFilterDefinition() {
+            super("search-service-synonyms-subset", GUIDES);
+        }
+    }
+
+    private static abstract class AbstractGuideRefSetFilterDefinition extends FilterDefinition {
+        private final GuideRef[] guides;
+
+        protected AbstractGuideRefSetFilterDefinition(String name, GuideRef... guides) {
+            super(name);
+            this.guides = guides;
         }
 
         @Override
         public void define(FilterDefinitionCollector c) {
-            c.addMetadata(QuarkusVersions.LATEST);
-            c.addMetadata(SAMPLED_NON_LATEST_VERSION);
-            for (GuideRef guideRef : GuideRef.all()) {
+            c.addMetadata(QuarkusVersions.LATEST, guides);
+            c.addMetadata(SAMPLED_NON_LATEST_VERSION, guides);
+            c.addQuarkiverseMetadata(SAMPLED_NON_LATEST_VERSION);
+            for (GuideRef guideRef : guides) {
                 c.addGuide(guideRef);
                 c.addGuide(guideRef, SAMPLED_NON_LATEST_VERSION);
             }
@@ -189,6 +335,7 @@ public final class QuarkusIOSample {
     public static class FilterDefinitionCollector {
         private final Map<String, String> sourceCopyPathToOriginalPath = new LinkedHashMap<>();
         private final Map<String, String> pagesCopyPathToOriginalPath = new LinkedHashMap<>();
+        private final Map<String, Consumer<Path>> yamlQuarkusFilesToFilter = new LinkedHashMap<>();
 
         FilterDefinitionCollector() {
         }
@@ -198,16 +345,23 @@ public final class QuarkusIOSample {
         }
 
         public FilterDefinitionCollector addGuide(GuideRef ref, String version) {
-            String asciidocPath = QuarkusIO.asciidocPath(version, ref.name());
-            addOnSourceBranch(asciidocPath, asciidocPath);
             String htmlPath = QuarkusIO.htmlPath(version, ref.name());
+            htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
         }
 
-        public FilterDefinitionCollector addMetadata(String version) {
+        public FilterDefinitionCollector addMetadata(String version, GuideRef[] guides) {
             String metadataPath = QuarkusIO.yamlMetadataPath(version).toString();
             addOnSourceBranch(metadataPath, metadataPath);
+            addMetadataToFilter(metadataPath, path -> yamlQuarkusEditor(path, guides));
+            return this;
+        }
+
+        public FilterDefinitionCollector addQuarkiverseMetadata(String version) {
+            String metadataPath = QuarkusIO.yamlQuarkiverseMetadataPath(version).toString();
+            addOnSourceBranch(metadataPath, metadataPath);
+            addMetadataToFilter(metadataPath, QuarkusIOSample::yamlQuarkiverseEditor);
             return this;
         }
 
@@ -217,6 +371,12 @@ public final class QuarkusIOSample {
 
         public void addOnPagesBranch(String originalPath, String copyPath) {
             add("pages", pagesCopyPathToOriginalPath, originalPath, copyPath);
+        }
+
+        public void addMetadataToFilter(String editPath, Consumer<Path> editor) {
+            if (yamlQuarkusFilesToFilter.put(editPath, editor) != null) {
+                throw new IllegalArgumentException("Editing the same file %s multiple times".formatted(editPath));
+            }
         }
 
         private static void add(String branch, Map<String, String> copyPathToOriginalPath,

@@ -12,9 +12,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.api.ThrowingConsumer;
-import org.awaitility.Awaitility;
+import io.quarkus.search.app.dto.GuideSearchHit;
+import io.quarkus.search.app.dto.SearchResult;
+import io.quarkus.search.app.testsupport.GuideRef;
+import io.quarkus.search.app.testsupport.QuarkusIOSample;
+
+import io.quarkus.test.common.http.TestHTTPEndpoint;
+import io.quarkus.test.junit.QuarkusTest;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,12 +27,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.quarkus.search.app.dto.GuideSearchHit;
-import io.quarkus.search.app.dto.SearchResult;
-import io.quarkus.search.app.testsupport.GuideRef;
-import io.quarkus.search.app.testsupport.QuarkusIOSample;
-import io.quarkus.test.common.http.TestHTTPEndpoint;
-import io.quarkus.test.junit.QuarkusTest;
+import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.api.ThrowingConsumer;
+import org.awaitility.Awaitility;
+
 import io.restassured.RestAssured;
 import io.restassured.common.mapper.TypeRef;
 import io.restassured.filter.log.LogDetail;
@@ -36,7 +38,7 @@ import io.restassured.filter.log.LogDetail;
 @QuarkusTest
 @TestHTTPEndpoint(SearchService.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@QuarkusIOSample.Setup
+@QuarkusIOSample.Setup(filter = QuarkusIOSample.SearchServiceFilterDefinition.class)
 class SearchServiceTest {
     private static final TypeRef<SearchResult<GuideSearchHit>> SEARCH_RESULT_SEARCH_HITS = new TypeRef<>() {
     };
@@ -132,7 +134,7 @@ class SearchServiceTest {
     void queryEmptyString() {
         var result = search("");
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.all()));
+                .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
         assertThat(result.total()).isEqualTo(10);
     }
 
@@ -143,7 +145,7 @@ class SearchServiceTest {
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.all()));
+                .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
         assertThat(result.total()).isEqualTo(10);
     }
 
@@ -167,9 +169,9 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
-                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("reactive", GuideRef.urls(
                         GuideRef.HIBERNATE_REACTIVE,
@@ -183,8 +185,8 @@ class SearchServiceTest {
                 Arguments.of("hiber", GuideRef.urls(
                         // TODO Hibernate Reactive/Search should be after ORM...
                         // TODO Shouldn't the ORM guide be before Panache?
-                        GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                        GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
@@ -235,7 +237,10 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .startsWith("https://quarkus.io/version/" + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"));
+                        .satisfiesAnyOf(
+                                uri -> assertThat(uri).startsWith("https://quarkus.io/version/"
+                                        + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"),
+                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
@@ -247,7 +252,25 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .startsWith("https://quarkus.io/version/main/guides/"));
+                        .satisfiesAnyOf(
+                                uri -> assertThat(uri).startsWith("https://quarkus.io/version/main/guides/"),
+                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
+    }
+
+    @Test
+    void quarkiverse() {
+        var result = given()
+                .queryParam("q", "amazon")
+                .queryParam("version", QuarkusIOSample.SAMPLED_NON_LATEST_VERSION)
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::url)
+                .satisfiesOnlyOnce(uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.name()))
+                .satisfiesOnlyOnce(
+                        uri -> assertThat(uri).asString().contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.name()));
+        assertThat(result.total()).isEqualTo(2);
     }
 
     @Test
