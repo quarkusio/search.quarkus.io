@@ -9,11 +9,17 @@ import io.smallrye.config.WithDefault;
 interface IndexingConfig {
     OnStartup onStartup();
 
+    Scheduled scheduled();
+
     interface OnStartup {
         @WithDefault("true")
         boolean enabled();
 
         @WithDefault("3s")
         Duration waitInterval();
+    }
+
+    interface Scheduled {
+        String cron();
     }
 }
