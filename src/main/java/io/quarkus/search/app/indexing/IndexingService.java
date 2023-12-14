@@ -15,6 +15,7 @@ import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.runtime.StartupEvent;
+import io.quarkus.scheduler.Scheduled;
 import io.quarkus.vertx.http.ManagementInterface;
 
 import org.hibernate.Session;
@@ -84,6 +85,19 @@ public class IndexingService {
                         ignored -> {
                         },
                         t -> Log.errorf(t, "Reindexing on startup failed: %s", t.getMessage()));
+    }
+
+    @Scheduled(cron = "{indexing.scheduled.cron}")
+    void indexOnTime() {
+        try {
+            Log.infof("Scheduled reindex starting...");
+            reindex();
+            Log.infof("Scheduled reindex finished.");
+        } catch (ReindexingAlreadyInProgressException e) {
+            Log.infof("Indexing was already started by some other process.");
+        } catch (Exception e) {
+            Log.errorf(e, "Failed to start scheduled reindex: %s", e.getMessage());
+        }
     }
 
     private boolean isSearchBackendAccessible() {
