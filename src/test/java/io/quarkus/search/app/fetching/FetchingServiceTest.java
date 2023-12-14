@@ -16,6 +16,7 @@ import jakarta.inject.Inject;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.hibernate.InputProvider;
+import io.quarkus.search.app.indexing.FailureCollector;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.testsupport.GitTestUtils;
 import io.quarkus.search.app.util.CloseableDirectory;
@@ -162,7 +163,7 @@ class FetchingServiceTest {
 
     @Test
     void fetchQuarkusIo() throws Exception {
-        try (QuarkusIO quarkusIO = service.fetchQuarkusIo()) {
+        try (QuarkusIO quarkusIO = service.fetchQuarkusIo(new FailureCollector())) {
             try (var guides = quarkusIO.guides()) {
                 assertThat(guides)
                         .hasSize(10)

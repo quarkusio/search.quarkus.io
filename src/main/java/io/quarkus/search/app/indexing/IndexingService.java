@@ -119,9 +119,11 @@ public class IndexingService {
         if (!reindexingInProgress.compareAndSet(false, true)) {
             throw new ReindexingAlreadyInProgressException();
         }
-        try {
-            createIndexes();
-            indexAll();
+        try (FailureCollector failureCollector = new FailureCollector(indexingConfig.errorReporting())) {
+            createIndexes(failureCollector);
+            indexAll(failureCollector);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to report indexing failures: " + e.getMessage(), e);
         } finally {
             reindexingInProgress.set(false);
         }
@@ -133,12 +135,14 @@ public class IndexingService {
         }
     }
 
-    private void createIndexes() {
+    private void createIndexes(FailureCollector failureCollector) {
         try {
             Log.info("Creating missing indexes");
             searchMapping.scope(Object.class).schemaManager().createIfMissing();
         } catch (RuntimeException e) {
-            Log.error("Creating missing indexes failed; will attempt to recover mismatched aliases...", e);
+            String message = "Creating missing indexes failed; will attempt to recover mismatched aliases... " + e.getMessage();
+            failureCollector.critical(FailureCollector.Stage.INDEXING, message);
+            Log.error(message, e);
             // This may happen if aliases were left in a stale state by a previous pod
             // that failed to get ready in time, but is potentially still indexing.
             // Ideally we'd just tell Kubernetes that a previous failed pod
@@ -163,14 +167,13 @@ public class IndexingService {
         }
     }
 
-    private void indexAll() {
+    private void indexAll(FailureCollector failureCollector) {
         Log.info("Indexing...");
         try (Rollover rollover = Rollover.start(searchMapping);
                 Closer<IOException> closer = new Closer<>()) {
             // Reset the database before we start
             clearDatabaseWithoutIndexes();
-
-            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo()) {
+            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector)) {
                 indexQuarkusIo(quarkusIO);
             }
 
@@ -187,7 +190,9 @@ public class IndexingService {
             rollover.commit();
             Log.info("Indexing success");
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
+            String message = "Failed to index data: " + e.getMessage();
+            failureCollector.critical(FailureCollector.Stage.INDEXING, message);
+            throw new IllegalStateException(message, e);
         }
     }
 
