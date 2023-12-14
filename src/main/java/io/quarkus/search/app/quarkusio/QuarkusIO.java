@@ -25,12 +25,11 @@ import java.util.stream.Stream;
 import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
+import io.quarkus.search.app.indexing.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
 import io.quarkus.search.app.util.UrlInputProvider;
-
-import io.quarkus.logging.Log;
 
 import org.hibernate.search.util.common.impl.Closer;
 
@@ -86,14 +85,16 @@ public class QuarkusIO implements AutoCloseable {
     private final Map<Language, GitCloneDirectory> localizedSites;
     private final Map<Language, URI> localizedSiteUris;
     private final CloseableDirectory prefetchedQuarkiverseGuides = CloseableDirectory.temp("quarkiverse-guides-");
+    private final FailureCollector failureCollector;
 
     public QuarkusIO(QuarkusIOConfig config, GitCloneDirectory mainRepository,
-            Map<Language, GitCloneDirectory> localizedSites) throws IOException {
+            Map<Language, GitCloneDirectory> localizedSites, FailureCollector failureCollector) throws IOException {
         this.webUri = config.webUri();
         this.mainRepository = mainRepository;
         this.localizedSites = Collections.unmodifiableMap(localizedSites);
         this.localizedSiteUris = localizedSites.entrySet().stream().collect(
                 Collectors.toUnmodifiableMap(Map.Entry::getKey, e -> config.localized().get(e.getKey().code).webUri()));
+        this.failureCollector = failureCollector;
     }
 
     @Override
@@ -241,7 +242,9 @@ public class QuarkusIO implements AutoCloseable {
             } catch (IOException e) {
                 // it may be that not all localized sites are up-to-date, in that case we just assume that the translation is not there
                 // and the non-translated english text will be used.
-                Log.error("Unable to parse a translation file " + path + " : " + e.getMessage(), e);
+                failureCollector.warning(FailureCollector.Stage.TRANSLATION,
+                        "Unable to parse a translation file " + path + " : " + e.getMessage());
+
                 messages = new Catalog();
             }
             map.put(language, messages);
@@ -275,8 +278,9 @@ public class QuarkusIO implements AutoCloseable {
                         if (!gitInputProvider.isFileAvailable()) {
                             // if  a file is not present we do not want to add such guide. Since if the html is not there
                             // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
-                            Log.warn("Guide " + translated
-                                    + " is ignored since we were not able to find an HTML content file for it.");
+                            failureCollector.warning(FailureCollector.Stage.TRANSLATION,
+                                    "Guide " + translated
+                                            + " is ignored since we were not able to find an HTML content file for it.");
                             return null;
                         }
                         translated.htmlFullContentProvider = gitInputProvider;
@@ -324,7 +328,10 @@ public class QuarkusIO implements AutoCloseable {
                         url.getQuery() + "&language=" + language.code, url.getFragment());
             }
         } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Cannot create a localized version of the URL: " + url, e);
+            throw new IllegalArgumentException(
+                    "Cannot create a localized version of the URL (%s). It is expected to have a correctly formatted URL at this point to a Quarkiverse guide (i.e. http://smth.smth/smth) : %s"
+                            .formatted(url, e.getMessage()),
+                    e);
         }
     }
 
@@ -347,7 +354,7 @@ public class QuarkusIO implements AutoCloseable {
             Yaml yaml = new Yaml();
             quarkusYaml = yaml.load(inputStream);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to load " + quarkusYamlPath, e);
+            throw new IllegalStateException("Unable to load %s: %s".formatted(quarkusYamlPath, e.getMessage()), e);
         }
 
         return parser.apply(quarkusYaml);
@@ -367,7 +374,7 @@ public class QuarkusIO implements AutoCloseable {
         if (parsedUrl.startsWith("http")) {
             // we are looking at a quarkiverse guide:
             uri = httpUrl(version, parsedUrl);
-            guide.htmlFullContentProvider = new UrlInputProvider(prefetchedQuarkiverseGuides, uri);
+            guide.htmlFullContentProvider = new UrlInputProvider(prefetchedQuarkiverseGuides, uri, failureCollector);
 
             if (guide.origin == null) {
                 guide.origin = QUARKIVERSE_ORIGIN;

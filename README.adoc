@@ -58,6 +58,17 @@ you should also add this property:
 _DEV_QUARKUSIO_WEB_URI=http://localhost:4000
 ----
 
+By default, in dev mode, any parsing/indexing warnings and errors are going to be simply logged.
+But in case you want to get index errors reported to a GitHub issue, next properties should be added:
+[source,properties]
+----
+# see about tokens https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+INDEXING_ERROR_REPORTING_GITHUB_TOKEN={your-generated-github-token}
+INDEXING_ERROR_REPORTING_GITHUB_ISSUE_REPOSITORY={your-github-user}/search.quarkus.io
+INDEXING_ERROR_REPORTING_GITHUB_ISSUE_ID={github-issue-id-in-your-repository}
+INDEXING_ERROR_REPORTING_TYPE=github-issue
+----
+
 [[testing]]
 == Testing
 
@@ -141,6 +152,9 @@ you will need to set up a few things manually:
   `search-quarkus-io-config`::
     Environment variables for the application.
     Put in there whatever configuration you need for your specific cluster.
+    Besides that, configure a `GITHUB_OAUTH` environment variable and set it to
+    a GitHub token that allows commenting/reopening/closing a GitHub issue.
+    See `indexing.error-reporting.github-issue` configuration properties for more details.
   `search-quarkus-io-secret`::
     Secret environment variables for the application.
     Put in there whatever secret configuration you need for your specific cluster.

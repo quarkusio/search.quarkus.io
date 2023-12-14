@@ -59,6 +59,11 @@
         <version>3.0.6</version>
       </dependency>
       <dependency>
+        <groupId>io.quarkiverse.githubapi</groupId>
+        <artifactId>quarkus-github-api</artifactId>
+        <version>1.318.0</version>
+      </dependency>
+      <dependency>
         <groupId>org.commonmark</groupId>
         <artifactId>commonmark</artifactId>
         <version>0.21.0</version>
@@ -113,10 +118,6 @@
       <artifactId>quarkus-resteasy-reactive-jackson</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.quarkiverse.jgit</groupId>
-      <artifactId>quarkus-jgit</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-hibernate-search-orm-elasticsearch</artifactId>
     </dependency>
@@ -135,6 +136,14 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-scheduler</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkiverse.jgit</groupId>
+      <artifactId>quarkus-jgit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkiverse.githubapi</groupId>
+      <artifactId>quarkus-github-api</artifactId>
     </dependency>
     <dependency>
       <groupId>org.jsoup</groupId>
