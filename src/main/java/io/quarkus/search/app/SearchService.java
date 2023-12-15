@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.MediaType;
 import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.entity.Language;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
@@ -40,17 +41,27 @@ public class SearchService {
     public SearchResult<GuideSearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
             @RestQuery List<String> categories,
             @RestQuery String q,
+            @RestQuery @DefaultValue("en") Language language,
             @RestQuery @DefaultValue("highlighted") String highlightCssClass,
             @RestQuery @DefaultValue("0") int page,
             @RestQuery @DefaultValue("1") int contentSnippets,
             @RestQuery @DefaultValue("100") int contentSnippetsLength) {
         var result = session.search(Guide.class)
-                .select(GuideSearchHit.class)
+                .select(f -> f.composite().from(
+                        f.id(),
+                        f.field("type"),
+                        f.field("origin"),
+                        f.highlight(localizedField("title", language)),
+                        f.highlight(localizedField("summary", language)),
+                        f.highlight(localizedField("fullContent", language)).highlighter("highlighter_content"))
+                        .asList(GuideSearchHit::new))
                 .where((f, root) -> {
                     // Match all documents by default
                     root.add(f.matchAll());
 
                     root.add(f.match().field("version").matching(version));
+
+                    root.add(f.match().field("language").matching(language));
 
                     if (categories != null && !categories.isEmpty()) {
                         root.add(f.terms().field("categories").matchingAny(categories));
@@ -58,22 +69,22 @@ public class SearchService {
 
                     if (q != null && !q.isBlank()) {
                         root.add(f.bool().must(f.simpleQueryString()
-                                .field("title").boost(10.0f)
-                                .field("topics").boost(10.0f)
-                                .field("keywords").boost(10.0f)
-                                .field("summary").boost(5.0f)
-                                .field("fullContent")
-                                .field("keywords_autocomplete").boost(1.0f)
-                                .field("title_autocomplete").boost(1.0f)
-                                .field("summary_autocomplete").boost(0.5f)
-                                .field("fullContent_autocomplete").boost(0.1f)
+                                .field(localizedField("title", language)).boost(10.0f)
+                                .field(localizedField("topics", language)).boost(10.0f)
+                                .field(localizedField("keywords", language)).boost(10.0f)
+                                .field(localizedField("summary", language)).boost(5.0f)
+                                .field(localizedField("fullContent", language))
+                                .field(localizedField("keywords_autocomplete", language)).boost(1.0f)
+                                .field(localizedField("title_autocomplete", language)).boost(1.0f)
+                                .field(localizedField("summary_autocomplete", language)).boost(0.5f)
+                                .field(localizedField("fullContent_autocomplete", language)).boost(0.1f)
                                 .matching(q)
                                 // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
                                 // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side:
                                 .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR)
                                 .defaultOperator(BooleanOperator.AND))
                                 .should(f.match().field("origin").matching("quarkus").boost(50.0f))
-                                .should(f.not(f.match().field("topics").matching("compatibility"))
+                                .should(f.not(f.match().field(localizedField("topics", language)).matching("compatibility"))
                                         .boost(50.0f)));
                     }
                 })
@@ -94,5 +105,9 @@ public class SearchService {
                 .sort(f -> f.score().then().field("title_sort"))
                 .fetch(page * PAGE_SIZE, PAGE_SIZE);
         return new SearchResult<>(result.total().hitCount(), result.hits());
+    }
+
+    private String localizedField(String field, Language language) {
+        return "%s_%s".formatted(field, language.code);
     }
 }

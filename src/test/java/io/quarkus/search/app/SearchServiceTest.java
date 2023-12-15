@@ -189,8 +189,8 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideRef.HIBERNATE_ORM,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("jpa", GuideRef.urls(
@@ -333,6 +333,35 @@ class SearchServiceTest {
                 .allSatisfy(content -> assertThat(content).hasSize(1)
                         .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
         assertThat(matches.get()).isEqualTo(8);
+    }
+
+    @Test
+    void language() {
+        var result = given()
+                .queryParam("q", "ガイド")
+                .queryParam("language", "ja")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::title)
+                .contains("Stork リファレンス<span class=\"highlighted\">ガイド</span>",
+                        "Hibernate Search <span class=\"highlighted\">ガイド</span>");
+    }
+
+    @Test
+    void quoteEmptyQuoteTitleTranslation() {
+        var result = given()
+                // this title has a blank string in a translation file for CN, so we want to look for it and make sure that we won't fail to retrieve the results:
+                .queryParam("q", "Duplicated context, context locals, asynchronous processing and propagation")
+                .queryParam("language", "cn")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::title)
+                .contains(
+                        "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
