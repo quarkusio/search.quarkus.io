@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quarkus Search Web-Component test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://quarkus.io/assets/css/main.css?2021-07-29" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css"
+        integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <script type="module" src="/api/web-components/search.js"></script>
+{#bundle tag="style"/}
+</head>
+
+<body>
+<div class="content">
+  <qs-form>
+    <section class="full-width-version-bg flexfilterbar">
+      <div class="flexcontainer">
+        <div class="flexlabel">
+          <label>By Version</label>
+        </div>
+        <div class="pulldown version">
+          <select id="guidesindex-version-dropdown" name="version">
+            <option value="main">Main - SNAPSHOT</option>
+            <option value="latest" selected="">3.5.1 - Latest</option>
+            <option value="3.2">3.2</option>
+            <option value="2.16">2.16</option>
+            <option value="2.13">2.13</option>
+            <option value="2.7">2.7</option>
+          </select>
+        </div>
+        <div class="flexlabel">
+          <label>By Category</label>
+        </div>
+        <div class="pulldown category">
+          <select id="guidesindex-category-dropdown" name="categories">
+            <option value="">All categories</option>
+            <option value="alt-languages">Alternative languages</option>
+            <option value="architecture">Architecture</option>
+            <option value="business-automation">Business Automation</option>
+            <option value="cloud">Cloud</option>
+            <option value="command-line">Command Line Applications</option>
+            <option value="compatibility">Compatibility</option>
+            <option value="contributing">Contributing</option>
+            <option value="core">Core</option>
+            <option value="data">Data</option>
+            <option value="getting-started">Getting Started</option>
+            <option value="integration">Integration</option>
+            <option value="messaging">Messaging</option>
+            <option value="miscellaneous">Miscellaneous</option>
+            <option value="native">Native</option>
+            <option value="observability">Observability</option>
+            <option value="security">Security</option>
+            <option value="serialization">Serialization</option>
+            <option value="tooling">Tooling</option>
+            <option value="web">Web</option>
+            <option value="writing-extensions">Writing Extensions</option>
+          </select>
+        </div>
+        <div class="search">
+          <input name="q" type="text" placeholder="Filter by keyword"/>
+        </div>
+      </div>
+    </section>
+  </qs-form>
+  <div><h1 class="title">Guides - Latest</h1></div>
+
+  <qs-target type="guide">
+    <div class="grid-wrapper guides">
+      <div class="grid__item width-12-12 docslist">
+        <div class="doclist-header">
+          <h3 id="tutorial">Tutorials</h3>
+          <p>Short and focused exercises to get you going quickly.</p>
+        </div>
+        <div class="grid-wrapper">
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/building-native-image">Building a Native Executable</a></h4>
+            <div class="description"><p>Build native executables with GraalVM or Mandrel.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">getting-started, native</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/telemetry-micrometer-tutorial">Collect metrics using Micrometer</a></h4>
+            <div class="description"><p>Create an application that uses the Micrometer metrics library to collect runtime,
+              extension and application metrics and expose them as a Prometheus (OpenMetrics) endpoint.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">observability</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/getting-started">Creating Your First Application</a></h4>
+            <div class="description"><p>Discover how to create your first Quarkus application.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">getting-started</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/doc-create-tutorial">Creating a tutorial</a></h4>
+            <div class="description"><p>Create a new tutorial that guides users through creating, running, and testing a Quarkus
+              application that uses annotations from an imaginary extension.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">contributing</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/getting-started-reactive">Getting Started With Reactive</a></h4>
+            <div class="description"><p>Learn more about developing reactive applications with Quarkus.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">getting-started</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/security-oidc-auth0-tutorial">Protect Quarkus web application by using an Auth0 OpenID Connect
+              provider</a></h4>
+            <div class="description"><p>Quarkus Security provides comprehensive OpenId Connect (OIDC) and OAuth2 support with
+              its quarkus-oidc extension, supporting both Authorization code flow and Bearer token authentication
+              mechanisms.</p>
+            </div>
+            <div class="keywords">oidc, sso, auth0</div>
+            <div class="categories">security, web</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/security-oidc-bearer-token-authentication-tutorial">Protect a service application by using
+              OpenID Connect (OIDC) Bearer token authentication</a></h4>
+            <div class="description"><p>Use the Quarkus OpenID Connect (OIDC) extension to secure a Jakarta REST application
+              with Bearer token authentication.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">security</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/security-oidc-code-flow-authentication-tutorial">Protect a web application by using OpenID
+              Connect (OIDC) authorization code flow</a></h4>
+            <div class="description"><p>With the Quarkus OpenID Connect (OIDC) extension, you can protect application HTTP
+              endpoints by using the OIDC Authorization Code Flow mechanism.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">security, web</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/ide-tooling">Quarkus Tools in your favorite IDE</a></h4>
+            <div class="description"><p>Learn more about Quarkus integrations in IDEs.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">getting-started</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/security-basic-authentication-tutorial">Secure a Quarkus application with Basic authentication
+              and Jakarta Persistence</a></h4>
+            <div class="description"><p>Secure your Quarkus application endpoints by combining the built-in Quarkus Basic
+              authentication with the Jakarta Persistence identity provider to enable role-based access control (RBAC).</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">getting-started, security</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/tooling">Using our Tooling</a></h4>
+            <div class="description"><p>Explore the Quarkus developer toolchain which makes Quarkus development so fast and
+              enjoyable.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">getting-started</div>
+          </div>
+
+
+          <div class="grid__item docs-card tutorialbkg">
+            <h4><a href="/guides/getting-started-dev-services">Your second Quarkus application</a></h4>
+            <div class="description"><p>Discover some of the features that make developing with Quarkus a joyful experience.</p>
+            </div>
+            <div class="keywords"></div>
+            <div class="categories">core, data, getting-started</div>
+          </div>
+
+
+        </div>
+      </div>
+  </qs-target>
+</div>
+</body>
+</html>

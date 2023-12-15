@@ -1,0 +1,4 @@
+qs-form::slotted(*) {
+    display: none;
+}
+
