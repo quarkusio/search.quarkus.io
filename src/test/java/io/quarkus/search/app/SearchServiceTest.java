@@ -26,6 +26,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.ThrowingConsumer;
@@ -147,6 +148,45 @@ class SearchServiceTest {
         assertThat(result.hits()).extracting(GuideSearchHit::url)
                 .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
         assertThat(result.total()).isEqualTo(10);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "https://quarkus.io",
+            "https://es.quarkus.io",
+            "https://cn.quarkus.io",
+            "https://ja.quarkus.io",
+            "https://pt.quarkus.io",
+            "https://quarkus-site-pr-1825-preview.surge.sh",
+            "https://quarkus-website-pr-1825-preview.surge.sh"
+    })
+    void cors_allowed(String origin) {
+        given()
+                .header("Origin", origin)
+                .queryParam("q", "foo")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .header("access-control-allow-origin", origin);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://localhost:8080/guides",
+            "https://localhost:8080/guides",
+            "https://example.com/guides",
+            "https://example.com/",
+            "https://my-quarkus.io",
+            "https://quarkus-site-pr-1825-preview-surge.sh",
+            "https://quarkus-website-pr-1825-preview-surge.sh"
+    })
+    void cors_denied(String origin) {
+        given()
+                .header("Origin", origin)
+                .queryParam("q", "foo")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(403);
     }
 
     @ParameterizedTest
