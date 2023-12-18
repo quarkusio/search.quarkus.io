@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -17,6 +19,7 @@ import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
+import io.quarkus.search.app.util.SimpleExecutor;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.LaunchMode;
@@ -33,28 +36,35 @@ public class FetchingService {
     private static final Logger log = Logger.getLogger(FetchingService.class);
 
     @Inject
+    FetchingConfig fetchingConfig;
+
+    @Inject
     QuarkusIOConfig quarkusIOConfig;
 
     public QuarkusIO fetchQuarkusIo() {
-        GitCloneDirectory main = null;
-        Map<Language, GitCloneDirectory> localized = new LinkedHashMap<>();
+        CompletableFuture<GitCloneDirectory> main = null;
+        Map<Language, CompletableFuture<GitCloneDirectory>> localized = new LinkedHashMap<>();
         try (CloseableDirectory unzipDir = LaunchMode.DEVELOPMENT.equals(LaunchMode.current())
                 ? CloseableDirectory.temp("quarkus.io-unzipped")
-                : null) {
-            main = fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(),
-                    QuarkusIO.SOURCE_BRANCH, QuarkusIO.PAGES_BRANCH, unzipDir);
+                : null;
+                SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
+            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(),
+                    QuarkusIO.SOURCE_BRANCH, QuarkusIO.PAGES_BRANCH, unzipDir));
             for (Map.Entry<Language, QuarkusIOConfig.SiteConfig> entry : sortMap(quarkusIOConfig.localized()).entrySet()) {
                 var language = entry.getKey();
                 var config = entry.getValue();
                 localized.put(language,
-                        fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(),
-                                QuarkusIO.LOCALIZED_SOURCE_BRANCH, QuarkusIO.LOCALIZED_PAGES_BRANCH, unzipDir));
+                        executor.submit(() -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(),
+                                QuarkusIO.LOCALIZED_SOURCE_BRANCH, QuarkusIO.LOCALIZED_PAGES_BRANCH, unzipDir)));
             }
-            return new QuarkusIO(quarkusIOConfig, main, localized);
+            executor.waitForSuccessOrThrow(fetchingConfig.timeout());
+            // If we get here, all tasks succeeded.
+            return new QuarkusIO(quarkusIOConfig, main.join(),
+                    localized.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().join())));
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e)
-                    .push(main)
-                    .pushAll(localized.values());
+                    .push(main, CompletableFuture::join)
+                    .pushAll(localized.values(), CompletableFuture::join);
             throw new IllegalStateException("Failed to fetch quarkus.io: " + e.getMessage(), e);
         }
     }
