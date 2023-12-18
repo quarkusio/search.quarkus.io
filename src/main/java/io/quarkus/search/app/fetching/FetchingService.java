@@ -26,10 +26,11 @@ import org.hibernate.search.util.common.impl.SuppressingCloser;
 import org.apache.commons.io.function.IOBiFunction;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.TextProgressMonitor;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class FetchingService {
+    private static final Logger log = Logger.getLogger(FetchingService.class);
 
     @Inject
     QuarkusIOConfig quarkusIOConfig;
@@ -106,7 +107,7 @@ public class FetchingService {
                     .setNoTags()
                     .setBranch(branches.get(0))
                     .setBranchesToClone(branches.stream().map(b -> "refs/heads/" + b).toList())
-                    .setProgressMonitor(new TextProgressMonitor())
+                    .setProgressMonitor(LoggerProgressMonitor.create(log, "Cloning " + name + ": "))
                     // Unfortunately sparse checkouts are not supported: https://www.eclipse.org/forums/index.php/t/1094825/
                     .call();
             return function.apply(git, directory);
