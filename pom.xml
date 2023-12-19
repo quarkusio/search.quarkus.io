@@ -35,6 +35,7 @@
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
     <version.docker.plugin>0.43.4</version.docker.plugin>
+    <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -188,6 +189,7 @@
           </execution>
         </executions>
         <configuration>
+          <jvmArgs>${test.jvm.args}</jvmArgs>
           <systemProperties>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
           </systemProperties>
@@ -206,6 +208,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire-plugin.version}</version>
         <configuration>
+          <argLine>${test.jvm.args}</argLine>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
