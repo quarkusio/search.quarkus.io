@@ -58,11 +58,13 @@ public class SimpleExecutor implements AutoCloseable {
         try {
             CompletableFuture.allOf(submittedSoFar.toArray(CompletableFuture<?>[]::new))
                     .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
+        } catch (ExecutionException e) {
             throw ExceptionUtils.toRuntimeException(e.getCause());
+        } catch (TimeoutException e) {
+            throw ExceptionUtils.toRuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw ExceptionUtils.toRuntimeException(e);
         }
     }
 }
