@@ -149,6 +149,7 @@ class FetchingServiceTest {
 
     @RegisterExtension
     static final QuarkusComponentTestExtension extension = QuarkusComponentTestExtension.builder()
+            .configProperty("fetching.timeout", "PT30s")
             .configProperty("quarkusio.git-uri", tmpDir.path().toString())
             .configProperty("quarkusio.localized.es.git-uri", localizedDirectories.get(Language.SPANISH).path().toString())
             .configProperty("quarkusio.localized.pt.git-uri", localizedDirectories.get(Language.PORTUGUESE).path().toString())
@@ -165,7 +166,7 @@ class FetchingServiceTest {
             try (var guides = quarkusIO.guides()) {
                 assertThat(guides)
                         .hasSize(10)
-                        .satisfiesExactly(
+                        .satisfiesExactlyInAnyOrder(
                                 isGuide("https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
                                         "Some title",
                                         "This is a summary",

@@ -1,8 +1,11 @@
 package io.quarkus.search.app.indexing;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.LongAdder;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
@@ -11,6 +14,7 @@ import jakarta.inject.Inject;
 
 import io.quarkus.search.app.fetching.FetchingService;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.util.SimpleExecutor;
 
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -33,8 +37,6 @@ import io.smallrye.mutiny.subscription.FixedDemandPacer;
 
 @ApplicationScoped
 public class IndexingService {
-    private static final int INDEXING_BATCH_SIZE = 50;
-
     @Inject
     SearchMapping searchMapping;
 
@@ -191,47 +193,42 @@ public class IndexingService {
 
     private void indexQuarkusIo(QuarkusIO quarkusIO) throws IOException {
         Log.info("Indexing quarkus.io...");
-        try (var guideStream = quarkusIO.guides()) {
-            batchIndex(guideStream.iterator());
+        try (var guideStream = quarkusIO.guides();
+                var executor = new SimpleExecutor(indexingConfig.parallelism())) {
+            indexAll(executor, guideStream.iterator());
         }
     }
 
-    private <T> void batchIndex(Iterator<T> docIterator) {
-        QuarkusTransaction.begin();
-        Throwable failure = null;
-        int i = 0;
-        try {
-            while (docIterator.hasNext()) {
-                T doc = docIterator.next();
+    private <T> void indexAll(SimpleExecutor executor, Iterator<T> docIterator) {
+        LongAdder indexedCount = new LongAdder();
+        while (docIterator.hasNext()) {
+            List<T> docs = new ArrayList<>();
+            for (int i = 0; docIterator.hasNext() && i < indexingConfig.batchSize(); i++) {
+                docs.add(docIterator.next());
+            }
+            executor.submit(() -> {
+                indexBatch(docs);
+                indexedCount.add(docs.size());
+                // This might lead to duplicate logs, but we don't care.
+                Log.infof("Indexed %d documents...", indexedCount.longValue());
+            });
+        }
+        executor.waitForSuccessOrThrow(indexingConfig.timeout());
+        Log.infof("Indexed %d documents.", indexedCount.longValue());
+    }
+
+    @ActivateRequestContext
+    <T> void indexBatch(List<T> docs) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            for (T doc : docs) {
                 try {
                     Log.tracef("About to persist: %s", doc);
                     session.persist(doc);
                 } catch (Exception e) {
                     throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
                 }
-
-                ++i;
-                if (i % INDEXING_BATCH_SIZE == 0) {
-                    QuarkusTransaction.commit();
-                    Log.infof("Indexed %d documents...", i);
-                    QuarkusTransaction.begin();
-                }
             }
-        } catch (Throwable t) {
-            failure = t;
-            throw t;
-        } finally {
-            if (failure == null) {
-                QuarkusTransaction.commit();
-                Log.infof("Indexed %d documents.", i);
-            } else {
-                try {
-                    QuarkusTransaction.rollback();
-                } catch (Throwable t) {
-                    failure.addSuppressed(t);
-                }
-            }
-        }
+        });
     }
 
     private void clearDatabaseWithoutIndexes() {
