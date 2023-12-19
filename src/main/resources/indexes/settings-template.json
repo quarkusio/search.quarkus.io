@@ -2,5 +2,6 @@
   "auto_expand_replicas": "0-all",
   "highlight": {
     "max_analyzed_offset": 5000000
-  }
+  },
+  "number_of_shards": 32
 }

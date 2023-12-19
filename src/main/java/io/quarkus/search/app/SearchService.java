@@ -15,6 +15,7 @@ import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
+import io.quarkus.search.app.entity.VersionAndLanguageRoutingBinder;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
@@ -59,10 +60,6 @@ public class SearchService {
                     // Match all documents by default
                     root.add(f.matchAll());
 
-                    root.add(f.match().field("version").matching(version));
-
-                    root.add(f.match().field("language").matching(language));
-
                     if (categories != null && !categories.isEmpty()) {
                         root.add(f.terms().field("categories").matchingAny(categories));
                     }
@@ -103,6 +100,7 @@ public class SearchService {
                 .highlighter("highlighter_content",
                         f -> f.unified().noMatchSize(0).numberOfFragments(contentSnippets).fragmentSize(contentSnippetsLength))
                 .sort(f -> f.score().then().field("title_sort"))
+                .routing(VersionAndLanguageRoutingBinder.key(version, language))
                 .fetch(page * PAGE_SIZE, PAGE_SIZE);
         return new SearchResult<>(result.total().hitCount(), result.hits());
     }

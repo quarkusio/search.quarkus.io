@@ -29,13 +29,14 @@ import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.engine.backend.types.TermVector;
 import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
 import org.hibernate.search.mapper.pojo.bridge.builtin.annotation.AlternativeDiscriminator;
+import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.RoutingBinderRef;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.ValueBridgeRef;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexingDependency;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 
 @Entity
-@Indexed
+@Indexed(routingBinder = @RoutingBinderRef(type = VersionAndLanguageRoutingBinder.class))
 public class Guide {
     @Id
     @JavaType(URIType.class)
@@ -43,10 +44,8 @@ public class Guide {
 
     @AlternativeDiscriminator
     @Enumerated(EnumType.STRING)
-    @KeywordField
     public Language language;
 
-    @KeywordField
     public String version;
 
     @KeywordField
