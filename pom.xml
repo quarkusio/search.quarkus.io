@@ -28,12 +28,14 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.6.1</quarkus.version>
+    <quarkus.version>3.6.3</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
-    <surefire-plugin.version>3.2.2</surefire-plugin.version>
+    <surefire-plugin.version>3.2.3</surefire-plugin.version>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
+    <version.docker.plugin>0.43.4</version.docker.plugin>
+    <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -65,6 +67,11 @@
         <groupId>org.jsoup</groupId>
         <artifactId>jsoup</artifactId>
         <version>1.17.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.fedorahosted.tennera</groupId>
+        <artifactId>jgettext</artifactId>
+        <version>0.15.1</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -126,12 +133,20 @@
       <artifactId>quarkus-container-image-jib</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-scheduler</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.jsoup</groupId>
       <artifactId>jsoup</artifactId>
     </dependency>
     <dependency>
       <groupId>org.commonmark</groupId>
       <artifactId>commonmark</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.fedorahosted.tennera</groupId>
+      <artifactId>jgettext</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -174,6 +189,7 @@
           </execution>
         </executions>
         <configuration>
+          <jvmArgs>${test.jvm.args}</jvmArgs>
           <systemProperties>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
           </systemProperties>
@@ -192,6 +208,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire-plugin.version}</version>
         <configuration>
+          <argLine>${test.jvm.args}</argLine>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
@@ -257,6 +274,33 @@
               <goal>sort</goal>
             </goals>
             <phase>process-sources</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>${version.docker.plugin}</version>
+        <configuration>
+          <images>
+            <image>
+              <name>opensearch-custom-plugin</name>
+              <build>
+                <dockerFile>${project.basedir}/Dockerfile</dockerFile>
+                <tags>
+                  <tag>2.11.0</tag>
+                </tags>
+              </build>
+            </image>
+          </images>
+        </configuration>
+        <executions>
+          <execution>
+            <id>build</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

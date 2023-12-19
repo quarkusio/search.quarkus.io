@@ -38,6 +38,10 @@ manually and add a `.env` file to your working directory:
 [source,properties]
 ----
 _DEV_QUARKUSIO_GIT_URI=file:/home/myself/path/to/quarkusio.github.io
+_DEV_QUARKUSIO_LOCALIZED_JA_GIT_URI=file:/home/myself/path/to/ja.quarkus.io
+_DEV_QUARKUSIO_LOCALIZED_ES_GIT_URI=file:/home/myself/path/to/es.quarkus.io
+_DEV_QUARKUSIO_LOCALIZED_PT_GIT_URI=file:/home/myself/path/to/pt.quarkus.io
+_DEV_QUARKUSIO_LOCALIZED_CN_GIT_URI=file:/home/myself/path/to/cn.quarkus.io
 ----
 
 Then the application will use data from that clone when indexing on startup.
@@ -55,7 +59,8 @@ _DEV_QUARKUSIO_WEB_URI=http://localhost:4000
 == Testing
 
 Testing (and, by default <<development,dev mode>>) will use a small sample of quarkus.io included in this repository
-at `src/test/resources/quarkusio-sample.zip`.
+at `src/test/resources/quarkusio-sample.zip` (alongside with the localized site samples such as `quarkusio-sample-cn.zip`,
+`quarkusio-sample-es.zip`, `quarkusio-sample-ja.zip`, `quarkusio-sample-pt.zip`).
 
 This sample must itself be a git repository, so generating it can get technical.
 
@@ -65,7 +70,10 @@ To update the sample:
 * Add the references of the guides you want included in the sample to `GuidesRef`.
 * Run `QuarkusIOSample.main()` using your IDE,
 with the project root as the current working directory,
-and passing as first (and only) command-line argument the path to your clone of quarkus.io.
+and passing as first command-line argument the path to your clone of quarkus.io.
+* To update the localized site samples as well, pass pairs of language code and path to corresponding localized site
+as command line arguments, e.g.`ja path/to/ja.quarkus.io`. Add pairs for all `cn`, `es`, `ja`, `pt` language codes to
+update all samples at the same time.
 
 [[production]]
 == Production

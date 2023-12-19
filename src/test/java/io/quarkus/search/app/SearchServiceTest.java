@@ -26,6 +26,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.ThrowingConsumer;
@@ -150,6 +151,45 @@ class SearchServiceTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {
+            "https://quarkus.io",
+            "https://es.quarkus.io",
+            "https://cn.quarkus.io",
+            "https://ja.quarkus.io",
+            "https://pt.quarkus.io",
+            "https://quarkus-site-pr-1825-preview.surge.sh",
+            "https://quarkus-website-pr-1825-preview.surge.sh"
+    })
+    void cors_allowed(String origin) {
+        given()
+                .header("Origin", origin)
+                .queryParam("q", "foo")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .header("access-control-allow-origin", origin);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://localhost:8080/guides",
+            "https://localhost:8080/guides",
+            "https://example.com/guides",
+            "https://example.com/",
+            "https://my-quarkus.io",
+            "https://quarkus-site-pr-1825-preview-surge.sh",
+            "https://quarkus-website-pr-1825-preview-surge.sh"
+    })
+    void cors_denied(String origin) {
+        given()
+                .header("Origin", origin)
+                .queryParam("q", "foo")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(403);
+    }
+
+    @ParameterizedTest
     @MethodSource
     void relevance(String query, URI[] expectedGuideUrls) {
         var result = search(query);
@@ -189,8 +229,8 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideRef.HIBERNATE_ORM,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("jpa", GuideRef.urls(
@@ -333,6 +373,35 @@ class SearchServiceTest {
                 .allSatisfy(content -> assertThat(content).hasSize(1)
                         .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
         assertThat(matches.get()).isEqualTo(8);
+    }
+
+    @Test
+    void language() {
+        var result = given()
+                .queryParam("q", "ガイド")
+                .queryParam("language", "ja")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::title)
+                .contains("Stork リファレンス<span class=\"highlighted\">ガイド</span>",
+                        "Hibernate Search <span class=\"highlighted\">ガイド</span>");
+    }
+
+    @Test
+    void quoteEmptyQuoteTitleTranslation() {
+        var result = given()
+                // this title has a blank string in a translation file for CN, so we want to look for it and make sure that we won't fail to retrieve the results:
+                .queryParam("q", "Duplicated context, context locals, asynchronous processing and propagation")
+                .queryParam("language", "cn")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::title)
+                .contains(
+                        "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,

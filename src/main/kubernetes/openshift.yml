@@ -1,3 +1,29 @@
+kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+  name: search-quarkus-io
+spec:
+  replicas: 1
+  strategy:
+    type: Rolling
+    rollingParams:
+      # The default, 600, doesn't seem to be enough.
+      # We reindex all data on deployment, and that takes time.
+      timeoutSeconds: 1200
+  # This is necessary to have the quarkus-openshift extension generate the container definition.
+  # Without this, we'd end up with a verbatim copy of this (obviously incomplete) DeploymentConfig.
+  template:
+    spec:
+      containers:
+        - name: search-quarkus-io
+          # Oddly enough, the quarkus-openshift extension doesn't generate this
+          # if we define our own DeploymentConfig. So we add it back.
+          env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+---
 apiVersion: image.openshift.io/v1
 kind: "ImageStream"
 metadata:
@@ -55,6 +81,9 @@ spec:
     dockerfile: |-
       FROM opensearch:current
       RUN chmod -R go=u /usr/share/opensearch
+      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-kuromoji
+      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-smartcn
+      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-icu
   strategy:
     type: Docker
     dockerStrategy:
