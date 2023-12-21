@@ -42,6 +42,9 @@ _DEV_QUARKUSIO_LOCALIZED_JA_GIT_URI=file:/home/myself/path/to/ja.quarkus.io
 _DEV_QUARKUSIO_LOCALIZED_ES_GIT_URI=file:/home/myself/path/to/es.quarkus.io
 _DEV_QUARKUSIO_LOCALIZED_PT_GIT_URI=file:/home/myself/path/to/pt.quarkus.io
 _DEV_QUARKUSIO_LOCALIZED_CN_GIT_URI=file:/home/myself/path/to/cn.quarkus.io
+# Avoid reindexing on startup if indexes already contain data.
+# You can remove this if you're fine with waiting a few minutes on each live reload.
+_DEV_INDEXING_ON_STARTUP_WHEN=indexes-empty
 ----
 
 Then the application will use data from that clone when indexing on startup.

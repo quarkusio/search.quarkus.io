@@ -43,7 +43,7 @@ class RolloverTest {
     public static class Profile implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of("indexing.on-startup.enabled", "false");
+            return Map.of("indexing.on-startup.when", "never");
         }
     }
 
