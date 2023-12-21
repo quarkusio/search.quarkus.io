@@ -32,7 +32,7 @@ class SchedulerTest {
     public static class Profile implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of("indexing.on-startup.enabled", "false",
+            return Map.of("indexing.on-startup.when", "never",
                     // Every 10 seconds starting at second 00, every minute starting at minute :00, of every hour:
                     "indexing.scheduled.cron", "0/10 0/1 * ? * * *");
         }

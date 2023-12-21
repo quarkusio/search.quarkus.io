@@ -25,6 +25,7 @@ import io.quarkus.vertx.http.ManagementInterface;
 import org.hibernate.Session;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.mapper.orm.mapping.SearchMapping;
+import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.hibernate.search.util.common.impl.Closer;
 
 import org.elasticsearch.client.Request;
@@ -37,11 +38,17 @@ import io.smallrye.mutiny.subscription.FixedDemandPacer;
 
 @ApplicationScoped
 public class IndexingService {
+
+    private static final String REINDEX_ENDPOINT_PATH = "/reindex";
+
     @Inject
     SearchMapping searchMapping;
 
     @Inject
     Session session;
+
+    @Inject
+    SearchSession searchSession;
 
     @Inject
     FetchingService fetchingService;
@@ -52,7 +59,7 @@ public class IndexingService {
     private final AtomicBoolean reindexingInProgress = new AtomicBoolean();
 
     void registerManagementRoutes(@Observes ManagementInterface mi) {
-        mi.router().get("/reindex")
+        mi.router().get(REINDEX_ENDPOINT_PATH)
                 .blockingHandler(rc -> {
                     reindex();
                     rc.end("Success");
@@ -60,11 +67,33 @@ public class IndexingService {
     }
 
     void indexOnStartup(@Observes StartupEvent ev) {
-        if (!indexingConfig.onStartup().enabled()) {
-            Log.infof("Not reindexing on startup (disabled)");
-            return;
+        switch (indexingConfig.onStartup().when()) {
+            case ALWAYS -> Log.infof("Reindexing on startup");
+            case INDEXES_EMPTY -> {
+                try {
+                    long documentCount = QuarkusTransaction.requiringNew().call(() -> searchSession.search(
+                            Object.class)
+                            .where(f -> f.matchAll())
+                            .fetchTotalHitCount());
+                    if (documentCount >= 0L) {
+                        Log.infof("Not reindexing on startup: index are present, reachable, and contain %s documents."
+                                + " Call endpoint '%s' to reindex explicitly.",
+                                documentCount, REINDEX_ENDPOINT_PATH);
+                        return;
+                    }
+                    Log.infof("Reindexing on startup: indexes are empty.");
+                } catch (RuntimeException e) {
+                    Log.infof(e, "Reindexing on startup: could not determine the content of indexes.");
+                }
+                return;
+            }
+            case NEVER -> {
+                Log.infof("Not reindexing on startup: disabled through configuration."
+                        + " Call endpoint '%s' to reindex explicitly.",
+                        REINDEX_ENDPOINT_PATH);
+                return;
+            }
         }
-        Log.infof("Reindexing on startup");
         var waitInterval = indexingConfig.onStartup().waitInterval();
         // https://smallrye.io/smallrye-mutiny/2.0.0/guides/polling/#how-to-use-polling
         Multi.createBy().repeating()
