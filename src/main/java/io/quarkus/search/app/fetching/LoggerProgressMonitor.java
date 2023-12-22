@@ -15,7 +15,7 @@ import org.jboss.logging.Logger;
 public class LoggerProgressMonitor extends BatchingProgressMonitor {
 
     public static ProgressMonitor create(Logger logger, String prefix) {
-        if (!logger.isTraceEnabled()) {
+        if (!logger.isInfoEnabled() && !logger.isDebugEnabled() && !logger.isTraceEnabled()) {
             return NullProgressMonitor.INSTANCE;
         }
         return new LoggerProgressMonitor(logger, prefix);
@@ -33,7 +33,8 @@ public class LoggerProgressMonitor extends BatchingProgressMonitor {
     protected void onUpdate(String taskName, int workCurr, Duration duration) {
         StringBuilder s = new StringBuilder();
         format(s, taskName, workCurr, duration);
-        send(s);
+        // See superclass, this is only called once per second
+        send(Logger.Level.INFO, s);
     }
 
     @Override
@@ -41,7 +42,7 @@ public class LoggerProgressMonitor extends BatchingProgressMonitor {
         StringBuilder s = new StringBuilder();
         format(s, taskName, workCurr, duration);
         s.append("\n");
-        send(s);
+        send(Logger.Level.INFO, s);
     }
 
     private void format(StringBuilder s, String taskName, int workCurr,
@@ -60,7 +61,7 @@ public class LoggerProgressMonitor extends BatchingProgressMonitor {
             Duration duration) {
         StringBuilder s = new StringBuilder();
         format(s, taskName, cmp, totalWork, pcnt, duration);
-        send(s);
+        send(logLevelForUpdate(pcnt), s);
     }
 
     @Override
@@ -69,7 +70,7 @@ public class LoggerProgressMonitor extends BatchingProgressMonitor {
         StringBuilder s = new StringBuilder();
         format(s, taskName, cmp, totalWork, pcnt, duration);
         s.append("\n"); //$NON-NLS-1$
-        send(s);
+        send(Logger.Level.INFO, s);
     }
 
     private void format(StringBuilder s, String taskName, int cmp,
@@ -97,8 +98,18 @@ public class LoggerProgressMonitor extends BatchingProgressMonitor {
         appendDuration(s, duration);
     }
 
-    private void send(StringBuilder s) {
-        logger.trace(s);
+    private Logger.Level logLevelForUpdate(int percent) {
+        if (percent % 20 == 0 || percent % 50 == 0) {
+            return Logger.Level.INFO;
+        }
+        if (percent % 5 == 0) {
+            return Logger.Level.DEBUG;
+        }
+        return Logger.Level.TRACE;
+    }
+
+    private void send(Logger.Level level, StringBuilder s) {
+        logger.log(level, s);
     }
 
 }

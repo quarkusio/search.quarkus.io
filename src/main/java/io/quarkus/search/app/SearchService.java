@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -22,7 +23,6 @@ import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.orm.session.SearchSession;
-import org.hibernate.validator.constraints.Range;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -32,6 +32,7 @@ import org.jboss.resteasy.reactive.RestQuery;
 public class SearchService {
 
     private static final Integer PAGE_SIZE = 50;
+    private static final String MAX_FOR_PERF_MESSAGE = "{jakarta.validation.constraints.Max.message} for performance reasons";
 
     @Inject
     SearchSession session;
@@ -47,8 +48,8 @@ public class SearchService {
             @RestQuery @DefaultValue("en") Language language,
             @RestQuery @DefaultValue("highlighted") String highlightCssClass,
             @RestQuery @DefaultValue("0") @Min(0) int page,
-            @RestQuery @DefaultValue("1") @Range(min = 0, max = 10) int contentSnippets,
-            @RestQuery @DefaultValue("100") @Range(min = 0, max = 200) int contentSnippetsLength) {
+            @RestQuery @DefaultValue("1") @Min(0) @Max(value = 10, message = MAX_FOR_PERF_MESSAGE) int contentSnippets,
+            @RestQuery @DefaultValue("100") @Min(0) @Max(value = 200, message = MAX_FOR_PERF_MESSAGE) int contentSnippetsLength) {
         var result = session.search(Guide.class)
                 .select(f -> f.composite().from(
                         f.id(),

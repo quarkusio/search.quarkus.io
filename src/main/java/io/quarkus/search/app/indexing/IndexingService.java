@@ -85,7 +85,6 @@ public class IndexingService {
                 } catch (RuntimeException e) {
                     Log.infof(e, "Reindexing on startup: could not determine the content of indexes.");
                 }
-                return;
             }
             case NEVER -> {
                 Log.infof("Not reindexing on startup: disabled through configuration."
