@@ -5,7 +5,6 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -13,7 +12,11 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import org.eclipse.microprofile.openapi.annotations.Operation;
+import io.quarkus.search.app.dto.GuideSearchHit;
+import io.quarkus.search.app.dto.SearchResult;
+import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.entity.Language;
+import io.quarkus.search.app.entity.VersionAndLanguageRoutingBinder;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
@@ -21,13 +24,8 @@ import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.hibernate.validator.constraints.Range;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestQuery;
-
-import io.quarkus.search.app.dto.GuideSearchHit;
-import io.quarkus.search.app.dto.SearchResult;
-import io.quarkus.search.app.entity.Guide;
-import io.quarkus.search.app.entity.Language;
-import io.quarkus.search.app.entity.VersionAndLanguageRoutingBinder;
 
 @ApplicationScoped
 @Path("/")
