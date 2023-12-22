@@ -20,11 +20,17 @@ interface IndexingConfig {
     Duration timeout();
 
     interface OnStartup {
-        @WithDefault("true")
-        boolean enabled();
+        @WithDefault("always")
+        When when();
 
         @WithDefault("3s")
         Duration waitInterval();
+
+        enum When {
+            ALWAYS,
+            INDEXES_EMPTY,
+            NEVER
+        }
     }
 
     interface Scheduled {
