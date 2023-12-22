@@ -327,7 +327,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void highlightTitle() {
+    void highlight_title() {
         var result = given()
                 .queryParam("q", "orm")
                 .queryParam("highlightCssClass", "highlighted")
@@ -342,7 +342,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void highlightSummary() {
+    void highlight_summary() {
         var result = given()
                 .queryParam("q", "orm")
                 .queryParam("highlightCssClass", "highlighted-summary")
@@ -357,7 +357,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void highlightContent() {
+    void highlight_content() {
         var result = given()
                 .queryParam("q", "orm")
                 .queryParam("highlightCssClass", "highlighted-content")
@@ -373,6 +373,30 @@ class SearchServiceTest {
                 .allSatisfy(content -> assertThat(content).hasSize(1)
                         .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
         assertThat(matches.get()).isEqualTo(8);
+    }
+
+    @Test
+    void highlight_content_tooManySnippets() {
+        given()
+                .queryParam("q", "orm")
+                .queryParam("highlightCssClass", "highlighted-content")
+                .queryParam("contentSnippets", "11")
+                .queryParam("contentSnippetsLength", "50")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void highlight_content_snippetsLengthTooHigh() {
+        given()
+                .queryParam("q", "orm")
+                .queryParam("highlightCssClass", "highlighted-content")
+                .queryParam("contentSnippets", "2")
+                .queryParam("contentSnippetsLength", "201")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(400);
     }
 
     @Test
