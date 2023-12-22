@@ -32,10 +32,10 @@
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.3</surefire-plugin.version>
+    <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
+    <version.docker.plugin>0.43.4</version.docker.plugin>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
-    <version.docker.plugin>0.43.4</version.docker.plugin>
-    <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -150,6 +150,10 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-hibernate-validator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
     </dependency>
@@ -259,28 +263,36 @@
         <groupId>net.revelc.code</groupId>
         <artifactId>impsort-maven-plugin</artifactId>
         <version>${version.impsort-maven-plugin}</version>
+        <executions>
+          <execution>
+            <id>import-sorting</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>sort</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <groups>java.,javax.,jakarta.,io.quarkus.search.,io.quarkus.,org.hibernate.,org.junit.,org.,com.,*</groups>
           <staticGroups>*</staticGroups>
-          <!-- To make static imports go on top: -->
           <staticAfter>false</staticAfter>
           <skip>${format.skip}</skip>
           <removeUnused>true</removeUnused>
         </configuration>
-        <executions>
-          <execution>
-            <id>import-sorting</id>
-            <goals>
-              <goal>sort</goal>
-            </goals>
-            <phase>process-sources</phase>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>io.fabric8</groupId>
         <artifactId>docker-maven-plugin</artifactId>
         <version>${version.docker.plugin}</version>
+        <executions>
+          <execution>
+            <id>build</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <images>
             <image>
@@ -294,15 +306,6 @@
             </image>
           </images>
         </configuration>
-        <executions>
-          <execution>
-            <id>build</id>
-            <phase>initialize</phase>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>
