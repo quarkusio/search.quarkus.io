@@ -144,7 +144,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                 .param("language", "possessive_english");
         context.tokenFilter(autocompleteEdgeNgram)
                 .type("edge_ngram")
-                .param("min_gram", 1)
+                .param("min_gram", 2)
                 .param("max_gram", 10);
         context.tokenFilter(synonymsGraphFilter)
                 // See https://www.elastic.co/guide/en/elasticsearch/reference/8.11/analysis-synonym-graph-tokenfilter.html#analysis-synonym-graph-tokenfilter
