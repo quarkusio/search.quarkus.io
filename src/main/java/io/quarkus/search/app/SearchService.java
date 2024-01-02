@@ -80,8 +80,9 @@ public class SearchService {
                                 .field(localizedField("fullContent_autocomplete", language)).boost(0.1f)
                                 .matching(q)
                                 // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
-                                // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side:
-                                .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR)
+                                // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side.
+                                // we also add phrase flag so that entire phrases could be searched as well, e.g.: "hibernate search"
+                                .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR, SimpleQueryFlag.PHRASE)
                                 .defaultOperator(BooleanOperator.AND))
                                 .should(f.match().field("origin").matching("quarkus").boost(50.0f))
                                 .should(f.not(f.match().field(localizedField("topics", language)).matching("compatibility"))
