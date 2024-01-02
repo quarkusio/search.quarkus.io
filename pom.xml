@@ -203,8 +203,11 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${compiler-plugin.version}</version>
         <configuration>
+          <showDeprecation>true</showDeprecation>
+          <failOnWarning>true</failOnWarning>
           <compilerArgs>
             <arg>-parameters</arg>
+            <arg>-Xlint:unchecked</arg>
           </compilerArgs>
         </configuration>
       </plugin>
