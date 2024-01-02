@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -232,6 +233,7 @@ public final class QuarkusIOSample {
                 .call();
     }
 
+    @SuppressWarnings("unchecked") // since we are expecting a specific YAML structure and don't need to test each nested node for a correct type.
     private static void yamlQuarkusEditor(Path fileToEdit, GuideRef[] refs) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
             Set<String> guideRefs = Arrays.stream(refs).map(GuideRef::name).collect(Collectors.toSet());
@@ -243,7 +245,7 @@ public final class QuarkusIOSample {
             for (Map.Entry<String, List<Map<String, Object>>> entry : ((Map<String, List<Map<String, Object>>>) quarkusYaml
                     .get("types")).entrySet()) {
                 for (Map<String, Object> guide : entry.getValue()) {
-                    if (guideRefs.contains(guide.get("url"))) {
+                    if (guideRefs.contains(Objects.toString(guide.get("url"), null))) {
                         guides.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
                                 .add(guide);
                     }
@@ -253,6 +255,7 @@ public final class QuarkusIOSample {
         });
     }
 
+    @SuppressWarnings("unchecked") // since we are expecting a specific YAML structure and don't need to test each nested node for a correct type.
     private static void yamlQuarkiverseEditor(Path fileToEdit) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
             Set<String> guideRefs = Arrays.stream(GuideRef.quarkiverse()).map(GuideRef::name).collect(Collectors.toSet());
@@ -263,7 +266,7 @@ public final class QuarkusIOSample {
             for (Map.Entry<String, List<Map<String, Object>>> entry : ((Map<String, List<Map<String, Object>>>) quarkusYaml
                     .get("types")).entrySet()) {
                 for (Map<String, Object> guide : entry.getValue()) {
-                    if (guideRefs.contains(guide.get("url"))) {
+                    if (guideRefs.contains(Objects.toString(guide.get("url"), null))) {
                         guides.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
                                 .add(guide);
                     }
