@@ -44,4 +44,12 @@ public final class GitUtils {
         ObjectLoader loader = repo.open(objectId);
         return loader.openStream();
     }
+
+    public static boolean fileExists(Repository repo, RevTree tree, String path) throws IOException {
+        TreeWalk treeWalk = new TreeWalk(repo);
+        treeWalk.addTree(tree);
+        treeWalk.setRecursive(true);
+        treeWalk.setFilter(PathFilter.create(path));
+        return treeWalk.next();
+    }
 }
