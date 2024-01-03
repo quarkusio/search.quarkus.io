@@ -8,6 +8,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -90,8 +91,9 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
-                GuideRef.SPRING_DATA_JPA));
-        assertThat(result.total()).isEqualTo(7);
+                GuideRef.SPRING_DATA_JPA,
+                GuideRef.ALL_CONFIG));
+        assertThat(result.total()).isEqualTo(8);
     }
 
     @Test
@@ -102,8 +104,8 @@ class SearchServiceTest {
         // (or... the full rendered HTML).
         var result = search("quarkus.hibernate-orm.validate-in-dev-mode");
         assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
-                GuideRef.HIBERNATE_ORM, GuideRef.HIBERNATE_REACTIVE));
-        assertThat(result.total()).isEqualTo(2);
+                GuideRef.HIBERNATE_ORM, GuideRef.HIBERNATE_REACTIVE, GuideRef.ALL_CONFIG));
+        assertThat(result.total()).isEqualTo(3);
     }
 
     @Test
@@ -118,8 +120,9 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
-                GuideRef.DUPLICATED_CONTEXT));
-        assertThat(result.total()).isEqualTo(8);
+                GuideRef.DUPLICATED_CONTEXT,
+                GuideRef.ALL_CONFIG));
+        assertThat(result.total()).isEqualTo(9);
     }
 
     @Test
@@ -127,8 +130,8 @@ class SearchServiceTest {
         var result = search("orm elasticsearch");
         // We expect an AND by default
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH));
-        assertThat(result.total()).isEqualTo(1);
+                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH, GuideRef.ALL_CONFIG));
+        assertThat(result.total()).isEqualTo(2);
     }
 
     @Test
@@ -136,7 +139,7 @@ class SearchServiceTest {
         var result = search("");
         assertThat(result.hits()).extracting(GuideSearchHit::url)
                 .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
-        assertThat(result.total()).isEqualTo(10);
+        assertThat(result.total()).isEqualTo(11);
     }
 
     @Test
@@ -147,7 +150,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::url)
                 .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
-        assertThat(result.total()).isEqualTo(10);
+        assertThat(result.total()).isEqualTo(11);
     }
 
     @ParameterizedTest
@@ -212,14 +215,16 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE,
+                        GuideRef.ALL_CONFIG,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("reactive", GuideRef.urls(
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
+                        GuideRef.ALL_CONFIG,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.STORK_REFERENCE,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                        GuideRef.STORK_REFERENCE,
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("hiber", GuideRef.urls(
@@ -231,14 +236,16 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_ORM,
+                        GuideRef.ALL_CONFIG,
                         GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("jpa", GuideRef.urls(
                         // TODO we'd probably want ORM before Panache?
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
                         GuideRef.HIBERNATE_ORM_PANACHE,
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_ORM,
+                        GuideRef.ALL_CONFIG,
                         GuideRef.SPRING_DATA_JPA)),
                 Arguments.of("search", GuideRef.urls(
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH)),
@@ -260,8 +267,9 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
-                GuideRef.DUPLICATED_CONTEXT));
-        assertThat(result.total()).isEqualTo(8);
+                GuideRef.DUPLICATED_CONTEXT,
+                GuideRef.ALL_CONFIG));
+        assertThat(result.total()).isEqualTo(9);
     }
 
     @Test
@@ -369,10 +377,10 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
 
         AtomicInteger matches = new AtomicInteger(0);
-        assertThat(result.hits()).extracting(GuideSearchHit::content).hasSize(7)
+        assertThat(result.hits()).extracting(GuideSearchHit::content).hasSize(8)
                 .allSatisfy(content -> assertThat(content).hasSize(1)
                         .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
-        assertThat(matches.get()).isEqualTo(8);
+        assertThat(matches.get()).isEqualTo(9);
     }
 
     @Test
@@ -440,6 +448,34 @@ class SearchServiceTest {
                 .contains(
                         // unified highlighter will still "highlight" the phrase word by word:
                         "Duplicated context, context locals, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
+    }
+
+    @Test
+    void findEnvVariable() {
+        var result = given()
+                // the variable that we are "planning" to find is actually QUARKUS_DATASOURCE_JDBC_TRACING_IGNORE_FOR_TRACING
+                // But we'll be looking only for a part of it.
+                .queryParam("q", "QUARKUS_DATASOURCE_JDBC_TRACING_")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::content)
+                // empty set since we are not looking for an entire var name, and our autocomplete on text is only producing grams up to 10 chars
+                .containsOnly(Set.of());
+    }
+
+    @Test
+    void findConfigProperty() {
+        var result = given()
+                .queryParam("q", "quarkus.websocket.max-frame-size")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::content)
+                .containsOnly(
+                        Set.of("Environment variable: QUARKUS_VIRTUAL_THREADS_ENABLED Show more boolean true WebSockets Client Type Default <span class=\"highlighted\">quarkus.websocket.max</span>-<span class=\"highlighted\">frame</span>-<span class=\"highlighted\">size</span>"));
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
