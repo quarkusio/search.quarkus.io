@@ -324,7 +324,8 @@ public final class QuarkusIOSample {
                 GuideRef.SPRING_DATA_JPA,
                 GuideRef.DUPLICATED_CONTEXT,
                 GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
-                GuideRef.STORK_REFERENCE
+                GuideRef.STORK_REFERENCE,
+                GuideRef.ALL_CONFIG
         };
 
         public static GuideRef[] guides() {
