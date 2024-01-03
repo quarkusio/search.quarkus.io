@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -267,18 +268,28 @@ public class QuarkusIO implements AutoCloseable {
                     // If it is a quarkiverse guide, it means that it is an external url, we can't do much about it
                     // and we just use the same provider/file that we've already used for the original guide in English;
                     // otherwise we try to find a corresponding translated HTML:
-                    translated.htmlFullContentProvider = guide.quarkusGuide()
-                            ? new GitInputProvider(
-                                    repository.git(), repository.pagesTree(),
-                                    localizedHtmlPath(guide.version, guide.url.getPath()))
-                            : guide.htmlFullContentProvider;
+                    if (guide.quarkusGuide()) {
+                        GitInputProvider gitInputProvider = new GitInputProvider(
+                                repository.git(), repository.pagesTree(),
+                                localizedHtmlPath(guide.version, guide.url.getPath()));
+                        if (!gitInputProvider.isFileAvailable()) {
+                            // if  a file is not present we do not want to add such guide. Since if the html is not there
+                            // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
+                            Log.warn("Guide " + guide
+                                    + " is ignored since we were not able to find an HTML content file for it.");
+                            return null;
+                        }
+                        translated.htmlFullContentProvider = gitInputProvider;
+                    } else {
+                        translated.htmlFullContentProvider = guide.htmlFullContentProvider;
+                    }
                     translated.categories = guide.categories;
                     translated.extensions = guide.extensions;
                     translated.keywords = translate(messages, guide.keywords);
                     translated.topics = guide.topics;
 
                     return translated;
-                }));
+                }).filter(Objects::nonNull));
     }
 
     private static String translate(Catalog messages, String key) {
