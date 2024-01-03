@@ -428,6 +428,20 @@ class SearchServiceTest {
                         "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
     }
 
+    @Test
+    void searchForPhrase() {
+        var result = given()
+                .queryParam("q", "\"asynchronous processing and propagation\"")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::title)
+                .contains(
+                        // unified highlighter will still "highlight" the phrase word by word:
+                        "Duplicated context, context locals, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
+    }
+
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
             String cssClass) {
         return sentence -> {
