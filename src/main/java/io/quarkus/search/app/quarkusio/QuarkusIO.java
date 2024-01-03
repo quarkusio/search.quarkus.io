@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
+import io.quarkus.search.app.indexing.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
@@ -85,14 +86,16 @@ public class QuarkusIO implements AutoCloseable {
     private final Map<Language, GitCloneDirectory> localizedSites;
     private final Map<Language, URI> localizedSiteUris;
     private final CloseableDirectory prefetchedQuarkiverseGuides = CloseableDirectory.temp("quarkiverse-guides-");
+    private final FailureCollector failureCollector;
 
     public QuarkusIO(QuarkusIOConfig config, GitCloneDirectory mainRepository,
-            Map<Language, GitCloneDirectory> localizedSites) throws IOException {
+            Map<Language, GitCloneDirectory> localizedSites, FailureCollector failureCollector) throws IOException {
         this.webUri = config.webUri();
         this.mainRepository = mainRepository;
         this.localizedSites = Collections.unmodifiableMap(localizedSites);
         this.localizedSiteUris = localizedSites.entrySet().stream().collect(
                 Collectors.toUnmodifiableMap(Map.Entry::getKey, e -> config.localized().get(e.getKey().code).webUri()));
+        this.failureCollector = failureCollector;
     }
 
     @Override
@@ -240,7 +243,10 @@ public class QuarkusIO implements AutoCloseable {
             } catch (IOException e) {
                 // it may be that not all localized sites are up-to-date, in that case we just assume that the translation is not there
                 // and the non-translated english text will be used.
-                Log.error("Unable to parse a translation file " + path + " : " + e.getMessage(), e);
+                String message = "Unable to parse a translation file " + path + " : " + e.getMessage();
+                Log.trace(message, e);
+                failureCollector.warning(FailureCollector.Stage.TRANSLATION, message);
+
                 messages = new Catalog();
             }
             map.put(language, messages);
@@ -313,7 +319,11 @@ public class QuarkusIO implements AutoCloseable {
                         url.getQuery() + "&language=" + language.code, url.getFragment());
             }
         } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Cannot create a localized version of the URL: " + url, e);
+            String message = "Cannot create a localized version of the URL (" + url + "). "
+                    + "It is expected to have a correctly formatted URL at this point to a Quarkiverse guide (i.e. http://smth.smth/smth) : "
+                    + e.getMessage();
+            failureCollector.critical(FailureCollector.Stage.PARSING, message);
+            throw new IllegalArgumentException(message, e);
         }
     }
 
@@ -329,14 +339,16 @@ public class QuarkusIO implements AutoCloseable {
         return result;
     }
 
-    private static Stream<Guide> parse(Path quarkusYamlPath,
+    private Stream<Guide> parse(Path quarkusYamlPath,
             Function<Map<String, Object>, Stream<Guide>> parser) {
         Map<String, Object> quarkusYaml;
         try (InputStream inputStream = Files.newInputStream(quarkusYamlPath)) {
             Yaml yaml = new Yaml();
             quarkusYaml = yaml.load(inputStream);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to load " + quarkusYamlPath, e);
+            String message = "Unable to load " + quarkusYamlPath + ": " + e.getMessage();
+            failureCollector.critical(FailureCollector.Stage.PARSING, message);
+            throw new IllegalStateException(message, e);
         }
 
         return parser.apply(quarkusYaml);
@@ -356,7 +368,7 @@ public class QuarkusIO implements AutoCloseable {
         if (parsedUrl.startsWith("http")) {
             // we are looking at a quarkiverse guide:
             uri = httpUrl(version, parsedUrl);
-            guide.htmlFullContentProvider = new UrlInputProvider(prefetchedQuarkiverseGuides, uri);
+            guide.htmlFullContentProvider = new UrlInputProvider(prefetchedQuarkiverseGuides, uri, failureCollector);
 
             if (guide.origin == null) {
                 guide.origin = QUARKIVERSE_ORIGIN;

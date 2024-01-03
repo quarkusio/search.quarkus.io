@@ -1,13 +1,14 @@
 package io.quarkus.search.app.indexing;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 
 @ConfigMapping(prefix = "indexing")
-interface IndexingConfig {
+public interface IndexingConfig {
     OnStartup onStartup();
 
     Scheduled scheduled();
@@ -18,6 +19,8 @@ interface IndexingConfig {
 
     @WithDefault("30s")
     Duration timeout();
+
+    GitErrorReporting errorReporting();
 
     interface OnStartup {
         @WithDefault("always")
@@ -35,5 +38,23 @@ interface IndexingConfig {
 
     interface Scheduled {
         String cron();
+    }
+
+    interface GitErrorReporting {
+        @WithDefault("log")
+        Type type();
+
+        Optional<GithubIssue> githubIssue();
+
+        interface GithubIssue {
+            String repository();
+
+            int id();
+        }
+
+        enum Type {
+            LOG,
+            GITHUB_ISSUE;
+        }
     }
 }
