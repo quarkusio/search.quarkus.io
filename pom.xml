@@ -22,20 +22,20 @@
     <url>https://github.com/quarkusio/search.quarkus.io/issues</url>
   </issueManagement>
   <properties>
-    <compiler-plugin.version>3.11.0</compiler-plugin.version>
+    <compiler-plugin.version>3.12.1</compiler-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.6.3</quarkus.version>
+    <quarkus.version>3.6.4</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.3</surefire-plugin.version>
+    <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
+    <version.docker.plugin>0.43.4</version.docker.plugin>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
-    <version.docker.plugin>0.43.4</version.docker.plugin>
-    <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -49,7 +49,7 @@
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-bom</artifactId>
-        <version>3.24.2</version>
+        <version>3.25.1</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -66,7 +66,7 @@
       <dependency>
         <groupId>org.jsoup</groupId>
         <artifactId>jsoup</artifactId>
-        <version>1.17.1</version>
+        <version>1.17.2</version>
       </dependency>
       <dependency>
         <groupId>org.fedorahosted.tennera</groupId>
@@ -150,6 +150,10 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-hibernate-validator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
     </dependency>
@@ -199,8 +203,11 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${compiler-plugin.version}</version>
         <configuration>
+          <showDeprecation>true</showDeprecation>
+          <failOnWarning>true</failOnWarning>
           <compilerArgs>
             <arg>-parameters</arg>
+            <arg>-Xlint:unchecked</arg>
           </compilerArgs>
         </configuration>
       </plugin>
@@ -259,28 +266,36 @@
         <groupId>net.revelc.code</groupId>
         <artifactId>impsort-maven-plugin</artifactId>
         <version>${version.impsort-maven-plugin}</version>
+        <executions>
+          <execution>
+            <id>import-sorting</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>sort</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <groups>java.,javax.,jakarta.,io.quarkus.search.,io.quarkus.,org.hibernate.,org.junit.,org.,com.,*</groups>
           <staticGroups>*</staticGroups>
-          <!-- To make static imports go on top: -->
           <staticAfter>false</staticAfter>
           <skip>${format.skip}</skip>
           <removeUnused>true</removeUnused>
         </configuration>
-        <executions>
-          <execution>
-            <id>import-sorting</id>
-            <goals>
-              <goal>sort</goal>
-            </goals>
-            <phase>process-sources</phase>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>io.fabric8</groupId>
         <artifactId>docker-maven-plugin</artifactId>
         <version>${version.docker.plugin}</version>
+        <executions>
+          <execution>
+            <id>build</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <images>
             <image>
@@ -294,15 +309,6 @@
             </image>
           </images>
         </configuration>
-        <executions>
-          <execution>
-            <id>build</id>
-            <phase>initialize</phase>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

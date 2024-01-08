@@ -44,8 +44,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - name: Validate formatting
-      run: mvn -B clean formatter:validate
+    - name: Validate formatting and imports
+      run: mvn -B clean formatter:validate impsort:check
 
     - name: Build with Maven
       run: mvn -B install

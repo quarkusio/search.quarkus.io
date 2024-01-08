@@ -5,6 +5,8 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -30,6 +32,7 @@ import org.jboss.resteasy.reactive.RestQuery;
 public class SearchService {
 
     private static final Integer PAGE_SIZE = 50;
+    private static final String MAX_FOR_PERF_MESSAGE = "{jakarta.validation.constraints.Max.message} for performance reasons";
 
     @Inject
     SearchSession session;
@@ -44,9 +47,9 @@ public class SearchService {
             @RestQuery String q,
             @RestQuery @DefaultValue("en") Language language,
             @RestQuery @DefaultValue("highlighted") String highlightCssClass,
-            @RestQuery @DefaultValue("0") int page,
-            @RestQuery @DefaultValue("1") int contentSnippets,
-            @RestQuery @DefaultValue("100") int contentSnippetsLength) {
+            @RestQuery @DefaultValue("0") @Min(0) int page,
+            @RestQuery @DefaultValue("1") @Min(0) @Max(value = 10, message = MAX_FOR_PERF_MESSAGE) int contentSnippets,
+            @RestQuery @DefaultValue("100") @Min(0) @Max(value = 200, message = MAX_FOR_PERF_MESSAGE) int contentSnippetsLength) {
         var result = session.search(Guide.class)
                 .select(f -> f.composite().from(
                         f.id(),
@@ -75,10 +78,12 @@ public class SearchService {
                                 .field(localizedField("title_autocomplete", language)).boost(1.0f)
                                 .field(localizedField("summary_autocomplete", language)).boost(0.5f)
                                 .field(localizedField("fullContent_autocomplete", language)).boost(0.1f)
+                                .field(localizedField("fullContent_configProperties", language)).boost(2.0f)
                                 .matching(q)
                                 // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
-                                // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side:
-                                .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR)
+                                // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side.
+                                // we also add phrase flag so that entire phrases could be searched as well, e.g.: "hibernate search"
+                                .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR, SimpleQueryFlag.PHRASE)
                                 .defaultOperator(BooleanOperator.AND))
                                 .should(f.match().field("origin").matching("quarkus").boost(50.0f))
                                 .should(f.not(f.match().field(localizedField("topics", language)).matching("compatibility"))
