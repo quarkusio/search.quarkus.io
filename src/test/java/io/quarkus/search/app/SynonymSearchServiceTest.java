@@ -69,7 +69,11 @@ class SynonymSearchServiceTest {
                 Arguments.of("vertx",
                         "<span class=\"highlighted\">Vert.x</span> Reference Guide"),
                 Arguments.of("rest api",
-                        "Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive"));
+                        "Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive"),
+                Arguments.of("config",
+                        "All <span class=\"highlighted\">configuration</span> options"),
+                Arguments.of("config option",
+                        "All <span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>"));
     }
 
     @ParameterizedTest

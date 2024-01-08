@@ -344,7 +344,8 @@ public final class QuarkusIOSample {
         private static final GuideRef[] GUIDES = new GuideRef[] {
                 GuideRef.RESTEASY_REACTIVE_REFERENCE,
                 GuideRef.VERTX_REFERENCE,
-                GuideRef.DEV_SERVICES_REFERENCE
+                GuideRef.DEV_SERVICES_REFERENCE,
+                GuideRef.ALL_CONFIG
         };
 
         public static GuideRef[] guides() {
