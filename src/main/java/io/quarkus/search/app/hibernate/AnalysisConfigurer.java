@@ -22,6 +22,8 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
     public static final String DEFAULT = "basic_analyzer";
     public static final String DEFAULT_SEARCH = DEFAULT + "_search";
     public static final String AUTOCOMPLETE = "autocomplete";
+    public static final String CONFIG_PROPERTIES = "config_properties";
+    public static final String CONFIG_PROPERTIES_SEARCH = "config_properties_search";
     public static final String SORT = "sort";
 
     public static String defaultAnalyzer(Language language) {
@@ -36,6 +38,14 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         return localizedAnalyzer(AUTOCOMPLETE, language);
     }
 
+    public static String configPropertiesAnalyzer(Language language) {
+        return localizedAnalyzer(CONFIG_PROPERTIES, language);
+    }
+
+    public static String configPropertiesSearchAnalyzer(Language language) {
+        return localizedAnalyzer(CONFIG_PROPERTIES_SEARCH, language);
+    }
+
     public static String localizedAnalyzer(String prefix, Language language) {
         return "%s_%s".formatted(prefix, language.code);
     }
@@ -44,6 +54,15 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
     public void configure(ElasticsearchAnalysisConfigurationContext context) {
         // for en/es/pt we are going to use the same english configuration since guides are not translated
         EnumSet<Language> englishLanguages = EnumSet.of(Language.ENGLISH, Language.PORTUGUESE, Language.SPANISH);
+
+        context.tokenizer("config_properties_tokenizer")
+                .type("simple_pattern")
+                .param("pattern", "(quarkus(\\.[a-z\\-\\\"]+)+)|(QUARKUS(_[A-Z_]+)+)");
+        context.tokenFilter("autocomplete_config_properties")
+                .type("edge_ngram")
+                .param("min_gram", 2)
+                .param("max_gram", 70);
+
         for (Language language : englishLanguages) {
             SharedFilters result = sharedFilters(context, language);
 
@@ -68,6 +87,13 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                     .tokenFilters(result.possessiveStemmer(), "lowercase", "asciifolding", result.stop(),
                             result.regularStemmer(), result.autocompleteEdgeNgram())
                     .charFilters("html_strip");
+
+            // config properties
+            context.analyzer(configPropertiesAnalyzer(language)).custom()
+                    .tokenizer("config_properties_tokenizer")
+                    .tokenFilters("autocomplete_config_properties");
+            context.analyzer(configPropertiesSearchAnalyzer(language)).custom()
+                    .tokenizer("keyword");
         }
 
         // japanese
@@ -96,6 +122,12 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         japanese.autocompleteEdgeNgram())
                 .charFilters("icu_normalizer", "html_strip");
 
+        context.analyzer(configPropertiesAnalyzer(Language.JAPANESE)).custom()
+                .tokenizer("config_properties_tokenizer")
+                .tokenFilters("autocomplete_config_properties");
+        context.analyzer(configPropertiesSearchAnalyzer(Language.JAPANESE)).custom()
+                .tokenizer("keyword");
+
         // chinese
         // https://www.elastic.co/guide/en/elasticsearch/plugins/current/_reimplementing_and_extending_the_analyzers.html
         SharedFilters chinese = sharedFilters(context, Language.CHINESE);
@@ -123,6 +155,12 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         chinese.regularStemmer(), chinese.autocompleteEdgeNgram())
                 .charFilters("html_strip");
 
+        context.analyzer(configPropertiesAnalyzer(Language.CHINESE)).custom()
+                .tokenizer("config_properties_tokenizer")
+                .tokenFilters("autocomplete_config_properties");
+        context.analyzer(configPropertiesSearchAnalyzer(Language.CHINESE)).custom()
+                .tokenizer("keyword");
+
         context.normalizer(SORT).custom()
                 .tokenFilters("lowercase");
     }
@@ -144,7 +182,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                 .param("language", "possessive_english");
         context.tokenFilter(autocompleteEdgeNgram)
                 .type("edge_ngram")
-                .param("min_gram", 1)
+                .param("min_gram", 2)
                 .param("max_gram", 10);
         context.tokenFilter(synonymsGraphFilter)
                 // See https://www.elastic.co/guide/en/elasticsearch/reference/8.11/analysis-synonym-graph-tokenfilter.html#analysis-synonym-graph-tokenfilter

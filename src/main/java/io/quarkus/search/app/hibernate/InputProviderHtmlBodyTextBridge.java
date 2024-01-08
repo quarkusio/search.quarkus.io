@@ -19,9 +19,16 @@ public class InputProviderHtmlBodyTextBridge implements ValueBridge<InputProvide
         try (var in = provider.open()) {
             Element body = Jsoup.parse(in, StandardCharsets.UTF_8.name(), "/").body();
             // Content div has two grid columns: actual content and TOC. There's not much use of the TOC, we want the content only:
-            Element content = body.selectFirst(".content .grid__item");
+            Element content = body.selectFirst(".guide");
             if (content != null) {
-                // Means we've found a guide content column. hence let's use that to have only real content:
+                // We may be looking at a guide with/without a TOC;
+                // if it is one with the TOC, there's no uch point in indexing the TOC itself, hence we don't include it:
+
+                // column (grid items) are not present in a guide like all-config
+                Element guideColumn = content.selectFirst(".grid__item");
+                if (guideColumn != null) {
+                    content = guideColumn;
+                }
                 return encode(content);
             } else {
                 // we might be looking at a quarkiverse guide; in such case:
