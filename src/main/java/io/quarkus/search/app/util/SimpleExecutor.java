@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -27,7 +28,9 @@ public class SimpleExecutor implements AutoCloseable {
                 defaultedParallelism,
                 0L,
                 TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(defaultedParallelism * 2),
+                // We need a fair lock in order to avoid some producers getting locked out
+                // for much longer than others.
+                new ArrayBlockingQueue<>(defaultedParallelism * 2, true),
                 new ThreadPoolProviderImpl.BlockPolicy());
     }
 
