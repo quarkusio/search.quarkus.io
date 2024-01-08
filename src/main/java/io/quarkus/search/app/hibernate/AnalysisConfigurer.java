@@ -16,7 +16,9 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
             "development, dev",
             "dev service, devservice, development service",
             "resteasy, rest, rest api, rest easy",
-            "vert.x, vertx, vertex"
+            "vert.x, vertx, vertex",
+            "configuration, config",
+            "configuration properties, config properties, configuration options, config options"
     };
 
     public static final String DEFAULT = "basic_analyzer";
