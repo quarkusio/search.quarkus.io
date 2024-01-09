@@ -99,8 +99,8 @@ public class QuarkusIO implements AutoCloseable {
     @Override
     public void close() throws Exception {
         try (var closer = new Closer<Exception>()) {
-            closer.push(GitCloneDirectory::close, mainRepository);
             closer.push(CloseableDirectory::close, prefetchedQuarkiverseGuides);
+            closer.push(GitCloneDirectory::close, mainRepository);
             closer.pushAll(GitCloneDirectory::close, localizedSites.values());
         }
     }
@@ -113,7 +113,7 @@ public class QuarkusIO implements AutoCloseable {
     // guides based on the info from the _data/versioned/[version]/index/
     // may contain quarkus.yaml as well as quarkiverse.yml
     private Stream<Guide> versionedGuides() throws IOException {
-        return Files.list(mainRepository.directory().path().resolve("_data").resolve("versioned"))
+        return Files.list(mainRepository.resolve("_data").resolve("versioned"))
                 .flatMap(p -> {
                     var version = p.getFileName().toString().replace('-', '.');
                     Path quarkiverse = p.resolve("index").resolve("quarkiverse.yaml");
@@ -143,13 +143,13 @@ public class QuarkusIO implements AutoCloseable {
 
     private static Path resolveTranslationPath(String version, String filename, GitCloneDirectory directory,
             Language language) {
-        return directory.directory().path().resolve(
+        return directory.resolve(
                 Path.of("l10n", "po", language.locale, "_data", "versioned", version, "index", filename + ".po"));
     }
 
     // older version guides like guides-2-7.yaml or guides-2-13.yaml
     private Stream<Guide> legacyGuides() throws IOException {
-        return Files.list(mainRepository.directory().path().resolve("_data"))
+        return Files.list(mainRepository.resolve("_data"))
                 .filter(p -> !Files.isDirectory(p) && p.getFileName().toString().startsWith("guides-"))
                 .flatMap(p -> {
                     var version = p.getFileName().toString().replaceAll("guides-|\\.yaml", "").replace('-', '.');
@@ -164,7 +164,7 @@ public class QuarkusIO implements AutoCloseable {
     }
 
     private static Path resolveLegacyTranslationPath(String filename, GitCloneDirectory directory, Language language) {
-        return directory.directory().path().resolve(
+        return directory.resolve(
                 Path.of("l10n", "po", language.locale, "_data", filename + ".po"));
     }
 

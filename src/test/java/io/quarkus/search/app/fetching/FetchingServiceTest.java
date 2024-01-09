@@ -139,6 +139,27 @@ class FetchingServiceTest {
         }
     }
 
+    private void updateMainRepository() throws IOException, GitAPIException {
+        Path sourceRepoPath = tmpDir.path();
+        Path metadata1ToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/quarkus.yaml");
+        Path guide1HtmlToFetch = sourceRepoPath.resolve("guides/" + FETCHED_GUIDE_1_NAME + ".html");
+
+        try (Git git = Git.open(sourceRepoPath.toFile())) {
+            GitTestUtils.cleanGitUserConfig();
+
+            git.checkout().setName(QuarkusIO.PAGES_BRANCH).call();
+            Files.writeString(guide1HtmlToFetch, FETCHED_GUIDE_1_CONTENT_HTML_UPDATED);
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("Pages updated commit").call();
+
+            git.checkout().setName(QuarkusIO.SOURCE_BRANCH).call();
+
+            Files.writeString(metadata1ToFetch, METADATA_YAML_UPDATED);
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("Source updated commit").call();
+        }
+    }
+
     @AfterAll
     static void deleteTmpDir() throws IOException {
         try (Closer<IOException> closer = new Closer<>()) {
@@ -150,6 +171,10 @@ class FetchingServiceTest {
     @RegisterExtension
     static final QuarkusComponentTestExtension extension = QuarkusComponentTestExtension.builder()
             .configProperty("fetching.timeout", "PT30s")
+            // NOTE: a more correct way to define these URIs would've been `dir.path().toUri().toString()`
+            //  so that schema and everything is added to a string and it is a correct URL.
+            //  We do not do it like that to trick the app into thinking that it is supplied with a non-local repository
+            //  and that it needs to clone it.
             .configProperty("quarkusio.git-uri", tmpDir.path().toString())
             .configProperty("quarkusio.localized.es.git-uri", localizedDirectories.get(Language.SPANISH).path().toString())
             .configProperty("quarkusio.localized.pt.git-uri", localizedDirectories.get(Language.PORTUGUESE).path().toString())
@@ -252,6 +277,104 @@ class FetchingServiceTest {
                                         JA_FETCHED_GUIDE_2_CONTENT_HTML));
             }
         }
+        // now let's update some guides and make sure that the content is fetched correctly:
+        updateMainRepository();
+
+        // NOTE that after an update we'll have non-translated titles and summaries,
+        //   since in this test we've only updated them in the "main" repository,
+        //   and as a result there's no translation for them in localized sites.
+        //   Content file though is still the one from the localized site!
+        //
+        try (QuarkusIO quarkusIO = service.fetchQuarkusIo()) {
+            try (var guides = quarkusIO.guides()) {
+                assertThat(guides)
+                        .hasSize(10)
+                        .satisfiesExactlyInAnyOrder(
+                                isGuide("https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
+                                        "Some updated title",
+                                        "This is an updated summary",
+                                        "keyword1 keyword2",
+                                        Set.of("category1", "category2"),
+                                        Set.of("topic1", "topic2"),
+                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                        FETCHED_GUIDE_1_CONTENT_HTML_UPDATED),
+                                isGuide("https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
+                                        "Some updated title",
+                                        "This is an updated summary",
+                                        "keyword1 keyword2",
+                                        Set.of("category1", "category2"),
+                                        Set.of("topic1", "topic2"),
+                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
+                                isGuide("https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
+                                        "Some updated title",
+                                        "This is an updated summary",
+                                        "keyword1 keyword2",
+                                        Set.of("category1", "category2"),
+                                        Set.of("topic1", "topic2"),
+                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
+                                isGuide("https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
+                                        "Some updated title",
+                                        "This is an updated summary",
+                                        "keyword1 keyword2",
+                                        Set.of("category1", "category2"),
+                                        Set.of("topic1", "topic2"),
+                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
+                                isGuide("https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
+                                        "Some updated title",
+                                        "This is an updated summary",
+                                        "keyword1 keyword2",
+                                        Set.of("category1", "category2"),
+                                        Set.of("topic1", "topic2"),
+                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
+
+                                isGuide("https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                        "Some other title",
+                                        "This is a different summary.",
+                                        null,
+                                        Set.of("getting-started"),
+                                        Set.of(),
+                                        Set.of(),
+                                        FETCHED_GUIDE_2_CONTENT_HTML),
+                                isGuide("https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                        "Some other title",
+                                        // Even though there's a translation available it is "fuzzy", hence we ignore it
+                                        // and use the original message:
+                                        "This is a different summary.",
+                                        null,
+                                        Set.of("getting-started"),
+                                        Set.of(),
+                                        Set.of(),
+                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
+                                isGuide("https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                        "Some other title",
+                                        "This is a different summary.",
+                                        null,
+                                        Set.of("getting-started"),
+                                        Set.of(),
+                                        Set.of(),
+                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
+                                isGuide("https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                        "Some other title",
+                                        "This is a different summary.",
+                                        null,
+                                        Set.of("getting-started"),
+                                        Set.of(),
+                                        Set.of(),
+                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
+                                isGuide("https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
+                                        "Some other title",
+                                        "This is a different summary.",
+                                        null,
+                                        Set.of("getting-started"),
+                                        Set.of(),
+                                        Set.of(),
+                                        JA_FETCHED_GUIDE_2_CONTENT_HTML));
+            }
+        }
     }
 
     private static final String METADATA_YAML = """
@@ -262,6 +385,27 @@ class FetchingServiceTest {
               - title: Some title
                 filename: foo.adoc
                 summary: This is a summary
+                categories: "category1, category2"
+                keywords: keyword1 keyword2
+                topics:
+                - topic1
+                - topic2
+                extensions:
+                - io.quarkus:extension1
+                - io.quarkus:extension2
+                id: foo
+                type: reference
+                url: /guides/foo
+            """;
+
+    private static final String METADATA_YAML_UPDATED = """
+            # Generated file. Do not edit
+            ---
+            types:
+              reference:
+              - title: Some updated title
+                filename: foo.adoc
+                summary: This is an updated summary
                 categories: "category1, category2"
                 keywords: keyword1 keyword2
                 topics:
@@ -298,6 +442,18 @@ class FetchingServiceTest {
             This is a subsection
             <h2>Some other subsection</h2>
             This is another subsection
+            """;
+
+    private static final String FETCHED_GUIDE_1_CONTENT_HTML_UPDATED = """
+            <html>
+            <head></head>
+            <body>
+            <h1>Some title</h1>
+            <p>This is the updated guide body
+            <h2>Some updated subsection</h2>
+            This is an updated subsection
+            <h2>Some other updated subsection</h2>
+            This is another updated subsection
             """;
     private static final String FETCHED_GUIDE_2_NAME = "bar";
     private static final String FETCHED_GUIDE_2_CONTENT_HTML = """
