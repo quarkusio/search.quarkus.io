@@ -5,12 +5,11 @@ import static io.quarkus.search.app.util.FileUtils.unzip;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import jakarta.annotation.PreDestroy;
@@ -30,6 +29,8 @@ import io.quarkus.runtime.LaunchMode;
 import org.hibernate.search.util.common.impl.Closer;
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 
+import io.vertx.core.impl.ConcurrentHashSet;
+
 @ApplicationScoped
 public class FetchingService {
 
@@ -39,8 +40,8 @@ public class FetchingService {
     @Inject
     QuarkusIOConfig quarkusIOConfig;
 
-    private final Map<URI, GitCloneDirectory.Details> detailsCache = new HashMap<>();
-    private final Set<CloseableDirectory> tempDirectories = new HashSet<>();
+    private final Map<URI, GitCloneDirectory.Details> detailsCache = new ConcurrentHashMap<>();
+    private final Set<CloseableDirectory> tempDirectories = new ConcurrentHashSet<>();
 
     public QuarkusIO fetchQuarkusIo() {
         CompletableFuture<GitCloneDirectory> main = null;
