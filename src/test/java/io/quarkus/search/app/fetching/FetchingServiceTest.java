@@ -62,7 +62,7 @@ class FetchingServiceTest {
         Path guide1HtmlToFetch = sourceRepoPath.resolve("guides/" + FETCHED_GUIDE_1_NAME + ".html");
         Path guide2HtmlToFetch = sourceRepoPath.resolve("version/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".html");
         try (Git git = Git.init().setDirectory(sourceRepoPath.toFile())
-                .setInitialBranch(QuarkusIO.PAGES_BRANCH).call()) {
+                .setInitialBranch(QuarkusIO.MAIN_BRANCHES.pages()).call()) {
             GitTestUtils.cleanGitUserConfig();
 
             RevCommit initialCommit = git.commit().setMessage("Initial commit")
@@ -81,7 +81,7 @@ class FetchingServiceTest {
             git.commit().setMessage("Pages second commit").call();
 
             git.checkout()
-                    .setName(QuarkusIO.SOURCE_BRANCH)
+                    .setName(QuarkusIO.MAIN_BRANCHES.sources())
                     .setCreateBranch(true)
                     .setStartPoint(initialCommit)
                     .call();
@@ -105,7 +105,7 @@ class FetchingServiceTest {
             Path localizedGuide2HtmlToFetch = localizedSourceRepoPath
                     .resolve("docs/version/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".html");
             try (Git git = Git.init().setDirectory(localizedSourceRepoPath.toFile())
-                    .setInitialBranch(QuarkusIO.LOCALIZED_PAGES_BRANCH).call()) {
+                    .setInitialBranch(QuarkusIO.LOCALIZED_BRANCHES.pages()).call()) {
                 GitTestUtils.cleanGitUserConfig();
 
                 RevCommit initialCommit = git.commit().setMessage("Initial commit")
@@ -124,7 +124,7 @@ class FetchingServiceTest {
                 git.commit().setMessage("Pages second commit").call();
 
                 git.checkout()
-                        .setName(QuarkusIO.LOCALIZED_SOURCE_BRANCH)
+                        .setName(QuarkusIO.LOCALIZED_BRANCHES.sources())
                         .setCreateBranch(true)
                         .setStartPoint(initialCommit)
                         .call();
@@ -147,12 +147,12 @@ class FetchingServiceTest {
         try (Git git = Git.open(sourceRepoPath.toFile())) {
             GitTestUtils.cleanGitUserConfig();
 
-            git.checkout().setName(QuarkusIO.PAGES_BRANCH).call();
+            git.checkout().setName(QuarkusIO.MAIN_BRANCHES.pages()).call();
             Files.writeString(guide1HtmlToFetch, FETCHED_GUIDE_1_CONTENT_HTML_UPDATED);
             git.add().addFilepattern(".").call();
             git.commit().setMessage("Pages updated commit").call();
 
-            git.checkout().setName(QuarkusIO.SOURCE_BRANCH).call();
+            git.checkout().setName(QuarkusIO.MAIN_BRANCHES.sources()).call();
 
             Files.writeString(metadata1ToFetch, METADATA_YAML_UPDATED);
             git.add().addFilepattern(".").call();

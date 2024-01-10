@@ -43,10 +43,10 @@ public class QuarkusIO implements AutoCloseable {
 
     public static final String QUARKUS_ORIGIN = "quarkus";
     private static final String QUARKIVERSE_ORIGIN = "quarkiverse";
-    public static final String SOURCE_BRANCH = "develop";
-    public static final String PAGES_BRANCH = "master";
-    public static final String LOCALIZED_SOURCE_BRANCH = "main";
-    public static final String LOCALIZED_PAGES_BRANCH = "docs";
+    public static final GitCloneDirectory.Branches MAIN_BRANCHES = new GitCloneDirectory.Branches(
+            "develop", "master");
+    public static final GitCloneDirectory.Branches LOCALIZED_BRANCHES = new GitCloneDirectory.Branches(
+            "main", "docs");
 
     public static URI httpUrl(URI urlBase, String version, String name) {
         return urlBase.resolve(httpPath(version, name));

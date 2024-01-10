@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-import io.quarkus.search.app.fetching.FetchingService;
 import io.quarkus.search.app.fetching.LoggerProgressMonitor;
 
 import io.quarkus.logging.Log;
@@ -23,18 +22,53 @@ import org.jboss.logging.Logger;
 
 public class GitCloneDirectory implements Closeable {
 
+    public static GitCloneDirectory clone(URI gitUri, Path directory, Branches branches) {
+        var details = new Details(directory, branches);
+        Log.infof("Cloning into '%s' from '%s'.", directory, gitUri);
+        Git git = null;
+        String remoteName = ORDERED_REMOTES.get(0);
+        try {
+            git = Git.cloneRepository()
+                    .setURI(gitUri.toString())
+                    .setDirectory(directory.toFile())
+                    .setRemote(remoteName)
+                    .setDepth(1)
+                    .setNoTags()
+                    .setBranch(branches.sources())
+                    .setBranchesToClone(branches.asRefList())
+                    .setProgressMonitor(LoggerProgressMonitor.create(log, "Cloning " + gitUri + ": "))
+                    // Unfortunately sparse checkouts are not supported: https://www.eclipse.org/forums/index.php/t/1094825/
+                    .call();
+            return new GitCloneDirectory(git, details, remoteName);
+        } catch (RuntimeException | GitAPIException e) {
+            new SuppressingCloser(e).push(git);
+            throw new IllegalStateException(
+                    "Failed to clone git repository into '%s' from '%s': %s".formatted(directory, gitUri, e.getMessage()),
+                    e);
+        }
+    }
+
+    public static GitCloneDirectory openAndUpdate(Path directory, Branches branches) {
+        var details = new Details(directory, branches);
+        return details.openAndUpdate();
+    }
+
     private static final Logger log = Logger.getLogger(GitCloneDirectory.class);
     private static final List<String> ORDERED_REMOTES = Arrays.asList("upstream", "origin");
     private final Git git;
 
-    private final GitDirectoryDetails directory;
+    private final Details details;
     private final String remoteName;
     private RevTree pagesTree;
 
-    public GitCloneDirectory(Git git, GitDirectoryDetails directory, String remoteName) {
+    public GitCloneDirectory(Git git, Details details, String remoteName) {
         this.git = git;
-        this.directory = directory;
+        this.details = details;
         this.remoteName = remoteName;
+    }
+
+    public Details details() {
+        return details;
     }
 
     public Git git() {
@@ -42,24 +76,24 @@ public class GitCloneDirectory implements Closeable {
     }
 
     public Path resolve(String other) {
-        return directory.directory().resolve(other);
+        return details.directory().resolve(other);
     }
 
-    public GitDirectoryDetails directory() {
-        return directory;
+    public Details directory() {
+        return details;
     }
 
     public Path resolve(Path other) {
-        return directory.directory().resolve(other);
+        return details.directory().resolve(other);
     }
 
     public RevTree pagesTree() {
         if (this.pagesTree == null) {
             try {
                 this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(),
-                        (remoteName == null ? "" : remoteName + "/") + directory.pagesBranch());
+                        (remoteName == null ? "" : remoteName + "/") + details.branches.pages());
             } catch (IOException e) {
-                throw new RuntimeException("Unable to locate pages branch: " + directory.pagesBranch(), e);
+                throw new RuntimeException("Unable to locate pages branch: " + details.branches.pages(), e);
             }
         }
         return pagesTree;
@@ -77,13 +111,13 @@ public class GitCloneDirectory implements Closeable {
     public String toString() {
         return "GitCloneDirectory{" +
                 "git=" + git +
-                ", directory=" + directory +
+                ", directory=" + details +
                 '}';
     }
 
-    public record GitDirectoryDetails(Path directory, String pagesBranch) {
-        public GitCloneDirectory pull(FetchingService.Branches branches) {
-            Log.infof("Pulling changes for '%s'.", directory);
+    public record Details(Path directory, Branches branches) {
+        public GitCloneDirectory openAndUpdate() {
+            Log.infof("Opening and updating '%s'.", directory);
             Git git = null;
             try {
                 git = Git.open(directory.toFile());
@@ -98,7 +132,7 @@ public class GitCloneDirectory implements Closeable {
                 }
                 String remoteName = inferRemoteName(git);
                 if (remoteName != null) {
-                    pull(git, branches, remoteName);
+                    update(git, remoteName);
                 }
                 // Else there's nowhere to pull from, so we don't even try.
                 return new GitCloneDirectory(git, this, remoteName);
@@ -109,7 +143,7 @@ public class GitCloneDirectory implements Closeable {
             }
         }
 
-        private void pull(Git git, FetchingService.Branches branches, String remoteName) {
+        private void update(Git git, String remoteName) {
             try {
                 // fetch remote branches to make sure we'll use up-to-date data
                 git.fetch()
@@ -151,30 +185,15 @@ public class GitCloneDirectory implements Closeable {
             //  but let's give it one more chance and just pick any of the remotes at random.
             return remotes.iterator().next();
         }
+    }
 
-        public GitCloneDirectory clone(URI gitUri, FetchingService.Branches branches) {
-            Log.infof("Cloning into '%s' from '%s'.", directory, gitUri);
-            Git git = null;
-            String remoteName = ORDERED_REMOTES.get(0);
-            try {
-                git = Git.cloneRepository()
-                        .setURI(gitUri.toString())
-                        .setDirectory(directory.toFile())
-                        .setRemote(remoteName)
-                        .setDepth(1)
-                        .setNoTags()
-                        .setBranch(branches.sources())
-                        .setBranchesToClone(branches.asRefList())
-                        .setProgressMonitor(LoggerProgressMonitor.create(log, "Cloning " + gitUri + ": "))
-                        // Unfortunately sparse checkouts are not supported: https://www.eclipse.org/forums/index.php/t/1094825/
-                        .call();
-                return new GitCloneDirectory(git, this, remoteName);
-            } catch (RuntimeException | GitAPIException e) {
-                new SuppressingCloser(e).push(git);
-                throw new IllegalStateException(
-                        "Failed to clone git repository into '%s' from '%s': %s".formatted(directory, gitUri, e.getMessage()),
-                        e);
-            }
+    public record Branches(String sources, String pages) {
+        public List<String> asRefList() {
+            return List.of("refs/heads/" + sources, "refs/heads/" + pages);
+        }
+
+        public String[] asRefArray() {
+            return asRefList().toArray(String[]::new);
         }
     }
 }

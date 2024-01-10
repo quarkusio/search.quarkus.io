@@ -5,11 +5,9 @@ import static io.quarkus.search.app.util.FileUtils.unzip;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -34,8 +32,6 @@ import org.hibernate.search.util.common.impl.SuppressingCloser;
 
 @ApplicationScoped
 public class FetchingService {
-    private static final Branches MAIN = new Branches(QuarkusIO.SOURCE_BRANCH, QuarkusIO.PAGES_BRANCH);
-    private static final Branches LOCALIZED = new Branches(QuarkusIO.LOCALIZED_SOURCE_BRANCH, QuarkusIO.LOCALIZED_PAGES_BRANCH);
 
     @Inject
     FetchingConfig fetchingConfig;
@@ -43,20 +39,20 @@ public class FetchingService {
     @Inject
     QuarkusIOConfig quarkusIOConfig;
 
-    private final Map<URI, GitCloneDirectory.GitDirectoryDetails> repositories = new HashMap<>();
-    private final Set<CloseableDirectory> closeableDirectories = new HashSet<>();
+    private final Map<URI, GitCloneDirectory.Details> detailsCache = new HashMap<>();
+    private final Set<CloseableDirectory> tempDirectories = new HashSet<>();
 
     public QuarkusIO fetchQuarkusIo() {
         CompletableFuture<GitCloneDirectory> main = null;
         Map<Language, CompletableFuture<GitCloneDirectory>> localized = new LinkedHashMap<>();
         try (SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
-            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(), MAIN));
+            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(), QuarkusIO.MAIN_BRANCHES));
             for (Map.Entry<Language, QuarkusIOConfig.SiteConfig> entry : sortMap(quarkusIOConfig.localized()).entrySet()) {
                 var language = entry.getKey();
                 var config = entry.getValue();
                 localized.put(language,
-                        executor.submit(
-                                () -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(), LOCALIZED)));
+                        executor.submit(() -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(),
+                                QuarkusIO.LOCALIZED_BRANCHES)));
             }
             executor.waitForSuccessOrThrow(fetchingConfig.timeout());
             // If we get here, all tasks succeeded.
@@ -70,13 +66,13 @@ public class FetchingService {
         }
     }
 
-    private GitCloneDirectory fetchQuarkusIoSite(String siteName, URI gitUri, Branches branches) {
-        URI requestedGitUri = gitUri;
-        CloseableDirectory repoDir = null;
+    private GitCloneDirectory fetchQuarkusIoSite(String siteName, URI gitUri, GitCloneDirectory.Branches branches) {
+        CloseableDirectory tempDir = null;
+        GitCloneDirectory cloneDir = null;
         try {
-            GitCloneDirectory.GitDirectoryDetails repository = repositories.get(gitUri);
-            if (repository != null) {
-                return repository.pull(branches);
+            GitCloneDirectory.Details details = detailsCache.get(gitUri);
+            if (details != null) {
+                return details.openAndUpdate();
             }
 
             if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current())) {
@@ -84,37 +80,33 @@ public class FetchingService {
                     Log.warnf("Unzipping '%s': this application is most likely indexing only a sample of %s."
                             + " See README to index the full website.",
                             gitUri, siteName);
-                    repoDir = CloseableDirectory.temp(siteName);
-                    unzip(Path.of(gitUri), repoDir.path());
+                    tempDir = CloseableDirectory.temp(siteName);
+                    tempDirectories.add(tempDir);
+                    unzip(Path.of(gitUri), tempDir.path());
+                    cloneDir = GitCloneDirectory.openAndUpdate(tempDir.path(), branches);
                 } else if (isFile(gitUri)) {
                     Log.infof("Using the git repository '%s' as-is without cloning to speed up indexing of %s.",
                             gitUri, siteName);
                     // In dev mode, we want to skip cloning when possible, to make things quicker.
-                    repoDir = CloseableDirectory.of(Paths.get(gitUri));
+                    cloneDir = GitCloneDirectory.openAndUpdate(Path.of(gitUri), branches);
                 }
             }
 
-            boolean requiresCloning;
-            if (repoDir == null) {
+            if (cloneDir == null) {
                 // We always end up here in prod and tests.
                 // That's fine, because prod will always use remote (http/git) git URIs anyway,
                 // never local ones (file).
-                repoDir = CloseableDirectory.temp(siteName);
-                requiresCloning = true;
-            } else {
-                // We may end up here, but only in dev mode
-                requiresCloning = false;
+                // We may skip it in dev mode though.
+                tempDir = CloseableDirectory.temp(siteName);
+                tempDirectories.add(tempDir);
+                cloneDir = GitCloneDirectory.clone(gitUri, tempDir.path(), branches);
             }
 
-            closeableDirectories.add(repoDir);
+            detailsCache.put(gitUri, cloneDir.details());
 
-            repository = new GitCloneDirectory.GitDirectoryDetails(repoDir.path(), branches.pages());
-            repositories.put(requestedGitUri, repository);
-
-            // If we have a local repository -- open it, and then pull the changes, clone it otherwise:
-            return requiresCloning ? repository.clone(gitUri, branches) : repository.pull(branches);
+            return cloneDir;
         } catch (RuntimeException | IOException e) {
-            new SuppressingCloser(e).push(repoDir);
+            new SuppressingCloser(e).push(tempDir).push(cloneDir);
             throw new IllegalStateException("Failed to fetch '%s': %s".formatted(siteName, e.getMessage()), e);
         }
     }
@@ -138,20 +130,11 @@ public class FetchingService {
     @PreDestroy
     public void cleanupTemporaryFolders() {
         try (Closer<IOException> closer = new Closer<>()) {
-            closer.pushAll(CloseableDirectory::close, closeableDirectories);
+            closer.pushAll(CloseableDirectory::close, tempDirectories);
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Failed to close directories '%s': %s".formatted(closeableDirectories, e.getMessage()), e);
+                    "Failed to close directories '%s': %s".formatted(tempDirectories, e.getMessage()), e);
         }
     }
 
-    public record Branches(String sources, String pages) {
-        public List<String> asRefList() {
-            return List.of("refs/heads/" + sources, "refs/heads/" + pages);
-        }
-
-        public String[] asRefArray() {
-            return asRefList().toArray(String[]::new);
-        }
-    }
 }
