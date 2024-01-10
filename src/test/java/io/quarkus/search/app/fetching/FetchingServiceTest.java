@@ -171,15 +171,15 @@ class FetchingServiceTest {
     @RegisterExtension
     static final QuarkusComponentTestExtension extension = QuarkusComponentTestExtension.builder()
             .configProperty("fetching.timeout", "PT30s")
-            // NOTE: a more correct way to define these URIs would've been `dir.path().toUri().toString()`
-            //  so that schema and everything is added to a string and it is a correct URL.
-            //  We do not do it like that to trick the app into thinking that it is supplied with a non-local repository
-            //  and that it needs to clone it.
-            .configProperty("quarkusio.git-uri", tmpDir.path().toString())
-            .configProperty("quarkusio.localized.es.git-uri", localizedDirectories.get(Language.SPANISH).path().toString())
-            .configProperty("quarkusio.localized.pt.git-uri", localizedDirectories.get(Language.PORTUGUESE).path().toString())
-            .configProperty("quarkusio.localized.cn.git-uri", localizedDirectories.get(Language.CHINESE).path().toString())
-            .configProperty("quarkusio.localized.ja.git-uri", localizedDirectories.get(Language.JAPANESE).path().toString())
+            .configProperty("quarkusio.git-uri", tmpDir.path().toUri().toString())
+            .configProperty("quarkusio.localized.es.git-uri",
+                    localizedDirectories.get(Language.SPANISH).path().toUri().toString())
+            .configProperty("quarkusio.localized.pt.git-uri",
+                    localizedDirectories.get(Language.PORTUGUESE).path().toUri().toString())
+            .configProperty("quarkusio.localized.cn.git-uri",
+                    localizedDirectories.get(Language.CHINESE).path().toUri().toString())
+            .configProperty("quarkusio.localized.ja.git-uri",
+                    localizedDirectories.get(Language.JAPANESE).path().toUri().toString())
             .build();
 
     @Inject

@@ -49,17 +49,14 @@ public class FetchingService {
     public QuarkusIO fetchQuarkusIo() {
         CompletableFuture<GitCloneDirectory> main = null;
         Map<Language, CompletableFuture<GitCloneDirectory>> localized = new LinkedHashMap<>();
-        try (CloseableDirectory unzipDir = LaunchMode.DEVELOPMENT.equals(LaunchMode.current())
-                ? CloseableDirectory.temp("quarkus.io-unzipped")
-                : null;
-                SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
-            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(), MAIN, unzipDir));
+        try (SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
+            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(), MAIN));
             for (Map.Entry<Language, QuarkusIOConfig.SiteConfig> entry : sortMap(quarkusIOConfig.localized()).entrySet()) {
                 var language = entry.getKey();
                 var config = entry.getValue();
                 localized.put(language,
                         executor.submit(
-                                () -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(), LOCALIZED, unzipDir)));
+                                () -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(), LOCALIZED)));
             }
             executor.waitForSuccessOrThrow(fetchingConfig.timeout());
             // If we get here, all tasks succeeded.
@@ -73,45 +70,51 @@ public class FetchingService {
         }
     }
 
-    private GitCloneDirectory fetchQuarkusIoSite(String siteName, URI gitUri, Branches branches,
-            CloseableDirectory unzipDir) {
-        // We only want to clean up a clone directory if it is a clone from a remote repository or an unzipped one.
-        //  If we got a local repository we want to keep it as is and no cloning is needed.
-        //  If it was a local unzipped version -- the "cloneDir" will be removed sooner than we are done with indexing,
-        //  so we want to "clone" that directory, and then it'll be removed as if a remote repository clone.
-        boolean requiresCloning = !isFile(gitUri) || isZip(gitUri);
+    private GitCloneDirectory fetchQuarkusIoSite(String siteName, URI gitUri, Branches branches) {
         URI requestedGitUri = gitUri;
-        CloseableDirectory cloneDir = null;
+        CloseableDirectory repoDir = null;
         try {
             GitCloneDirectory.GitDirectoryDetails repository = repositories.get(gitUri);
             if (repository != null) {
                 return repository.pull(branches);
             }
 
-            if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current()) && isZip(gitUri)) {
-                Log.warnf("Unzipping '%s': this application is most likely indexing only a sample of %s."
-                        + " See README to index the full website.",
-                        gitUri, siteName);
-                Path unzippedPath = unzipDir.path().resolve(siteName);
-                unzip(Path.of(gitUri), unzippedPath);
-                gitUri = unzippedPath.toUri();
-                // Fall-through and clone the directory.
-                // This cloning is as if we are cloning a remote repository.
+            if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current())) {
+                if (isZip(gitUri)) {
+                    Log.warnf("Unzipping '%s': this application is most likely indexing only a sample of %s."
+                            + " See README to index the full website.",
+                            gitUri, siteName);
+                    repoDir = CloseableDirectory.temp(siteName);
+                    unzip(Path.of(gitUri), repoDir.path());
+                } else if (isFile(gitUri)) {
+                    Log.infof("Using the git repository '%s' as-is without cloning to speed up indexing of %s.",
+                            gitUri, siteName);
+                    // In dev mode, we want to skip cloning when possible, to make things quicker.
+                    repoDir = CloseableDirectory.of(Paths.get(gitUri));
+                }
             }
 
-            cloneDir = requiresCloning
-                    ? CloseableDirectory.temp(siteName)
-                    : CloseableDirectory.of(Paths.get(gitUri));
+            boolean requiresCloning;
+            if (repoDir == null) {
+                // We always end up here in prod and tests.
+                // That's fine, because prod will always use remote (http/git) git URIs anyway,
+                // never local ones (file).
+                repoDir = CloseableDirectory.temp(siteName);
+                requiresCloning = true;
+            } else {
+                // We may end up here, but only in dev mode
+                requiresCloning = false;
+            }
 
-            closeableDirectories.add(cloneDir);
+            closeableDirectories.add(repoDir);
 
-            repository = new GitCloneDirectory.GitDirectoryDetails(cloneDir.path(), branches.pages());
+            repository = new GitCloneDirectory.GitDirectoryDetails(repoDir.path(), branches.pages());
             repositories.put(requestedGitUri, repository);
 
             // If we have a local repository -- open it, and then pull the changes, clone it otherwise:
             return requiresCloning ? repository.clone(gitUri, branches) : repository.pull(branches);
         } catch (RuntimeException | IOException e) {
-            new SuppressingCloser(e).push(cloneDir);
+            new SuppressingCloser(e).push(repoDir);
             throw new IllegalStateException("Failed to fetch '%s': %s".formatted(siteName, e.getMessage()), e);
         }
     }
