@@ -108,8 +108,24 @@ public class GitCloneDirectory implements Closeable {
     }
 
     public record GitDirectoryDetails(Path directory, String pagesBranch) {
-        public GitCloneDirectory open() throws IOException {
-            return new GitCloneDirectory(Git.open(directory.toFile()), this);
+        public GitCloneDirectory open(String sources) throws IOException {
+            Git git = null;
+            try {
+                git = Git.open(directory.toFile());
+                // and let's make sure we are in a correct branch:
+                if (!sources.equals(git.getRepository().getBranch())) {
+                    git.checkout()
+                            .setName(sources)
+                            .setProgressMonitor(LoggerProgressMonitor.create(log,
+                                    "Checking out ('%s') in repository '%s'".formatted(sources, directory)))
+                            .call();
+                }
+                return new GitCloneDirectory(git, this);
+            } catch (GitAPIException e) {
+                new SuppressingCloser(e).push(git);
+                throw new IllegalStateException(
+                        "Wasn't able to open '%s' as a git repository: '%s".formatted(directory, e.getMessage()), e);
+            }
         }
 
         public GitCloneDirectory pull(FetchingService.Branches branches) {

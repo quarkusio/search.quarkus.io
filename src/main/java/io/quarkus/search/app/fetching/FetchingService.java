@@ -89,7 +89,7 @@ public class FetchingService {
                 if (repository != null) {
                     // We are working with a zip file, so we have nothing to refresh as there's no actual remote available;
                     //   just return the same repository without any changes:
-                    return repository.open();
+                    return repository.open(branches.sources());
                 }
 
                 Log.warnf("Unzipping '%s': this application is most likely indexing only a sample of %s."
@@ -118,7 +118,7 @@ public class FetchingService {
             repositories.put(requestedGitUri, repository);
 
             // If we have a local repository -- open it, and then pull the changes, clone it otherwise:
-            return requiresCloning ? repository.clone(gitUri, branches) : repository.open().update(branches);
+            return requiresCloning ? repository.clone(gitUri, branches) : repository.open(branches.sources()).update(branches);
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e).push(cloneDir);
             throw new IllegalStateException("Failed to fetch '%s': %s".formatted(siteName, e.getMessage()), e);
