@@ -24,19 +24,17 @@ import org.jboss.logging.Logger;
 public class GitCloneDirectory implements Closeable {
 
     private static final Logger log = Logger.getLogger(GitCloneDirectory.class);
-    private static final List<String> ORDERED_REMOTES = Arrays.asList("origin", "upstream");
+    private static final List<String> ORDERED_REMOTES = Arrays.asList("upstream", "origin");
     private final Git git;
 
     private final GitDirectoryDetails directory;
+    private final String remoteName;
     private RevTree pagesTree;
 
-    public GitCloneDirectory(Git git, GitDirectoryDetails directory) {
+    public GitCloneDirectory(Git git, GitDirectoryDetails directory, String remoteName) {
         this.git = git;
         this.directory = directory;
-    }
-
-    public GitCloneDirectory(Git git, Path path, String pages) {
-        this(git, new GitDirectoryDetails(path, pages));
+        this.remoteName = remoteName;
     }
 
     public Git git() {
@@ -58,37 +56,13 @@ public class GitCloneDirectory implements Closeable {
     public RevTree pagesTree() {
         if (this.pagesTree == null) {
             try {
-                String remote = null;
-                Set<String> remotes = git.getRepository().getRemoteNames();
-                if (remotes.isEmpty()) {
-                    remote = "";
-                } else {
-                    for (String name : ORDERED_REMOTES) {
-                        if (remotes.contains(name)) {
-                            remote = name + "/";
-                        }
-                    }
-                    if (remote == null) {
-                        log.warn(
-                                "Wasn't able to find any of the default/expected remotes (%s) so a random existing one will be picked. Indexing results are not guaranteed to be correct."
-                                        .formatted(ORDERED_REMOTES));
-                        // If at this point we still haven't figured out the remote ... then we probably are going to fail anyway,
-                        //  but let's give it one more chance and just pick any of the remotes at random.
-                        remote = remotes.iterator().next() + "/";
-                    }
-                }
-
-                this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(), remote + directory.pagesBranch());
+                this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(),
+                        (remoteName == null ? "" : remoteName + "/") + directory.pagesBranch());
             } catch (IOException e) {
                 throw new RuntimeException("Unable to locate pages branch: " + directory.pagesBranch(), e);
             }
         }
         return pagesTree;
-    }
-
-    public GitCloneDirectory update(FetchingService.Branches branches) {
-        directory.pull(git, branches);
-        return this;
     }
 
     @Override
@@ -108,11 +82,13 @@ public class GitCloneDirectory implements Closeable {
     }
 
     public record GitDirectoryDetails(Path directory, String pagesBranch) {
-        public GitCloneDirectory open(String sources) throws IOException {
+        public GitCloneDirectory pull(FetchingService.Branches branches) {
+            Log.infof("Pulling changes for '%s'.", directory);
             Git git = null;
             try {
                 git = Git.open(directory.toFile());
-                // and let's make sure we are in a correct branch:
+                // let's make sure we are in a correct branch:
+                String sources = branches.sources();
                 if (!sources.equals(git.getRepository().getBranch())) {
                     git.checkout()
                             .setName(sources)
@@ -120,50 +96,33 @@ public class GitCloneDirectory implements Closeable {
                                     "Checking out ('%s') in repository '%s'".formatted(sources, directory)))
                             .call();
                 }
-                return new GitCloneDirectory(git, this);
-            } catch (GitAPIException e) {
-                new SuppressingCloser(e).push(git);
-                throw new IllegalStateException(
-                        "Wasn't able to open '%s' as a git repository: '%s".formatted(directory, e.getMessage()), e);
-            }
-        }
-
-        public GitCloneDirectory pull(FetchingService.Branches branches) {
-            Log.infof("Pulling changes for '%s'.", directory);
-            Git git = null;
-            try {
-                git = Git.open(directory.toFile());
-                pull(git, branches);
-                return new GitCloneDirectory(git, this);
-            } catch (IOException e) {
+                String remoteName = inferRemoteName(git);
+                if (remoteName != null) {
+                    pull(git, branches, remoteName);
+                }
+                // Else there's nowhere to pull from, so we don't even try.
+                return new GitCloneDirectory(git, this, remoteName);
+            } catch (IOException | GitAPIException e) {
                 new SuppressingCloser(e).push(git);
                 throw new IllegalStateException("Wasn't able to open repository '%s': '%s".formatted(directory, e.getMessage()),
                         e);
             }
         }
 
-        private void pull(Git git, FetchingService.Branches branches) {
+        private void pull(Git git, FetchingService.Branches branches, String remoteName) {
             try {
-                Log.infof("Pulling changes for sources branch of '%s':'%s'.", directory, branches.sources());
-                // just to make sure we are in the correct branch:
-                git.checkout().setName(branches.sources()).call();
+                // fetch remote branches to make sure we'll use up-to-date data
+                git.fetch()
+                        .setRemote(remoteName)
+                        .setRefSpecs(branches.asRefArray())
+                        .setProgressMonitor(LoggerProgressMonitor.create(log,
+                                "Fetching into '" + directory + "' (" + branches.pages() + "): "))
+                        .call();
 
-                if (git.getRepository().getRemoteNames().isEmpty()) {
-                    // Well... then there's nowhere to pull from,
-                    //  and we exit faster as pulling or fetching will fail in this scenario.
-                    return;
-                }
-
-                // pull sources branch
+                // pull the sources branch, to update the working directory
                 git.pull()
                         .setProgressMonitor(LoggerProgressMonitor.create(log,
                                 "Pulling into '" + directory + "' (" + branches.sources() + "): "))
-                        .call();
-                // fetch used branches
-                git.fetch().setForceUpdate(true)
-                        .setProgressMonitor(LoggerProgressMonitor.create(log,
-                                "Fetching into '" + directory + "' (" + branches.sources() + "): "))
-                        .setRefSpecs(branches.asRefArray())
                         .call();
             } catch (RuntimeException | GitAPIException e) {
                 new SuppressingCloser(e).push(git);
@@ -175,13 +134,33 @@ public class GitCloneDirectory implements Closeable {
             }
         }
 
+        private String inferRemoteName(Git git) {
+            Set<String> remotes = git.getRepository().getRemoteNames();
+            if (remotes.isEmpty()) {
+                return null;
+            }
+            for (String name : ORDERED_REMOTES) {
+                if (remotes.contains(name)) {
+                    return name;
+                }
+            }
+            log.warn(
+                    "Wasn't able to find any of the default/expected remotes (%s) so a random existing one will be picked. Indexing results are not guaranteed to be correct."
+                            .formatted(ORDERED_REMOTES));
+            // If at this point we still haven't figured out the remote ... then we probably are going to fail anyway,
+            //  but let's give it one more chance and just pick any of the remotes at random.
+            return remotes.iterator().next();
+        }
+
         public GitCloneDirectory clone(URI gitUri, FetchingService.Branches branches) {
             Log.infof("Cloning into '%s' from '%s'.", directory, gitUri);
             Git git = null;
+            String remoteName = ORDERED_REMOTES.get(0);
             try {
                 git = Git.cloneRepository()
                         .setURI(gitUri.toString())
                         .setDirectory(directory.toFile())
+                        .setRemote(remoteName)
                         .setDepth(1)
                         .setNoTags()
                         .setBranch(branches.sources())
@@ -189,7 +168,7 @@ public class GitCloneDirectory implements Closeable {
                         .setProgressMonitor(LoggerProgressMonitor.create(log, "Cloning " + gitUri + ": "))
                         // Unfortunately sparse checkouts are not supported: https://www.eclipse.org/forums/index.php/t/1094825/
                         .call();
-                return new GitCloneDirectory(git, this);
+                return new GitCloneDirectory(git, this, remoteName);
             } catch (RuntimeException | GitAPIException e) {
                 new SuppressingCloser(e).push(git);
                 throw new IllegalStateException(

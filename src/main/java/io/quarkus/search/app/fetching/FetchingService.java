@@ -84,14 +84,11 @@ public class FetchingService {
         CloseableDirectory cloneDir = null;
         try {
             GitCloneDirectory.GitDirectoryDetails repository = repositories.get(gitUri);
+            if (repository != null) {
+                return repository.pull(branches);
+            }
 
             if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current()) && isZip(gitUri)) {
-                if (repository != null) {
-                    // We are working with a zip file, so we have nothing to refresh as there's no actual remote available;
-                    //   just return the same repository without any changes:
-                    return repository.open(branches.sources());
-                }
-
                 Log.warnf("Unzipping '%s': this application is most likely indexing only a sample of %s."
                         + " See README to index the full website.",
                         gitUri, siteName);
@@ -100,12 +97,6 @@ public class FetchingService {
                 gitUri = unzippedPath.toUri();
                 // Fall-through and clone the directory.
                 // This cloning is as if we are cloning a remote repository.
-            } else {
-                if (repository != null) {
-                    // It's not a zip, so it may be either a local directory or a remote repository
-                    // let's pull the changes from it as it shouldn't cause any exceptions, as a remote is actually out there.
-                    return repository.pull(branches);
-                }
             }
 
             cloneDir = requiresCloning
@@ -118,7 +109,7 @@ public class FetchingService {
             repositories.put(requestedGitUri, repository);
 
             // If we have a local repository -- open it, and then pull the changes, clone it otherwise:
-            return requiresCloning ? repository.clone(gitUri, branches) : repository.open(branches.sources()).update(branches);
+            return requiresCloning ? repository.clone(gitUri, branches) : repository.pull(branches);
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e).push(cloneDir);
             throw new IllegalStateException("Failed to fetch '%s': %s".formatted(siteName, e.getMessage()), e);
