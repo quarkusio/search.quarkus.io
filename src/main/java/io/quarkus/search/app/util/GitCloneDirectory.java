@@ -147,6 +147,13 @@ public class GitCloneDirectory implements Closeable {
                 Log.infof("Pulling changes for sources branch of '%s':'%s'.", directory, branches.sources());
                 // just to make sure we are in the correct branch:
                 git.checkout().setName(branches.sources()).call();
+
+                if (git.getRepository().getRemoteNames().isEmpty()) {
+                    // Well... then there's nowhere to pull from,
+                    //  and we exit faster as pulling or fetching will fail in this scenario.
+                    return;
+                }
+
                 // pull sources branch
                 git.pull()
                         .setProgressMonitor(LoggerProgressMonitor.create(log,
