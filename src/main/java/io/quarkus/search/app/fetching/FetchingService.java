@@ -117,8 +117,8 @@ public class FetchingService {
             repository = new GitCloneDirectory.GitDirectoryDetails(cloneDir.path(), branches.pages());
             repositories.put(requestedGitUri, repository);
 
-            // If we have a local repository -- just open it, clone it otherwise:
-            return requiresCloning ? repository.clone(gitUri, branches) : repository.open();
+            // If we have a local repository -- open it, and then pull the changes, clone it otherwise:
+            return requiresCloning ? repository.clone(gitUri, branches) : repository.open().update(branches);
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e).push(cloneDir);
             throw new IllegalStateException("Failed to fetch '%s': %s".formatted(siteName, e.getMessage()), e);

@@ -4,7 +4,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import io.quarkus.search.app.fetching.FetchingService;
 import io.quarkus.search.app.fetching.LoggerProgressMonitor;
@@ -17,12 +19,12 @@ import org.hibernate.search.util.common.impl.SuppressingCloser;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.transport.RemoteConfig;
 import org.jboss.logging.Logger;
 
 public class GitCloneDirectory implements Closeable {
 
     private static final Logger log = Logger.getLogger(GitCloneDirectory.class);
+    private static final List<String> ORDERED_REMOTES = Arrays.asList("origin", "upstream");
     private final Git git;
 
     private final GitDirectoryDetails directory;
@@ -56,20 +58,37 @@ public class GitCloneDirectory implements Closeable {
     public RevTree pagesTree() {
         if (this.pagesTree == null) {
             try {
-                String remote;
-                List<RemoteConfig> remotes = git.remoteList().call();
+                String remote = null;
+                Set<String> remotes = git.getRepository().getRemoteNames();
                 if (remotes.isEmpty()) {
                     remote = "";
                 } else {
-                    remote = remotes.get(0).getName() + "/";
+                    for (String name : ORDERED_REMOTES) {
+                        if (remotes.contains(name)) {
+                            remote = name + "/";
+                        }
+                    }
+                    if (remote == null) {
+                        log.warn(
+                                "Wasn't able to find any of the default/expected remotes (%s) so a random existing one will be picked. Indexing results are not guaranteed to be correct."
+                                        .formatted(ORDERED_REMOTES));
+                        // If at this point we still haven't figured out the remote ... then we probably are going to fail anyway,
+                        //  but let's give it one more chance and just pick any of the remotes at random.
+                        remote = remotes.iterator().next() + "/";
+                    }
                 }
 
                 this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(), remote + directory.pagesBranch());
-            } catch (GitAPIException | IOException e) {
+            } catch (IOException e) {
                 throw new RuntimeException("Unable to locate pages branch: " + directory.pagesBranch(), e);
             }
         }
         return pagesTree;
+    }
+
+    public GitCloneDirectory update(FetchingService.Branches branches) {
+        directory.pull(git, branches);
+        return this;
     }
 
     @Override
@@ -98,6 +117,17 @@ public class GitCloneDirectory implements Closeable {
             Git git = null;
             try {
                 git = Git.open(directory.toFile());
+                pull(git, branches);
+                return new GitCloneDirectory(git, this);
+            } catch (IOException e) {
+                new SuppressingCloser(e).push(git);
+                throw new IllegalStateException("Wasn't able to open repository '%s': '%s".formatted(directory, e.getMessage()),
+                        e);
+            }
+        }
+
+        private void pull(Git git, FetchingService.Branches branches) {
+            try {
                 Log.infof("Pulling changes for sources branch of '%s':'%s'.", directory, branches.sources());
                 // just to make sure we are in the correct branch:
                 git.checkout().setName(branches.sources()).call();
@@ -112,8 +142,7 @@ public class GitCloneDirectory implements Closeable {
                                 "Fetching into '" + directory + "' (" + branches.sources() + "): "))
                         .setRefSpecs(branches.asRefArray())
                         .call();
-                return new GitCloneDirectory(git, this);
-            } catch (RuntimeException | GitAPIException | IOException e) {
+            } catch (RuntimeException | GitAPIException e) {
                 new SuppressingCloser(e).push(git);
                 throw new IllegalStateException(
                         "Wasn't able to pull changes for branch '%s' in repository '%s': '%s".formatted(branches,

@@ -275,7 +275,7 @@ public class QuarkusIO implements AutoCloseable {
                         if (!gitInputProvider.isFileAvailable()) {
                             // if  a file is not present we do not want to add such guide. Since if the html is not there
                             // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
-                            Log.warn("Guide " + guide
+                            Log.warn("Guide " + translated
                                     + " is ignored since we were not able to find an HTML content file for it.");
                             return null;
                         }
