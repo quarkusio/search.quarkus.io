@@ -7,13 +7,17 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Date;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -110,6 +114,10 @@ public class FailureCollector implements Closeable {
         private static final String STATUS_WARNING = "Warning";
         private static final String STATUS_SUCCESS = "Success";
         private static final String STATUS_REPORT_HEADER = "## search.quarkus.io indexing status: ";
+        private static final String UPDATED_FORMAT = "(updated %s)";
+        private static final Pattern UPDATED_PATTERN = Pattern.compile("\\(updated [^)]+\\)");
+        private static final DateTimeFormatter UPDATED_DATE_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ssZZZZZ",
+                Locale.ROOT);
         private final IndexingConfig.GitErrorReporting.GithubReporter config;
 
         GithubFailureReporter(IndexingConfig.GitErrorReporting.GithubReporter config) {
@@ -151,6 +159,9 @@ public class FailureCollector implements Closeable {
                     }
                 }
 
+                // Update last indexing date:
+                issue.setTitle(insertUpdateDate(issue.getTitle()));
+
                 // handle issue state (open/close):
                 //   Only reopen/keep opened an issue if we have critical things to report.
                 //   Otherwise, let's limit it to a comment only, and close an issue if needed.
@@ -165,6 +176,16 @@ public class FailureCollector implements Closeable {
             } catch (IOException | RuntimeException e) {
                 throw new IllegalStateException("Unable to report failures to GitHub: " + e.getMessage(), e);
             }
+        }
+
+        private String insertUpdateDate(String title) {
+            String toInsert = UPDATED_FORMAT.formatted(UPDATED_DATE_FORMAT.format(Instant.now().atOffset(ZoneOffset.UTC)));
+            String result = UPDATED_PATTERN.matcher(title).replaceAll(toInsert);
+            if (result.equals(title)) {
+                // The title didn't contain any mention of the last update; add it.
+                result = result + " " + toInsert;
+            }
+            return result;
         }
 
         private Stream<GHIssueComment> getStatusCommentsSince(GHIssue issue, Instant since) {
