@@ -148,8 +148,14 @@ public class IndexingService {
             throw new ReindexingAlreadyInProgressException();
         }
         try (FailureCollector failureCollector = new FailureCollector(indexingConfig.errorReporting())) {
-            createIndexes();
-            indexAll(failureCollector);
+            try {
+                createIndexes();
+                indexAll(failureCollector);
+            } catch (RuntimeException e) {
+                failureCollector.critical(FailureCollector.Stage.INDEXING, "Indexing failed: " + e.getMessage());
+                // Re-throw even though we've reported the failure, for the benefit of callers/logs
+                throw e;
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to report indexing failures: " + e.getMessage(), e);
         } finally {
@@ -216,9 +222,7 @@ public class IndexingService {
             rollover.commit();
             Log.info("Indexing success");
         } catch (Exception e) {
-            String message = "Failed to index data: " + e.getMessage();
-            failureCollector.critical(FailureCollector.Stage.INDEXING, message);
-            throw new IllegalStateException(message, e);
+            throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
         }
     }
 
