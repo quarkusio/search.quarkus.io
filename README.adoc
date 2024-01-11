@@ -62,11 +62,11 @@ By default, in dev mode, any parsing/indexing warnings and errors are going to b
 But in case you want to get index errors reported to a GitHub issue, next properties should be added:
 [source,properties]
 ----
+_DEV_INDEXING_ERROR_REPORTING_TYPE=github-issue
 # see about tokens https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
 INDEXING_ERROR_REPORTING_GITHUB_TOKEN={your-generated-github-token}
 INDEXING_ERROR_REPORTING_GITHUB_ISSUE_REPOSITORY={your-github-user}/search.quarkus.io
 INDEXING_ERROR_REPORTING_GITHUB_ISSUE_ID={github-issue-id-in-your-repository}
-INDEXING_ERROR_REPORTING_TYPE=github-issue
 ----
 
 [[testing]]
@@ -149,21 +149,32 @@ you will need to set up a few things manually:
    The OpenShift namespace needs to be registered as a GitHub Actions environment variable.
    See `.github/workflows/deploy.yml`.
 3. Config maps and secrets.
-  `search-quarkus-io-config`::
-    Environment variables for the application.
-    Put in there whatever configuration you need for your specific cluster.
-    Besides that, configure a `GITHUB_OAUTH` environment variable and set it to
-    a GitHub token that allows commenting/reopening/closing a GitHub issue.
-    See `indexing.error-reporting.github-issue` configuration properties for more details.
-  `search-quarkus-io-secret`::
-    Secret environment variables for the application.
-    Put in there whatever secret configuration you need for your specific cluster.
-  `search-backend-config`::
-    Environment variables for the OpenSearch instances.
-    Put in there whatever configuration you need for your specific cluster.
-  `search-backend-secret`::
-    Secret environment variables for the OpenSearch instances.
-    Put in there whatever secret configuration you need for your specific cluster.
+   `search-quarkus-io-config`::
+   Environment variables for the application.
+     +
+     Put in there whatever configuration you need for your specific cluster.
+     +
+     In particular:
+     * `GITHUB_STATUS_ISSUE_ID`: The number of an issue on quarkusio/search.quarkus.io
+       where indexing status should be reported.
+       See `indexing.error-reporting.github` configuration properties for more details.
+   `search-quarkus-io-secret`::
+   Secret environment variables for the application.
+     +
+     Put in there whatever secret configuration you need for your specific cluster.
+     +
+     In particular:
+     * `GITHUB_OAUTH`: a GitHub token that allows commenting/reopening/closing a GitHub issue
+     on quarkusio/search.quarkus.io.
+     See `indexing.error-reporting.github` configuration properties for more details.
+   `search-backend-config`::
+   Environment variables for the OpenSearch instances.
+     +
+     Put in there whatever configuration you need for your specific cluster.
+   `search-backend-secret`::
+   Secret environment variables for the OpenSearch instances.
+     +
+     Put in there whatever secret configuration you need for your specific cluster.
 
 [[license]]
 == License
