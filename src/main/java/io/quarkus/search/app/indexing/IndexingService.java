@@ -147,9 +147,15 @@ public class IndexingService {
         if (!reindexingInProgress.compareAndSet(false, true)) {
             throw new ReindexingAlreadyInProgressException();
         }
-        try {
-            createIndexes();
-            indexAll();
+        try (FailureCollector failureCollector = new FailureCollector(indexingConfig.errorReporting())) {
+            try {
+                createIndexes();
+                indexAll(failureCollector);
+            } catch (RuntimeException e) {
+                failureCollector.critical(FailureCollector.Stage.INDEXING, "Indexing failed: " + e.getMessage());
+                // Re-throw even though we've reported the failure, for the benefit of callers/logs
+                throw e;
+            }
         } finally {
             reindexingInProgress.set(false);
         }
@@ -166,7 +172,7 @@ public class IndexingService {
             Log.info("Creating missing indexes");
             searchMapping.scope(Object.class).schemaManager().createIfMissing();
         } catch (RuntimeException e) {
-            Log.error("Creating missing indexes failed; will attempt to recover mismatched aliases...", e);
+            Log.error("Creating missing indexes failed; will attempt to recover mismatched aliases... ", e);
             // This may happen if aliases were left in a stale state by a previous pod
             // that failed to get ready in time, but is potentially still indexing.
             // Ideally we'd just tell Kubernetes that a previous failed pod
@@ -191,14 +197,13 @@ public class IndexingService {
         }
     }
 
-    private void indexAll() {
+    private void indexAll(FailureCollector failureCollector) {
         Log.info("Indexing...");
         try (Rollover rollover = Rollover.start(searchMapping);
                 Closer<IOException> closer = new Closer<>()) {
             // Reset the database before we start
             clearDatabaseWithoutIndexes();
-
-            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo()) {
+            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector)) {
                 indexQuarkusIo(quarkusIO);
             }
 

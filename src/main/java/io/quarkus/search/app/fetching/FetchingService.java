@@ -17,6 +17,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import io.quarkus.search.app.entity.Language;
+import io.quarkus.search.app.indexing.FailureCollector;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import io.quarkus.search.app.util.CloseableDirectory;
@@ -43,7 +44,7 @@ public class FetchingService {
     private final Map<URI, GitCloneDirectory.Details> detailsCache = new ConcurrentHashMap<>();
     private final Set<CloseableDirectory> tempDirectories = new ConcurrentHashSet<>();
 
-    public QuarkusIO fetchQuarkusIo() {
+    public QuarkusIO fetchQuarkusIo(FailureCollector failureCollector) {
         CompletableFuture<GitCloneDirectory> main = null;
         Map<Language, CompletableFuture<GitCloneDirectory>> localized = new LinkedHashMap<>();
         try (SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
@@ -58,7 +59,8 @@ public class FetchingService {
             executor.waitForSuccessOrThrow(fetchingConfig.timeout());
             // If we get here, all tasks succeeded.
             return new QuarkusIO(quarkusIOConfig, main.join(),
-                    localized.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().join())));
+                    localized.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().join())),
+                    failureCollector);
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e)
                     .push(main, CompletableFuture::join)
