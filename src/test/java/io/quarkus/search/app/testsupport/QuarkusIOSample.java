@@ -31,6 +31,7 @@ import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.FileUtils;
+import io.quarkus.search.app.util.GitCloneDirectory;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
@@ -85,8 +86,7 @@ public final class QuarkusIOSample {
         List<String> remotes = Arrays.asList("upstream", "origin", null);
 
         try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-            copy(originalPath, remotes, copyRootDir.path(), new AllFilterDefinition(), QuarkusIO.PAGES_BRANCH,
-                    QuarkusIO.SOURCE_BRANCH, true);
+            copy(originalPath, remotes, copyRootDir.path(), new AllFilterDefinition(), QuarkusIO.MAIN_BRANCHES, true);
             Path sampleAbsolutePath = testResourcesSamplePath();
 
             Files.deleteIfExists(sampleAbsolutePath);
@@ -102,7 +102,7 @@ public final class QuarkusIOSample {
 
             try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
                 copy(originalLocalizedPath, remotes, copyRootDir.path(), new AllLocalizedFilterDefinition(language),
-                        QuarkusIO.LOCALIZED_PAGES_BRANCH, QuarkusIO.LOCALIZED_SOURCE_BRANCH, false);
+                        QuarkusIO.LOCALIZED_BRANCHES, false);
                 Path sampleAbsolutePath = testResourcesSamplePath(language);
 
                 Files.deleteIfExists(sampleAbsolutePath);
@@ -112,23 +112,21 @@ public final class QuarkusIOSample {
     }
 
     public static CloseableDirectory createFromTestResourcesSample(FilterDefinition filterDef) {
-        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(), QuarkusIO.PAGES_BRANCH,
-                QuarkusIO.SOURCE_BRANCH, true);
+        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(), QuarkusIO.MAIN_BRANCHES, true);
     }
 
     public static CloseableDirectory createFromTestResourcesLocalizedSample(Language language, FilterDefinition filterDef) {
-        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(language), QuarkusIO.LOCALIZED_PAGES_BRANCH,
-                QuarkusIO.LOCALIZED_SOURCE_BRANCH, false);
+        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(language), QuarkusIO.LOCALIZED_BRANCHES, false);
     }
 
-    private static CloseableDirectory createFromTestResourcesSample(FilterDefinition filterDef, Path path, String pagesBranch,
-            String sourceBranch, boolean failOnMissing) {
+    private static CloseableDirectory createFromTestResourcesSample(FilterDefinition filterDef, Path path,
+            GitCloneDirectory.Branches branches, boolean failOnMissing) {
         CloseableDirectory copyRootDir = null;
         try (CloseableDirectory unzippedQuarkusIoSample = CloseableDirectory.temp("quarkusio-sample-unzipped")) {
             FileUtils.unzip(path, unzippedQuarkusIoSample.path());
             copyRootDir = CloseableDirectory.temp(filterDef.toString());
             copy(unzippedQuarkusIoSample.path(), Collections.singletonList(null),
-                    copyRootDir.path(), filterDef, pagesBranch, sourceBranch, failOnMissing);
+                    copyRootDir.path(), filterDef, branches, failOnMissing);
             return copyRootDir;
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e).push(copyRootDir);
@@ -138,7 +136,7 @@ public final class QuarkusIOSample {
     }
 
     public static void copy(Path quarkusIoLocalPath, List<String> originalRemotes,
-            Path copyRootPath, FilterDefinition filterDef, String pagesBranch, String sourceBranch, boolean failOnMissing) {
+            Path copyRootPath, FilterDefinition filterDef, GitCloneDirectory.Branches branches, boolean failOnMissing) {
         try (Git originalGit = Git.open(quarkusIoLocalPath.toFile())) {
             GitTestUtils.cleanGitUserConfig();
 
@@ -150,7 +148,7 @@ public final class QuarkusIOSample {
                 throw new IllegalStateException("No path to copy");
             }
 
-            try (Git copyGit = Git.init().setInitialBranch(pagesBranch)
+            try (Git copyGit = Git.init().setInitialBranch(branches.pages())
                     .setDirectory(copyRootPath.toFile()).call()) {
                 GitTestUtils.cleanGitUserConfig();
 
@@ -158,16 +156,16 @@ public final class QuarkusIOSample {
                         .setAllowEmpty(true)
                         .call();
 
-                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, pagesBranch,
+                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, branches.pages(),
                         copyRootPath, copyGit,
                         collector.pagesCopyPathToOriginalPath, failOnMissing);
 
                 copyGit.checkout()
-                        .setName(sourceBranch)
+                        .setName(branches.sources())
                         .setCreateBranch(true)
                         .setStartPoint(initialCommit)
                         .call();
-                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, sourceBranch,
+                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, branches.sources(),
                         copyRootPath, copyGit,
                         collector.sourceCopyPathToOriginalPath, failOnMissing);
 

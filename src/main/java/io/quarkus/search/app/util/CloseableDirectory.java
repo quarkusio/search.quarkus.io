@@ -36,4 +36,11 @@ public final class CloseableDirectory implements Closeable {
         return path;
     }
 
+    @Override
+    public String toString() {
+        return "CloseableDirectory{" +
+                "path=" + path +
+                ", shouldDelete=" + shouldDelete +
+                '}';
+    }
 }

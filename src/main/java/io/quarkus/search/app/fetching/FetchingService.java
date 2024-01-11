@@ -6,11 +6,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -24,16 +26,13 @@ import io.quarkus.search.app.util.SimpleExecutor;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.LaunchMode;
 
+import org.hibernate.search.util.common.impl.Closer;
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 
-import org.apache.commons.io.function.IOBiFunction;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.jboss.logging.Logger;
+import io.vertx.core.impl.ConcurrentHashSet;
 
 @ApplicationScoped
 public class FetchingService {
-    private static final Logger log = Logger.getLogger(FetchingService.class);
 
     @Inject
     FetchingConfig fetchingConfig;
@@ -41,21 +40,20 @@ public class FetchingService {
     @Inject
     QuarkusIOConfig quarkusIOConfig;
 
+    private final Map<URI, GitCloneDirectory.Details> detailsCache = new ConcurrentHashMap<>();
+    private final Set<CloseableDirectory> tempDirectories = new ConcurrentHashSet<>();
+
     public QuarkusIO fetchQuarkusIo() {
         CompletableFuture<GitCloneDirectory> main = null;
         Map<Language, CompletableFuture<GitCloneDirectory>> localized = new LinkedHashMap<>();
-        try (CloseableDirectory unzipDir = LaunchMode.DEVELOPMENT.equals(LaunchMode.current())
-                ? CloseableDirectory.temp("quarkus.io-unzipped")
-                : null;
-                SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
-            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(),
-                    QuarkusIO.SOURCE_BRANCH, QuarkusIO.PAGES_BRANCH, unzipDir));
+        try (SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
+            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(), QuarkusIO.MAIN_BRANCHES));
             for (Map.Entry<Language, QuarkusIOConfig.SiteConfig> entry : sortMap(quarkusIOConfig.localized()).entrySet()) {
                 var language = entry.getKey();
                 var config = entry.getValue();
                 localized.put(language,
                         executor.submit(() -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(),
-                                QuarkusIO.LOCALIZED_SOURCE_BRANCH, QuarkusIO.LOCALIZED_PAGES_BRANCH, unzipDir)));
+                                QuarkusIO.LOCALIZED_BRANCHES)));
             }
             executor.waitForSuccessOrThrow(fetchingConfig.timeout());
             // If we get here, all tasks succeeded.
@@ -69,23 +67,47 @@ public class FetchingService {
         }
     }
 
-    private GitCloneDirectory fetchQuarkusIoSite(String siteName, URI gitUri, String sourceBranch, String pagesBranch,
-            CloseableDirectory unzipDir) {
+    private GitCloneDirectory fetchQuarkusIoSite(String siteName, URI gitUri, GitCloneDirectory.Branches branches) {
+        CloseableDirectory tempDir = null;
+        GitCloneDirectory cloneDir = null;
         try {
-            if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current()) && isZip(gitUri)) {
-                Log.warnf("Unzipping '%s': this application is most likely indexing only a sample of %s."
-                        + " See README to index the full website.",
-                        gitUri, siteName);
-                Path unzippedPath = unzipDir.path().resolve(siteName);
-                unzip(Path.of(gitUri), unzippedPath);
-                gitUri = unzippedPath.toUri();
-                // Fall-through and clone the directory.
-                // While technically unnecessary (we could use the unzipped directory directly),
-                // this cloning ensures we run the same code in dev mode as in prod.
+            GitCloneDirectory.Details details = detailsCache.get(gitUri);
+            if (details != null) {
+                return details.openAndUpdate();
             }
-            return gitClone(siteName, gitUri, List.of(sourceBranch, pagesBranch),
-                    (git, directory) -> new GitCloneDirectory(git, directory, pagesBranch));
+
+            if (LaunchMode.DEVELOPMENT.equals(LaunchMode.current())) {
+                if (isZip(gitUri)) {
+                    Log.warnf("Unzipping '%s': this application is most likely indexing only a sample of %s."
+                            + " See README to index the full website.",
+                            gitUri, siteName);
+                    tempDir = CloseableDirectory.temp(siteName);
+                    tempDirectories.add(tempDir);
+                    unzip(Path.of(gitUri), tempDir.path());
+                    cloneDir = GitCloneDirectory.openAndUpdate(tempDir.path(), branches);
+                } else if (isFile(gitUri)) {
+                    Log.infof("Using the git repository '%s' as-is without cloning to speed up indexing of %s.",
+                            gitUri, siteName);
+                    // In dev mode, we want to skip cloning when possible, to make things quicker.
+                    cloneDir = GitCloneDirectory.openAndUpdate(Path.of(gitUri), branches);
+                }
+            }
+
+            if (cloneDir == null) {
+                // We always end up here in prod and tests.
+                // That's fine, because prod will always use remote (http/git) git URIs anyway,
+                // never local ones (file).
+                // We may skip it in dev mode though.
+                tempDir = CloseableDirectory.temp(siteName);
+                tempDirectories.add(tempDir);
+                cloneDir = GitCloneDirectory.clone(gitUri, tempDir.path(), branches);
+            }
+
+            detailsCache.put(gitUri, cloneDir.details());
+
+            return cloneDir;
         } catch (RuntimeException | IOException e) {
+            new SuppressingCloser(e).push(tempDir).push(cloneDir);
             throw new IllegalStateException("Failed to fetch '%s': %s".formatted(siteName, e.getMessage()), e);
         }
     }
@@ -98,35 +120,22 @@ public class FetchingService {
         return map;
     }
 
-    private static boolean isZip(URI uri) {
-        return uri.getScheme().equals("file")
-                && uri.getPath().endsWith(".zip");
+    private static boolean isFile(URI uri) {
+        return "file".equals(uri.getScheme());
     }
 
-    private <T> T gitClone(String name, URI gitUri, List<String> branches,
-            IOBiFunction<Git, CloseableDirectory, T> function) {
-        Log.infof("Cloning '%s' from '%s'.", name, gitUri);
-        CloseableDirectory directory = null;
-        Git git = null;
-        try {
-            directory = CloseableDirectory.temp(name);
-            git = Git.cloneRepository()
-                    .setURI(gitUri.toString())
-                    .setDirectory(directory.path().toFile())
-                    .setDepth(1)
-                    .setNoTags()
-                    .setBranch(branches.get(0))
-                    .setBranchesToClone(branches.stream().map(b -> "refs/heads/" + b).toList())
-                    .setProgressMonitor(LoggerProgressMonitor.create(log, "Cloning " + name + ": "))
-                    // Unfortunately sparse checkouts are not supported: https://www.eclipse.org/forums/index.php/t/1094825/
-                    .call();
-            return function.apply(git, directory);
-        } catch (RuntimeException | IOException | GitAPIException e) {
-            new SuppressingCloser(e)
-                    .push(git)
-                    .push(directory);
+    private static boolean isZip(URI uri) {
+        return isFile(uri) && uri.getPath().endsWith(".zip");
+    }
+
+    @PreDestroy
+    public void cleanupTemporaryFolders() {
+        try (Closer<IOException> closer = new Closer<>()) {
+            closer.pushAll(CloseableDirectory::close, tempDirectories);
+        } catch (Exception e) {
             throw new IllegalStateException(
-                    "Failed to clone git repository '%s' from '%s': %s".formatted(name, gitUri, e.getMessage()), e);
+                    "Failed to close directories '%s': %s".formatted(tempDirectories, e.getMessage()), e);
         }
     }
+
 }
