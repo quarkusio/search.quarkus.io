@@ -51,6 +51,11 @@ public interface IndexingConfig {
 
             String token();
 
+            /**
+             * @return How often to report status on GitHub when the last report was identical and contained only warnings.
+             */
+            Duration warningRepeatDelay();
+
             interface Issue {
                 String repository();
 

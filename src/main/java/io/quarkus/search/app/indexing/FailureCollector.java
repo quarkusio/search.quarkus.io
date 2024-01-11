@@ -1,7 +1,13 @@
 package io.quarkus.search.app.indexing;
 
+import static io.quarkus.search.app.util.Streams.toStream;
+import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
+
 import java.io.Closeable;
 import java.io.IOException;
+import java.sql.Date;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -10,10 +16,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import io.quarkus.search.app.util.Streams;
 
 import io.quarkus.logging.Log;
 
 import org.kohsuke.github.GHIssue;
+import org.kohsuke.github.GHIssueComment;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
@@ -62,7 +72,7 @@ public class FailureCollector implements Closeable {
                 IndexingConfig.GitErrorReporting.GithubReporter github = githubOptional.orElseThrow(
                         () -> new IllegalArgumentException(
                                 "GitHub error reporting requires both GitHub repository and issue id to be specified in the properties."));
-                reporter = new GithubFailureReporter(github.token(), github.issue().repository(), github.issue().id())::report;
+                reporter = new GithubFailureReporter(github)::report;
             }
             default -> throw new AssertionError("Unknown reporter type: " + type);
         }
@@ -100,19 +110,21 @@ public class FailureCollector implements Closeable {
         private static final String STATUS_CRITICAL = "Critical";
         private static final String STATUS_WARNING = "Warning";
         private static final String STATUS_SUCCESS = "Success";
+        private static final String STATUS_REPORT_HEADER = "## search.quarkus.io indexing status: ";
         private final GitHub github;
         private final String repositoryName;
         private final int issueId;
+        private final Duration warningRepeatDelay;
 
-        GithubFailureReporter(String token, String repositoryName, int issueId) throws IOException {
-            this.github = new GitHubBuilder().withOAuthToken(token).build();
-            this.repositoryName = repositoryName;
-            this.issueId = issueId;
-
+        GithubFailureReporter(IndexingConfig.GitErrorReporting.GithubReporter config) throws IOException {
+            this.github = new GitHubBuilder().withOAuthToken(config.token()).build();
+            this.repositoryName = config.issue().repository();
+            this.issueId = config.issue().id();
+            this.warningRepeatDelay = config.warningRepeatDelay();
         }
 
         void report(Map<Level, List<Failure>> failures) {
-            Log.trace("Reporting indexing status to GitHub.");
+            Log.infof("Reporting indexing status to GitHub.");
             try {
                 GHRepository repository = github.getRepository(repositoryName);
                 GHIssue issue = repository.getIssue(issueId);
@@ -124,28 +136,48 @@ public class FailureCollector implements Closeable {
                     issue.comment("Indexing finished with no warnings.");
                 }
                 if (!STATUS_SUCCESS.equals(status)) {
-                    StringBuilder comment = new StringBuilder("## search.quarkus.io indexing status report: ")
+                    StringBuilder newMessage = new StringBuilder(STATUS_REPORT_HEADER)
                             .append(status).append('\n');
 
                     for (Map.Entry<Level, List<Failure>> entry : failures.entrySet()) {
-                        report(comment, entry.getValue(), entry.getKey());
+                        report(newMessage, entry.getValue(), entry.getKey());
                     }
 
-                    issue.comment(comment.toString());
+                    if (STATUS_WARNING.equals(status)) {
+                        var lastRecentCommentByMe = getStatusCommentsSince(issue, Instant.now().minus(warningRepeatDelay))
+                                .reduce(Streams.last());
+                        // For warnings, only comment if we didn't comment the same thing recently.
+                        if (lastRecentCommentByMe.isPresent()
+                                && lastRecentCommentByMe.get().getBody().contentEquals(newMessage)) {
+                            Log.infof("Skipping the issue comment because the same message was sent recently.");
+                        } else {
+                            issue.comment(newMessage.toString());
+                        }
+                    } else {
+                        // For errors, always comment.
+                        issue.comment(newMessage.toString());
+                    }
                 }
 
                 // handle issue state (open/close):
                 //   Only reopen/keep opened an issue if we have critical things to report.
                 //   Otherwise, let's limit it to a comment only, and close an issue if needed.
                 if (STATUS_CRITICAL.equals(status) && !GHIssueState.OPEN.equals(issue.getState())) {
+                    Log.infof("Opening GitHub issue due to critical errors.");
                     issue.reopen();
                 }
                 if (!STATUS_CRITICAL.equals(status) && GHIssueState.OPEN.equals(issue.getState())) {
+                    Log.infof("Closing GitHub issue as indexing succeeded.");
                     issue.close();
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        private Stream<GHIssueComment> getStatusCommentsSince(GHIssue issue, Instant since) {
+            return toStream(issue.queryComments().since(Date.from(since)).list())
+                    .filter(uncheckedIO((GHIssueComment comment) -> comment.getBody().startsWith(STATUS_REPORT_HEADER))::apply);
         }
 
         private static String indexingResultStatus(Map<Level, List<Failure>> failures) {
