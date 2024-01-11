@@ -6,7 +6,6 @@ import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Date;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,16 +52,16 @@ public class FailureCollector implements Closeable {
     private final EnumMap<Level, List<Failure>> failures = new EnumMap<>(Level.class);
     private final Consumer<EnumMap<Level, List<Failure>>> reporter;
 
-    public FailureCollector() throws IOException {
+    public FailureCollector() {
         this.reporter = FailureCollector::logReporter;
     }
 
-    public FailureCollector(IndexingConfig.GitErrorReporting config) throws IOException {
+    public FailureCollector(IndexingConfig.GitErrorReporting config) {
         this(config.type(), config.github());
     }
 
     public FailureCollector(IndexingConfig.GitErrorReporting.Type type,
-            Optional<IndexingConfig.GitErrorReporting.GithubReporter> githubOptional) throws IOException {
+            Optional<IndexingConfig.GitErrorReporting.GithubReporter> githubOptional) {
         for (Level value : Level.values()) {
             failures.put(value, Collections.synchronizedList(new ArrayList<>()));
         }
@@ -111,30 +110,22 @@ public class FailureCollector implements Closeable {
         private static final String STATUS_WARNING = "Warning";
         private static final String STATUS_SUCCESS = "Success";
         private static final String STATUS_REPORT_HEADER = "## search.quarkus.io indexing status: ";
-        private final GitHub github;
-        private final String repositoryName;
-        private final int issueId;
-        private final Duration warningRepeatDelay;
+        private final IndexingConfig.GitErrorReporting.GithubReporter config;
 
-        GithubFailureReporter(IndexingConfig.GitErrorReporting.GithubReporter config) throws IOException {
-            this.github = new GitHubBuilder().withOAuthToken(config.token()).build();
-            this.repositoryName = config.issue().repository();
-            this.issueId = config.issue().id();
-            this.warningRepeatDelay = config.warningRepeatDelay();
+        GithubFailureReporter(IndexingConfig.GitErrorReporting.GithubReporter config) {
+            this.config = config;
         }
 
         void report(Map<Level, List<Failure>> failures) {
             Log.infof("Reporting indexing status to GitHub.");
             try {
-                GHRepository repository = github.getRepository(repositoryName);
-                GHIssue issue = repository.getIssue(issueId);
+                GitHub github = new GitHubBuilder().withOAuthToken(config.token()).build();
+                GHRepository repository = github.getRepository(config.issue().repository());
+                GHIssue issue = repository.getIssue(config.issue().id());
 
                 String status = indexingResultStatus(failures);
 
                 // add comments if needed:
-                if (STATUS_SUCCESS.equals(status) && GHIssueState.OPEN.equals(issue.getState())) {
-                    issue.comment("Indexing finished with no warnings.");
-                }
                 if (!STATUS_SUCCESS.equals(status)) {
                     StringBuilder newMessage = new StringBuilder(STATUS_REPORT_HEADER)
                             .append(status).append('\n');
@@ -144,7 +135,8 @@ public class FailureCollector implements Closeable {
                     }
 
                     if (STATUS_WARNING.equals(status)) {
-                        var lastRecentCommentByMe = getStatusCommentsSince(issue, Instant.now().minus(warningRepeatDelay))
+                        var lastRecentCommentByMe = getStatusCommentsSince(issue,
+                                Instant.now().minus(config.warningRepeatDelay()))
                                 .reduce(Streams.last());
                         // For warnings, only comment if we didn't comment the same thing recently.
                         if (lastRecentCommentByMe.isPresent()
@@ -170,8 +162,8 @@ public class FailureCollector implements Closeable {
                     Log.infof("Closing GitHub issue as indexing succeeded.");
                     issue.close();
                 }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            } catch (IOException | RuntimeException e) {
+                throw new IllegalStateException("Unable to report failures to GitHub: " + e.getMessage(), e);
             }
         }
 

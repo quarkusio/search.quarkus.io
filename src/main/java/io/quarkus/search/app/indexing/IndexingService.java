@@ -156,8 +156,6 @@ public class IndexingService {
                 // Re-throw even though we've reported the failure, for the benefit of callers/logs
                 throw e;
             }
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to report indexing failures: " + e.getMessage(), e);
         } finally {
             reindexingInProgress.set(false);
         }
