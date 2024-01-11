@@ -3,6 +3,7 @@ package io.quarkus.search.app.indexing;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,7 @@ public class FailureCollector implements Closeable {
     public FailureCollector(IndexingConfig.GitErrorReporting.Type type,
             Optional<IndexingConfig.GitErrorReporting.GithubReporter> githubOptional) throws IOException {
         for (Level value : Level.values()) {
-            failures.put(value, new ArrayList<>());
+            failures.put(value, Collections.synchronizedList(new ArrayList<>()));
         }
         switch (type) {
             case LOG -> reporter = FailureCollector::logReporter;
