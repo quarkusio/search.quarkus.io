@@ -114,7 +114,7 @@ public class Guide {
     @Override
     public String toString() {
         return "Guide{" +
-                "url='" + url + '\'' +
+                "url=<" + url + '>' +
                 '}';
     }
 }
