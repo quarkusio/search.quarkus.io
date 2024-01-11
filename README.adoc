@@ -113,10 +113,14 @@ podman container run -it --rm --pod search.quarkus.io \
 
 === Current process
 
-Deployment should happen automatically when pushing to the `main` branch.
+Maintainers can review the application and update configuration/secrets on the OpenShift console.
 
-Maintainers can review the application and update configuration/secrets
-at https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/
+There are two namespaces containing two separate deployments at the moment:
+
+* Production (`production` branch): https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/prod-search-quarkus-io
+* Staging (`main` branch): https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/dev-search-quarkus-io
+
+Deployment will happen automatically when pushing to the relevant branch.
 
 Be careful about which configuration you change in the UI,
 as deployment may overwrite part of the topology.
