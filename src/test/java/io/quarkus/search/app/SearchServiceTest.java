@@ -92,8 +92,9 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
-                GuideRef.ALL_CONFIG));
-        assertThat(result.total()).isEqualTo(8);
+                GuideRef.ALL_CONFIG,
+                GuideRef.ALL_BUILDITEMS));
+        assertThat(result.total()).isEqualTo(9);
     }
 
     @Test
@@ -104,7 +105,9 @@ class SearchServiceTest {
         // (or... the full rendered HTML).
         var result = search("quarkus.hibernate-orm.validate-in-dev-mode");
         assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
-                GuideRef.HIBERNATE_ORM, GuideRef.HIBERNATE_REACTIVE, GuideRef.ALL_CONFIG));
+                GuideRef.HIBERNATE_ORM,
+                GuideRef.HIBERNATE_REACTIVE,
+                GuideRef.ALL_CONFIG));
     }
 
     @Test
@@ -120,8 +123,9 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
                 GuideRef.DUPLICATED_CONTEXT,
-                GuideRef.ALL_CONFIG));
-        assertThat(result.total()).isEqualTo(9);
+                GuideRef.ALL_CONFIG,
+                GuideRef.ALL_BUILDITEMS));
+        assertThat(result.total()).isEqualTo(10);
     }
 
     @Test
@@ -129,8 +133,11 @@ class SearchServiceTest {
         var result = search("orm elasticsearch");
         // We expect an AND by default
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .containsExactlyInAnyOrder(GuideRef.urls(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH, GuideRef.ALL_CONFIG));
-        assertThat(result.total()).isEqualTo(2);
+                .containsExactlyInAnyOrder(GuideRef.urls(
+                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                        GuideRef.ALL_CONFIG,
+                        GuideRef.ALL_BUILDITEMS));
+        assertThat(result.total()).isEqualTo(3);
     }
 
     @Test
@@ -219,12 +226,16 @@ class SearchServiceTest {
                         // TODO Hibernate Reactive/Search should be after ORM...
                         // TODO Shouldn't the ORM guide be before Panache?
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                        // TODO this is way too high
+                        GuideRef.ALL_BUILDITEMS,
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_ORM)),
                 Arguments.of("jpa", GuideRef.urls(
+                        // TODO this is way too high
+                        GuideRef.ALL_BUILDITEMS,
                         // TODO we'd probably want ORM before Panache?
                         GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
                         GuideRef.HIBERNATE_ORM_PANACHE,
@@ -251,8 +262,9 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
                 GuideRef.DUPLICATED_CONTEXT,
-                GuideRef.ALL_CONFIG));
-        assertThat(result.total()).isEqualTo(9);
+                GuideRef.ALL_CONFIG,
+                GuideRef.ALL_BUILDITEMS));
+        assertThat(result.total()).isEqualTo(10);
     }
 
     @Test
@@ -359,10 +371,10 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
 
         AtomicInteger matches = new AtomicInteger(0);
-        assertThat(result.hits()).extracting(GuideSearchHit::content).hasSize(8)
+        assertThat(result.hits()).extracting(GuideSearchHit::content).hasSize(9)
                 .allSatisfy(content -> assertThat(content).hasSize(1)
                         .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
-        assertThat(matches.get()).isEqualTo(9);
+        assertThat(matches.get()).isEqualTo(10);
     }
 
     @Test
@@ -458,6 +470,33 @@ class SearchServiceTest {
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(
                         Set.of("Environment variable: QUARKUS_VIRTUAL_THREADS_ENABLED Show more boolean true WebSockets Client Type Default <span class=\"highlighted\">quarkus.websocket.max</span>-<span class=\"highlighted\">frame</span>-<span class=\"highlighted\">size</span>"));
+    }
+
+    @Test
+    void findFQCN() {
+        var result = given()
+                .queryParam("q", "io.quarkus.deployment.pkg.builditem.NativeImageBuildItem")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::content)
+                .containsOnly(Set.of(
+                        "io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>"));
+    }
+
+    @Test
+    void findBuildItem() {
+        var result = given()
+                .queryParam("q", "NativeImageBuildItem")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::content)
+                // This token doesn't exist in the field we project, only in another, derived field,
+                // and as a result it doesn't get highlighted.
+                .containsOnly(Set.of());
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,

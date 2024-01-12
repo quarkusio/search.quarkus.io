@@ -78,7 +78,7 @@ public class SearchService {
                                 .field(localizedField("title_autocomplete", language)).boost(1.0f)
                                 .field(localizedField("summary_autocomplete", language)).boost(0.5f)
                                 .field(localizedField("fullContent_autocomplete", language)).boost(0.1f)
-                                .field(localizedField("fullContent_configProperties", language)).boost(2.0f)
+                                .field(localizedField("fullContent_compoundTechnicalName", language)).boost(2.0f)
                                 .matching(q)
                                 // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
                                 // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side.

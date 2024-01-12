@@ -1,6 +1,7 @@
 package io.quarkus.search.app.hibernate;
 
 import java.util.EnumSet;
+import java.util.regex.Pattern;
 
 import io.quarkus.search.app.entity.Language;
 
@@ -24,9 +25,16 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
     public static final String DEFAULT = "basic_analyzer";
     public static final String DEFAULT_SEARCH = DEFAULT + "_search";
     public static final String AUTOCOMPLETE = "autocomplete";
-    public static final String CONFIG_PROPERTIES = "config_properties";
-    public static final String CONFIG_PROPERTIES_SEARCH = "config_properties_search";
+    public static final String COMPOUND_TECHNICAL_NAME = "compound_technical_name";
+    public static final String COMPOUND_TECHNICAL_NAME_SEARCH = "compound_technical_name_search";
     public static final String SORT = "sort";
+    private static final Pattern QUARKUS_CONFIGURATION_PROPERTY_PATTERN = Pattern.compile("quarkus(\\.[a-z\\-\"]+)+");
+    private static final Pattern QUARKUS_ENVIRONMENT_VARIABLE_PATTERN = Pattern.compile("QUARKUS(_[A-Z_]+)+");
+    // This is simplified by assuming no default package, lowercase package names and capitalized class name,
+    // so we get fewer false positives
+    private static final Pattern SIMPLIFIED_JAVA_FQCN_PATTERN = Pattern
+            .compile("([a-z_$][a-z0-9_$]*\\.)+[A-Z][A-Za-z0-9_$]*");
+    private static final Pattern SIMPLIFIED_JAVA_CLASS_NAME_CAPTURE_PATTERN = Pattern.compile("\\.([A-Z].+)$");
 
     public static String defaultAnalyzer(Language language) {
         return localizedAnalyzer(DEFAULT, language);
@@ -40,12 +48,12 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         return localizedAnalyzer(AUTOCOMPLETE, language);
     }
 
-    public static String configPropertiesAnalyzer(Language language) {
-        return localizedAnalyzer(CONFIG_PROPERTIES, language);
+    public static String compoundTechnicalNameAnalyzer(Language language) {
+        return localizedAnalyzer(COMPOUND_TECHNICAL_NAME, language);
     }
 
     public static String configPropertiesSearchAnalyzer(Language language) {
-        return localizedAnalyzer(CONFIG_PROPERTIES_SEARCH, language);
+        return localizedAnalyzer(COMPOUND_TECHNICAL_NAME_SEARCH, language);
     }
 
     public static String localizedAnalyzer(String prefix, Language language) {
@@ -57,13 +65,30 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         // for en/es/pt we are going to use the same english configuration since guides are not translated
         EnumSet<Language> englishLanguages = EnumSet.of(Language.ENGLISH, Language.PORTUGUESE, Language.SPANISH);
 
-        context.tokenizer("config_properties_tokenizer")
+        String compoundTechnicalNameTokenizer = "compound_technical_name_tokenizer";
+        context.tokenizer(compoundTechnicalNameTokenizer)
                 .type("simple_pattern")
-                .param("pattern", "(quarkus(\\.[a-z\\-\\\"]+)+)|(QUARKUS(_[A-Z_]+)+)");
-        context.tokenFilter("autocomplete_config_properties")
+                .param("pattern",
+                        QUARKUS_CONFIGURATION_PROPERTY_PATTERN.pattern()
+                                + "|"
+                                + QUARKUS_ENVIRONMENT_VARIABLE_PATTERN.pattern()
+                                + "|"
+                                + SIMPLIFIED_JAVA_FQCN_PATTERN.pattern());
+        String compoundTechnicalNameAutocompleteFilter = "compound_technical_name_autocomplete";
+        context.tokenFilter(compoundTechnicalNameAutocompleteFilter)
                 .type("edge_ngram")
                 .param("min_gram", 2)
                 .param("max_gram", 70);
+        // This decomposes io.quarkus.deployment.builditem.AdditionalIndexedClassesBuildItem into
+        // [
+        // io.quarkus.deployment.builditem.AdditionalIndexedClassesBuildItem,
+        // AdditionalIndexedClassesBuildItem
+        // ]
+        String compoundTechnicalNameSimpleNameFilter = "compound_technical_name_simple_name";
+        context.tokenFilter(compoundTechnicalNameSimpleNameFilter)
+                .type("pattern_capture")
+                .param("preserve_original", true)
+                .param("patterns", SIMPLIFIED_JAVA_CLASS_NAME_CAPTURE_PATTERN.pattern());
 
         for (Language language : englishLanguages) {
             SharedFilters result = sharedFilters(context, language);
@@ -96,11 +121,14 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                     .charFilters("html_strip");
 
             // config properties
-            context.analyzer(configPropertiesAnalyzer(language)).custom()
-                    .tokenizer("config_properties_tokenizer")
-                    .tokenFilters("autocomplete_config_properties");
+            context.analyzer(compoundTechnicalNameAnalyzer(language)).custom()
+                    .tokenizer(compoundTechnicalNameTokenizer)
+                    .tokenFilters(compoundTechnicalNameSimpleNameFilter,
+                            "lowercase", "asciifolding",
+                            compoundTechnicalNameAutocompleteFilter);
             context.analyzer(configPropertiesSearchAnalyzer(language)).custom()
-                    .tokenizer("keyword");
+                    .tokenizer("keyword")
+                    .tokenFilters("lowercase", "asciifolding");
         }
 
         // japanese
@@ -132,11 +160,14 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         japanese.autocompleteEdgeNgram())
                 .charFilters("icu_normalizer", "html_strip");
 
-        context.analyzer(configPropertiesAnalyzer(Language.JAPANESE)).custom()
-                .tokenizer("config_properties_tokenizer")
-                .tokenFilters("autocomplete_config_properties");
+        context.analyzer(compoundTechnicalNameAnalyzer(Language.JAPANESE)).custom()
+                .tokenizer(compoundTechnicalNameTokenizer)
+                .tokenFilters(compoundTechnicalNameSimpleNameFilter,
+                        "lowercase", "asciifolding",
+                        compoundTechnicalNameAutocompleteFilter);
         context.analyzer(configPropertiesSearchAnalyzer(Language.JAPANESE)).custom()
-                .tokenizer("keyword");
+                .tokenizer("keyword")
+                .tokenFilters("lowercase", "asciifolding");
 
         // chinese
         // https://www.elastic.co/guide/en/elasticsearch/plugins/current/_reimplementing_and_extending_the_analyzers.html
@@ -170,11 +201,14 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         chinese.autocompleteEdgeNgram())
                 .charFilters("html_strip");
 
-        context.analyzer(configPropertiesAnalyzer(Language.CHINESE)).custom()
-                .tokenizer("config_properties_tokenizer")
-                .tokenFilters("autocomplete_config_properties");
+        context.analyzer(compoundTechnicalNameAnalyzer(Language.CHINESE)).custom()
+                .tokenizer(compoundTechnicalNameTokenizer)
+                .tokenFilters(compoundTechnicalNameSimpleNameFilter,
+                        "lowercase", "asciifolding",
+                        compoundTechnicalNameAutocompleteFilter);
         context.analyzer(configPropertiesSearchAnalyzer(Language.CHINESE)).custom()
-                .tokenizer("keyword");
+                .tokenizer("keyword")
+                .tokenFilters("lowercase", "asciifolding");
 
         context.normalizer(SORT).custom()
                 .tokenFilters("lowercase");
