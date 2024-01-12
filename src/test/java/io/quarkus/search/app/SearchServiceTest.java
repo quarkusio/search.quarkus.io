@@ -226,15 +226,13 @@ class SearchServiceTest {
                         // TODO Hibernate Reactive/Search should be after ORM...
                         // TODO Shouldn't the ORM guide be before Panache?
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
-                        // TODO this is way too high
-                        GuideRef.ALL_BUILDITEMS,
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_ORM)),
                 Arguments.of("jpa", GuideRef.urls(
-                        // TODO this is way too high
+                        // TODO this should be last, but other documents actually mention JPA way less frequently
                         GuideRef.ALL_BUILDITEMS,
                         // TODO we'd probably want ORM before Panache?
                         GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
@@ -494,9 +492,8 @@ class SearchServiceTest {
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
-                // This token doesn't exist in the field we project, only in another, derived field,
-                // and as a result it doesn't get highlighted.
-                .containsOnly(Set.of());
+                .containsOnly(Set.of(
+                        "io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>"));
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,

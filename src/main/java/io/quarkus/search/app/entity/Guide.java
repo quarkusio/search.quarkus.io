@@ -72,7 +72,6 @@ public class Guide {
 
     @I18nFullTextField(name = "fullContent", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), highlightable = Highlightable.UNIFIED, analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nFullTextField(name = "fullContent_autocomplete", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzerPrefix = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
-    @I18nFullTextField(name = "fullContent_compoundTechnicalName", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzerPrefix = AnalysisConfigurer.COMPOUND_TECHNICAL_NAME, searchAnalyzerPrefix = AnalysisConfigurer.COMPOUND_TECHNICAL_NAME_SEARCH)
     @Transient
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.NO)
     public InputProvider htmlFullContentProvider;
