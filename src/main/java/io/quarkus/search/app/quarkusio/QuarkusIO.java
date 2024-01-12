@@ -243,7 +243,7 @@ public class QuarkusIO implements AutoCloseable {
                 // it may be that not all localized sites are up-to-date, in that case we just assume that the translation is not there
                 // and the non-translated english text will be used.
                 failureCollector.warning(FailureCollector.Stage.TRANSLATION,
-                        "Unable to parse a translation file " + path + " : " + e.getMessage());
+                        "Unable to parse a translation file " + path + " : " + e.getMessage(), e);
 
                 messages = new Catalog();
             }
