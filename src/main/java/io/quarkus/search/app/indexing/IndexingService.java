@@ -252,16 +252,18 @@ public class IndexingService {
 
     @ActivateRequestContext
     <T> void indexBatch(List<T> docs) {
-        QuarkusTransaction.requiringNew().run(() -> {
-            for (T doc : docs) {
-                try {
-                    Log.tracef("About to persist: %s", doc);
-                    session.persist(doc);
-                } catch (Exception e) {
-                    throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
-                }
-            }
-        });
+        QuarkusTransaction.requiringNew()
+                .timeout((int) indexingConfig.timeout().toSeconds())
+                .run(() -> {
+                    for (T doc : docs) {
+                        try {
+                            Log.tracef("About to persist: %s", doc);
+                            session.persist(doc);
+                        } catch (Exception e) {
+                            throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
+                        }
+                    }
+                });
     }
 
     private void clearDatabaseWithoutIndexes() {
