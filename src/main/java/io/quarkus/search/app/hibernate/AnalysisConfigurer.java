@@ -71,23 +71,28 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
             // default:
             context.analyzer(defaultAnalyzer(language)).custom()
                     .tokenizer("standard")
-                    .tokenFilters(result.possessiveStemmer(), "lowercase", "asciifolding", result.stop(),
-                            result.regularStemmer())
+                    .tokenFilters(result.possessiveStemmer(), result.stop(),
+                            result.regularStemmer(),
+                            "lowercase", "asciifolding")
                     .charFilters("html_strip");
             context.analyzer(defaultSearchAnalyzer(language)).custom()
                     .tokenizer("standard")
                     // > In general, synonym filters rewrite their inputs to the tokenizer and filters used in the preceding analysis chain
                     // Note how the synonym filter is added in the end. According to https://www.elastic.co/blog/boosting-the-power-of-elasticsearch-with-synonyms
                     // preceding filters should get applied to the synonyms we passed to it, so we don't need to bother about normalizing them in some way:
-                    .tokenFilters(result.possessiveStemmer(), "lowercase", "asciifolding", result.stop(),
-                            result.regularStemmer(), result.synonymsGraphFilter())
+                    .tokenFilters(result.possessiveStemmer(), result.stop(),
+                            result.regularStemmer(),
+                            "lowercase", "asciifolding",
+                            result.synonymsGraphFilter())
                     .charFilters("html_strip");
 
             // autocomplete:
             context.analyzer(autocompleteAnalyzer(language)).custom()
                     .tokenizer("standard")
-                    .tokenFilters(result.possessiveStemmer(), "lowercase", "asciifolding", result.stop(),
-                            result.regularStemmer(), result.autocompleteEdgeNgram())
+                    .tokenFilters(result.possessiveStemmer(), result.stop(),
+                            result.regularStemmer(),
+                            "lowercase", "asciifolding",
+                            result.autocompleteEdgeNgram())
                     .charFilters("html_strip");
 
             // config properties
@@ -103,24 +108,27 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         SharedFilters japanese = sharedFilters(context, Language.JAPANESE);
         context.analyzer(defaultAnalyzer(Language.JAPANESE)).custom()
                 .tokenizer("kuromoji_tokenizer")
-                .tokenFilters("kuromoji_baseform", "kuromoji_part_of_speech", japanese.possessiveStemmer(), "lowercase",
-                        "asciifolding", "ja_stop", japanese.stop(), "kuromoji_stemmer", japanese.regularStemmer())
+                .tokenFilters("kuromoji_baseform", "kuromoji_part_of_speech", japanese.possessiveStemmer(),
+                        "ja_stop", japanese.stop(), "kuromoji_stemmer", japanese.regularStemmer(),
+                        "lowercase", "asciifolding")
                 .charFilters("icu_normalizer", "html_strip");
         context.analyzer(defaultSearchAnalyzer(Language.JAPANESE)).custom()
                 .tokenizer("kuromoji_tokenizer")
                 // > In general, synonym filters rewrite their inputs to the tokenizer and filters used in the preceding analysis chain
                 // Note how the synonym filter is added in the end. According to https://www.elastic.co/blog/boosting-the-power-of-elasticsearch-with-synonyms
                 // preceding filters should get applied to the synonyms we passed to it, so we don't need to bother about normalizing them in some way:
-                .tokenFilters("kuromoji_baseform", "kuromoji_part_of_speech", japanese.possessiveStemmer(), "lowercase",
-                        "asciifolding", "ja_stop", japanese.stop(), "kuromoji_stemmer", japanese.regularStemmer(),
+                .tokenFilters("kuromoji_baseform", "kuromoji_part_of_speech", japanese.possessiveStemmer(),
+                        "ja_stop", japanese.stop(), "kuromoji_stemmer", japanese.regularStemmer(),
+                        "lowercase", "asciifolding",
                         japanese.synonymsGraphFilter())
                 .charFilters("icu_normalizer", "html_strip");
 
         // autocomplete:
         context.analyzer(autocompleteAnalyzer(Language.JAPANESE)).custom()
                 .tokenizer("kuromoji_tokenizer")
-                .tokenFilters("kuromoji_baseform", "kuromoji_part_of_speech", japanese.possessiveStemmer(), "lowercase",
-                        "asciifolding", "ja_stop", japanese.stop(), "kuromoji_stemmer", japanese.regularStemmer(),
+                .tokenFilters("kuromoji_baseform", "kuromoji_part_of_speech", japanese.possessiveStemmer(),
+                        "ja_stop", japanese.stop(), "kuromoji_stemmer", japanese.regularStemmer(),
+                        "lowercase", "asciifolding",
                         japanese.autocompleteEdgeNgram())
                 .charFilters("icu_normalizer", "html_strip");
 
@@ -135,8 +143,9 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         SharedFilters chinese = sharedFilters(context, Language.CHINESE);
         context.analyzer(defaultAnalyzer(Language.CHINESE)).custom()
                 .tokenizer("smartcn_tokenizer")
-                .tokenFilters(chinese.possessiveStemmer(), "lowercase", "asciifolding", "smartcn_stop", chinese.stop(),
-                        chinese.regularStemmer())
+                .tokenFilters(chinese.possessiveStemmer(), "smartcn_stop", chinese.stop(),
+                        chinese.regularStemmer(),
+                        "lowercase", "asciifolding")
                 .charFilters("html_strip");
         context.analyzer(defaultSearchAnalyzer(Language.CHINESE)).custom()
                 .tokenizer("smartcn_tokenizer")
@@ -146,15 +155,19 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                 //
                 // NOTE: see how `smartcn_stop` filter goes after the synonyms, placing it next to the regular stop filter leads to
                 // startup failures, as schema cannot be created.
-                .tokenFilters(chinese.possessiveStemmer(), "lowercase", "asciifolding", chinese.stop(),
-                        chinese.regularStemmer(), chinese.synonymsGraphFilter(), "smartcn_stop")
+                .tokenFilters(chinese.possessiveStemmer(), chinese.stop(),
+                        chinese.regularStemmer(),
+                        "lowercase", "asciifolding",
+                        chinese.synonymsGraphFilter(), "smartcn_stop")
                 .charFilters("html_strip");
 
         // autocomplete:
         context.analyzer(autocompleteAnalyzer(Language.CHINESE)).custom()
                 .tokenizer("smartcn_tokenizer")
-                .tokenFilters(chinese.possessiveStemmer(), "lowercase", "asciifolding", "smartcn_stop", chinese.stop(),
-                        chinese.regularStemmer(), chinese.autocompleteEdgeNgram())
+                .tokenFilters(chinese.possessiveStemmer(), "smartcn_stop", chinese.stop(),
+                        chinese.regularStemmer(),
+                        "lowercase", "asciifolding",
+                        chinese.autocompleteEdgeNgram())
                 .charFilters("html_strip");
 
         context.analyzer(configPropertiesAnalyzer(Language.CHINESE)).custom()
@@ -175,7 +188,8 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         String synonymsGraphFilter = "synonyms_graph_filter_%s".formatted(language.code);
         context.tokenFilter(stop)
                 .type("stop")
-                .param("stopwords", "_english_");
+                .param("stopwords", "_english_")
+                .param("ignore_case", "true");
         context.tokenFilter(regularStemmer)
                 .type("stemmer")
                 .param("language", "english");
