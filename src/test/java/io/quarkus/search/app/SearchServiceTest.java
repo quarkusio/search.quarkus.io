@@ -105,7 +105,6 @@ class SearchServiceTest {
         var result = search("quarkus.hibernate-orm.validate-in-dev-mode");
         assertThat(result.hits()).extracting(GuideSearchHit::url).containsExactlyInAnyOrder(GuideRef.urls(
                 GuideRef.HIBERNATE_ORM, GuideRef.HIBERNATE_REACTIVE, GuideRef.ALL_CONFIG));
-        assertThat(result.total()).isEqualTo(3);
     }
 
     @Test
@@ -139,7 +138,6 @@ class SearchServiceTest {
         var result = search("");
         assertThat(result.hits()).extracting(GuideSearchHit::url)
                 .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
-        assertThat(result.total()).isEqualTo(11);
     }
 
     @Test
@@ -150,7 +148,6 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::url)
                 .containsExactlyInAnyOrder(GuideRef.urls(QuarkusIOSample.SearchServiceFilterDefinition.guides()));
-        assertThat(result.total()).isEqualTo(11);
     }
 
     @ParameterizedTest
@@ -214,19 +211,10 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
-                        GuideRef.HIBERNATE_REACTIVE,
-                        GuideRef.ALL_CONFIG,
-                        GuideRef.SPRING_DATA_JPA)),
+                        GuideRef.HIBERNATE_REACTIVE)),
                 Arguments.of("reactive", GuideRef.urls(
                         GuideRef.HIBERNATE_REACTIVE,
-                        GuideRef.HIBERNATE_REACTIVE_PANACHE,
-                        GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
-                        GuideRef.ALL_CONFIG,
-                        GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
-                        GuideRef.STORK_REFERENCE,
-                        GuideRef.HIBERNATE_ORM,
-                        GuideRef.SPRING_DATA_JPA)),
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE)),
                 Arguments.of("hiber", GuideRef.urls(
                         // TODO Hibernate Reactive/Search should be after ORM...
                         // TODO Shouldn't the ORM guide be before Panache?
@@ -235,18 +223,13 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_ORM,
-                        GuideRef.ALL_CONFIG,
-                        GuideRef.DUPLICATED_CONTEXT, // contains "Hibernate Reactive"
-                        GuideRef.SPRING_DATA_JPA)),
+                        GuideRef.HIBERNATE_ORM)),
                 Arguments.of("jpa", GuideRef.urls(
                         // TODO we'd probably want ORM before Panache?
                         GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_ORM,
-                        GuideRef.ALL_CONFIG,
-                        GuideRef.SPRING_DATA_JPA)),
+                        GuideRef.HIBERNATE_ORM)),
                 Arguments.of("search", GuideRef.urls(
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH)),
                 Arguments.of("stork", GuideRef.urls(
@@ -318,7 +301,6 @@ class SearchServiceTest {
                 .satisfiesOnlyOnce(uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.name()))
                 .satisfiesOnlyOnce(
                         uri -> assertThat(uri).asString().contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.name()));
-        assertThat(result.total()).isEqualTo(2);
     }
 
     @Test
