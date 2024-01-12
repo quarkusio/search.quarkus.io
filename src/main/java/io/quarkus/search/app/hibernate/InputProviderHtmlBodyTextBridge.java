@@ -21,13 +21,13 @@ public class InputProviderHtmlBodyTextBridge implements ValueBridge<InputProvide
             // Content div has two grid columns: actual content and TOC. There's not much use of the TOC, we want the content only:
             Element content = body.selectFirst(".guide");
             if (content != null) {
-                // We may be looking at a guide with/without a TOC;
-                // if it is one with the TOC, there's no uch point in indexing the TOC itself, hence we don't include it:
-
-                // column (grid items) are not present in a guide like all-config
-                Element guideColumn = content.selectFirst(".grid__item");
-                if (guideColumn != null) {
-                    content = guideColumn;
+                Element toc = content.selectFirst(".tocwrapper");
+                if (toc != null) {
+                    // If the guide contains a TOC, there's not much point in indexing it.
+                    // We index its sibling, the actual content.
+                    content = toc.siblingElements().stream().filter(e -> e != toc).findFirst()
+                            // If we don't find it, we fall back to indexing everything, including the toc.
+                            .orElse(content);
                 }
                 return encode(content);
             } else {
