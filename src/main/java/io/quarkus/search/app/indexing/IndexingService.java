@@ -152,7 +152,7 @@ public class IndexingService {
                 createIndexes();
                 indexAll(failureCollector);
             } catch (RuntimeException e) {
-                failureCollector.critical(FailureCollector.Stage.INDEXING, "Indexing failed: " + e.getMessage());
+                failureCollector.critical(FailureCollector.Stage.INDEXING, "Indexing failed: " + e.getMessage(), e);
                 // Re-throw even though we've reported the failure, for the benefit of callers/logs
                 throw e;
             }

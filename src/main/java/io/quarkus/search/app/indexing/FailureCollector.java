@@ -5,6 +5,8 @@ import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.sql.Date;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -49,8 +51,9 @@ public class FailureCollector implements Closeable {
      * @param level Whether the reported failure should lead to reporting the indexing as incomplete/failed or not.
      * @param stage Where the failure happened.
      * @param details Failure details.
+     * @param exception An exception that has caused the failure.
      */
-    public record Failure(Level level, Stage stage, String details) {
+    public record Failure(Level level, Stage stage, String details, Exception exception) {
     }
 
     private final EnumMap<Level, List<Failure>> failures = new EnumMap<>(Level.class);
@@ -82,13 +85,17 @@ public class FailureCollector implements Closeable {
     }
 
     public void warning(Stage stage, String details) {
-        Log.warn(details);
-        failures.get(Level.WARNING).add(new Failure(Level.WARNING, stage, details));
+        warning(stage, details, null);
     }
 
-    public void critical(Stage stage, String details) {
-        Log.error(details);
-        failures.get(Level.CRITICAL).add(new Failure(Level.CRITICAL, stage, details));
+    public void warning(Stage stage, String details, Exception exception) {
+        Log.warn(details, exception);
+        failures.get(Level.WARNING).add(new Failure(Level.WARNING, stage, details, exception));
+    }
+
+    public void critical(Stage stage, String details, Exception exception) {
+        Log.error(details, exception);
+        failures.get(Level.CRITICAL).add(new Failure(Level.CRITICAL, stage, details, exception));
     }
 
     @Override
@@ -103,7 +110,7 @@ public class FailureCollector implements Closeable {
         Log.warn("Reporting indexing status summary:");
         for (List<Failure> list : failures.values()) {
             for (Failure failure : list) {
-                Log.warn(failure);
+                Log.warn(failure, failure.exception);
             }
         }
     }
@@ -218,9 +225,31 @@ public class FailureCollector implements Closeable {
                     sb.append("* ").append(stage).append(":\n");
                     for (Failure failure : list) {
                         sb.append("  * ").append(failure.details()).append('\n');
+                        formatException(sb, failure.exception());
                     }
                 }
             }
+        }
+
+        private static void formatException(StringBuilder sb, Exception exception) {
+            if (exception == null) {
+                return;
+            }
+
+            sb.append("\n    <details>\n")
+                    .append("      <summary>")
+                    .append("Exception details: <code>").append(exception.getClass().getName())
+                    .append("</code></summary>\n\n");
+
+            try (StringWriter writer = new StringWriter();
+                    PrintWriter printWriter = new PrintWriter(writer)) {
+                exception.printStackTrace(printWriter);
+                sb.append(writer.toString().replaceAll("(?m)^", "        "));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            sb.append("\n    </details>\n\n");
         }
     }
 }

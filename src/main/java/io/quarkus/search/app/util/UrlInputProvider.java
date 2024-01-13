@@ -32,7 +32,7 @@ public class UrlInputProvider implements InputProvider {
                 Files.copy(inputStream, temporaryFile);
             } catch (IOException e) {
                 failureCollector.warning(FailureCollector.Stage.PARSING,
-                        "Failed to prefetch the guide content from the URL (%s): %s".formatted(this.url, e.getMessage()));
+                        "Failed to prefetch the guide content from the URL (%s): %s".formatted(this.url, e.getMessage()), e);
                 temporaryFile = null;
             }
             this.temporaryFile = temporaryFile;
