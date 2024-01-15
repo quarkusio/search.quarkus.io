@@ -326,7 +326,8 @@ public final class QuarkusIOSample {
                 GuideRef.DUPLICATED_CONTEXT,
                 GuideRef.SECURITY_OIDC_BEARER_TOKEN_AUTHENTICATION,
                 GuideRef.STORK_REFERENCE,
-                GuideRef.ALL_CONFIG
+                GuideRef.ALL_CONFIG,
+                GuideRef.ALL_BUILDITEMS
         };
 
         public static GuideRef[] guides() {

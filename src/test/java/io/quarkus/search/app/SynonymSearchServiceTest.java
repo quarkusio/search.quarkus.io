@@ -95,7 +95,7 @@ class SynonymSearchServiceTest {
                         Set.of("Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>",
                                 "Reactive and <span class=\"highlighted\">REST</span> Client Reactive interactions In Quarkus, the <span class=\"highlighted\">RESTEasy</span> Reactive extension and the <span class=\"highlighted\">REST</span>")),
                 Arguments.of("vertx",
-                        Set.of("Use codecs The https:&#x2F;&#x2F;vertx.io&#x2F;docs&#x2F;<span class=\"highlighted\">vertx</span>-core&#x2F;java&#x2F;event_bus[<span class=\"highlighted\">Vert.x</span> Event",
+                        Set.of("either the: <span class=\"highlighted\">io.vertx.core.Vertx</span> instance exposing the bare <span class=\"highlighted\">Vert.x</span> API <span class=\"highlighted\">io.vertx.mutiny.core.Vertx</span> instance",
                                 "Access the <span class=\"highlighted\">Vert.x</span> instance To access the managed <span class=\"highlighted\">Vert.x</span> instance, add the quarkus-<span class=\"highlighted\">vertx</span> extension to")),
                 Arguments.of("rest api",
                         Set.of("Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>",

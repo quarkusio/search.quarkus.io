@@ -29,9 +29,10 @@ public record GuideRef(String name) {
     public static final GuideRef RESTEASY_REACTIVE_REFERENCE = create("resteasy-reactive");
     public static final GuideRef VERTX_REFERENCE = create("vertx-reference");
     public static final GuideRef ALL_CONFIG = create("all-config");
+    public static final GuideRef ALL_BUILDITEMS = create("all-builditems");
     public static final GuideRef QUARKIVERSE_AMAZON_S3 = createQuarkiverse(
             "https://quarkiverse.github.io/quarkiverse-docs/quarkus-amazon-services/dev/amazon-s3.html");
-    // NOTE: when adding new constants here, don't forget to run the main() method in QuarkusIOFigure
+    // NOTE: when adding new constants here, don't forget to run the main() method in QuarkusIOSample
     // to update the QuarkusIO sample in src/test/resources.
 
     public static GuideRef[] local() {
