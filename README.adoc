@@ -129,8 +129,14 @@ Maintainers can review the application and update configuration/secrets on the O
 
 There are two namespaces containing two separate deployments at the moment:
 
-* Production (`production` branch): https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/prod-search-quarkus-io
-* Staging (`main` branch): https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/dev-search-quarkus-io
+* Production (`production` branch):
+** Console: https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/prod-search-quarkus-io
+** Endpoint: https://search.quarkus.io/api/guides/search
+** Indexing status reports: https://github.com/quarkusio/search.quarkus.io/issues/130
+* Staging (`main` branch):
+** Console: https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/dev-search-quarkus-io
+** Endpoint: https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/api/guides/search
+** Indexing status reports: https://github.com/quarkusio/search.quarkus.io/issues/131
 
 Deployment will happen automatically when pushing to the relevant branch.
 
