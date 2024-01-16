@@ -80,9 +80,9 @@ public class IndexingService {
         }
         var waitInterval = indexingConfig.onStartup().waitInterval();
         waitForeverFor(this::isSearchBackendReachable, waitInterval,
-                () -> Log.infof("Search backend is not reachable yet, waiting..."))
+                () -> Log.infof("Reindexing on startup: search backend is not reachable yet, waiting..."))
                 .chain(() -> waitForeverFor(this::isSearchBackendReady, waitInterval,
-                        () -> Log.infof("Search backend is not ready yet, waiting...")))
+                        () -> Log.infof("Reindexing on startup: search backend is not ready yet, waiting...")))
                 .chain(() -> Uni.createFrom()
                         .item(() -> {
                             if (IndexingConfig.OnStartup.When.INDEXES_EMPTY.equals(indexingConfig.onStartup().when())) {
