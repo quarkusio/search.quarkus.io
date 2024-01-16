@@ -1,5 +1,7 @@
 package io.quarkus.search.app.indexing;
 
+import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -18,6 +20,7 @@ import io.quarkus.search.app.util.SimpleExecutor;
 
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.scheduler.Scheduled;
 import io.quarkus.vertx.http.ManagementInterface;
@@ -31,10 +34,8 @@ import org.hibernate.search.util.common.impl.Closer;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 
-import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
-import io.smallrye.mutiny.subscription.FixedDemandPacer;
 
 @ApplicationScoped
 public class IndexingService {
@@ -94,22 +95,16 @@ public class IndexingService {
             }
         }
         var waitInterval = indexingConfig.onStartup().waitInterval();
-        // https://smallrye.io/smallrye-mutiny/2.0.0/guides/polling/#how-to-use-polling
-        Multi.createBy().repeating()
-                .supplier(this::isSearchBackendAccessible)
-                .until(backendAccessible -> backendAccessible)
-                .onItem().invoke(() -> {
-                    Log.infof("Search backend is not reachable yet, waiting...");
-                })
-                .onCompletion().call(() -> Uni.createFrom()
+        waitForeverFor(this::isSearchBackendReachable, waitInterval,
+                () -> Log.infof("Search backend is not reachable yet, waiting..."))
+                .chain(() -> waitForeverFor(this::isSearchBackendReady, waitInterval,
+                        () -> Log.infof("Search backend is not ready yet, waiting...")))
+                .chain(() -> Uni.createFrom()
                         .item(() -> {
                             reindex();
                             return null;
                         })
                         .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()))
-                // https://smallrye.io/smallrye-mutiny/2.5.1/guides/controlling-demand/#pacing-the-demand
-                .paceDemand().on(Infrastructure.getDefaultWorkerPool())
-                .using(new FixedDemandPacer(1L, waitInterval))
                 .subscribe().with(
                         // We don't care about the items, we just want this to run.
                         ignored -> {
@@ -130,10 +125,23 @@ public class IndexingService {
         }
     }
 
-    private boolean isSearchBackendAccessible() {
+    private boolean isSearchBackendReachable() {
         try {
             searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
                     .performRequest(new Request("GET", "/"));
+            return true;
+        } catch (IOException e) {
+            Log.debug("Caught exception when testing whether the search backend is reachable", e);
+            return false;
+        }
+    }
+
+    private boolean isSearchBackendReady() {
+        try {
+            String requiredStatus = LaunchMode.NORMAL.equals(LaunchMode.current()) ? "green" : "yellow";
+            searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
+                    .performRequest(new Request("GET", "/_cluster/health?wait_for_status=%s&timeout=0s"
+                            .formatted(requiredStatus)));
             return true;
         } catch (IOException e) {
             Log.debug("Caught exception when testing whether the search backend is reachable", e);
