@@ -187,13 +187,12 @@ public class IndexingService {
                 if (Rollover.recoverInconsistentAliases(searchMapping)) {
                     Log.info("Creating missing indexes after aliases were recovered");
                     searchMapping.scope(Object.class).schemaManager().createIfMissing();
-                } else {
-                    throw e;
+                    return;
                 }
             } catch (RuntimeException e2) {
                 e.addSuppressed(e2);
-                throw new IllegalStateException("Failed to create indexes: " + e.getMessage(), e);
             }
+            throw new IllegalStateException("Failed to create indexes: " + e.getMessage(), e);
         }
     }
 
