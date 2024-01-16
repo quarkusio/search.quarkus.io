@@ -70,23 +70,7 @@ public class IndexingService {
     void indexOnStartup(@Observes StartupEvent ev) {
         switch (indexingConfig.onStartup().when()) {
             case ALWAYS -> Log.infof("Reindexing on startup");
-            case INDEXES_EMPTY -> {
-                try {
-                    long documentCount = QuarkusTransaction.requiringNew().call(() -> searchSession.search(
-                            Object.class)
-                            .where(f -> f.matchAll())
-                            .fetchTotalHitCount());
-                    if (documentCount >= 0L) {
-                        Log.infof("Not reindexing on startup: index are present, reachable, and contain %s documents."
-                                + " Call endpoint '%s' to reindex explicitly.",
-                                documentCount, REINDEX_ENDPOINT_PATH);
-                        return;
-                    }
-                    Log.infof("Reindexing on startup: indexes are empty.");
-                } catch (RuntimeException e) {
-                    Log.infof(e, "Reindexing on startup: could not determine the content of indexes.");
-                }
-            }
+            case INDEXES_EMPTY -> Log.infof("Reindexing on startup if indexes are empty");
             case NEVER -> {
                 Log.infof("Not reindexing on startup: disabled through configuration."
                         + " Call endpoint '%s' to reindex explicitly.",
@@ -101,6 +85,25 @@ public class IndexingService {
                         () -> Log.infof("Search backend is not ready yet, waiting...")))
                 .chain(() -> Uni.createFrom()
                         .item(() -> {
+                            if (IndexingConfig.OnStartup.When.INDEXES_EMPTY.equals(indexingConfig.onStartup().when())) {
+                                try {
+                                    long documentCount = QuarkusTransaction.requiringNew().call(
+                                            () -> searchSession.search(Object.class)
+                                                    .where(f -> f.matchAll())
+                                                    .fetchTotalHitCount());
+                                    if (documentCount >= 0L) {
+                                        Log.infof("Not reindexing on startup:"
+                                                + " index are present, reachable, and contain %s documents."
+                                                + " Call endpoint '%s' to reindex explicitly.",
+                                                documentCount, REINDEX_ENDPOINT_PATH);
+                                        return null;
+                                    }
+                                    Log.infof("Reindexing on startup: indexes are empty.");
+                                } catch (RuntimeException e) {
+                                    Log.infof(
+                                            e, "Reindexing on startup: could not determine the content of indexes.");
+                                }
+                            }
                             reindex();
                             return null;
                         })
