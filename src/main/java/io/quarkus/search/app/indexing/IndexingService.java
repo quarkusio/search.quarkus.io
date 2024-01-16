@@ -101,7 +101,7 @@ public class IndexingService {
                                     Log.infof("Reindexing on startup: indexes are empty.");
                                 } catch (RuntimeException e) {
                                     Log.infof(
-                                            e, "Reindexing on startup: could not determine the content of indexes.");
+                                            e, "Reindexing on startup: could not determine the content of indexes");
                                 }
                             }
                             reindex();
