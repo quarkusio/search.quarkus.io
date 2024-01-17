@@ -107,12 +107,9 @@ public class FailureCollector implements Closeable {
         if (failures.isEmpty()) {
             return;
         }
-        Log.warn("Reporting indexing status summary:");
-        for (List<Failure> list : failures.values()) {
-            for (Failure failure : list) {
-                Log.warn(failure, failure.exception);
-            }
-        }
+        StringBuilder sb = new StringBuilder();
+        toMarkdown(sb, failures, false);
+        Log.warn(sb);
     }
 
     private static class GithubFailureReporter {
@@ -145,9 +142,7 @@ public class FailureCollector implements Closeable {
                     StringBuilder newMessage = new StringBuilder(STATUS_REPORT_HEADER)
                             .append(status).append('\n');
 
-                    for (Map.Entry<Level, List<Failure>> entry : failures.entrySet()) {
-                        report(newMessage, entry.getValue(), entry.getKey());
-                    }
+                    toMarkdown(newMessage, failures, true);
 
                     if (STATUS_WARNING.equals(status)) {
                         var lastRecentCommentByMe = getStatusCommentsSince(issue,
@@ -211,45 +206,53 @@ public class FailureCollector implements Closeable {
                 return STATUS_CRITICAL;
             }
         }
+    }
 
-        private static void report(StringBuilder sb, List<Failure> failures, Level level) {
-            if (failures.isEmpty()) {
-                return;
-            }
-            sb.append("\n### ").append(level).append("\n");
-            Map<Stage, List<Failure>> map = failures.stream().collect(
-                    Collectors.groupingBy(Failure::stage));
-            for (Stage stage : Stage.values()) {
-                List<Failure> list = map.getOrDefault(stage, List.of());
-                if (!list.isEmpty()) {
-                    sb.append("* ").append(stage).append(":\n");
-                    for (Failure failure : list) {
-                        sb.append("  * ").append(failure.details()).append('\n');
+    private static void toMarkdown(StringBuilder sb, Map<Level, List<Failure>> failures, boolean includeException) {
+        for (Map.Entry<Level, List<Failure>> entry : failures.entrySet()) {
+            toMarkdown(sb, entry.getValue(), entry.getKey(), includeException);
+        }
+    }
+
+    private static void toMarkdown(StringBuilder sb, List<Failure> failures, Level level, boolean includeException) {
+        if (failures.isEmpty()) {
+            return;
+        }
+        sb.append("\n### ").append(level).append("\n");
+        Map<Stage, List<Failure>> map = failures.stream().collect(
+                Collectors.groupingBy(Failure::stage));
+        for (Stage stage : Stage.values()) {
+            List<Failure> list = map.getOrDefault(stage, List.of());
+            if (!list.isEmpty()) {
+                sb.append("* ").append(stage).append(":\n");
+                for (Failure failure : list) {
+                    sb.append("  * ").append(failure.details()).append('\n');
+                    if (includeException) {
                         formatException(sb, failure.exception());
                     }
                 }
             }
         }
+    }
 
-        private static void formatException(StringBuilder sb, Exception exception) {
-            if (exception == null) {
-                return;
-            }
-
-            sb.append("\n    <details>\n")
-                    .append("      <summary>")
-                    .append("Exception details: <code>").append(exception.getClass().getName())
-                    .append("</code></summary>\n\n");
-
-            try (StringWriter writer = new StringWriter();
-                    PrintWriter printWriter = new PrintWriter(writer)) {
-                exception.printStackTrace(printWriter);
-                sb.append(writer.toString().replaceAll("(?m)^", "        "));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            sb.append("\n    </details>\n\n");
+    private static void formatException(StringBuilder sb, Exception exception) {
+        if (exception == null) {
+            return;
         }
+
+        sb.append("\n    <details>\n")
+                .append("      <summary>")
+                .append("Exception details: <code>").append(exception.getClass().getName())
+                .append("</code></summary>\n\n");
+
+        try (StringWriter writer = new StringWriter();
+                PrintWriter printWriter = new PrintWriter(writer)) {
+            exception.printStackTrace(printWriter);
+            sb.append(writer.toString().replaceAll("(?m)^", "        "));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        sb.append("\n    </details>\n\n");
     }
 }
