@@ -20,7 +20,6 @@ import io.quarkus.search.app.util.SimpleExecutor;
 
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.scheduler.Scheduled;
 import io.quarkus.vertx.http.ManagementInterface;
@@ -141,10 +140,8 @@ public class IndexingService {
 
     private boolean isSearchBackendReady() {
         try {
-            String requiredStatus = LaunchMode.NORMAL.equals(LaunchMode.current()) ? "green" : "yellow";
             searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
-                    .performRequest(new Request("GET", "/_cluster/health?wait_for_status=%s&timeout=0s"
-                            .formatted(requiredStatus)));
+                    .performRequest(new Request("GET", "/_cluster/health?wait_for_status=green&timeout=0s"));
             return true;
         } catch (IOException e) {
             Log.debug("Caught exception when testing whether the search backend is reachable", e);
