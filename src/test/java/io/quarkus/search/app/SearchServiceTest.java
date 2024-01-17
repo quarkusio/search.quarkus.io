@@ -77,7 +77,7 @@ class SearchServiceTest {
     void queryNotMatching() {
         var result = search("termnotmatching");
         assertThat(result.hits()).isEmpty();
-        assertThat(result.total()).isEqualTo(0);
+        assertThat(result.total().exact()).isEqualTo(0);
     }
 
     @Test
@@ -94,7 +94,7 @@ class SearchServiceTest {
                 GuideRef.SPRING_DATA_JPA,
                 GuideRef.ALL_CONFIG,
                 GuideRef.ALL_BUILDITEMS));
-        assertThat(result.total()).isEqualTo(9);
+        assertThat(result.total().exact()).isEqualTo(9);
     }
 
     @Test
@@ -125,7 +125,7 @@ class SearchServiceTest {
                 GuideRef.DUPLICATED_CONTEXT,
                 GuideRef.ALL_CONFIG,
                 GuideRef.ALL_BUILDITEMS));
-        assertThat(result.total()).isEqualTo(10);
+        assertThat(result.total().exact()).isEqualTo(10);
     }
 
     @Test
@@ -137,7 +137,7 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
                         GuideRef.ALL_CONFIG,
                         GuideRef.ALL_BUILDITEMS));
-        assertThat(result.total()).isEqualTo(3);
+        assertThat(result.total().exact()).isEqualTo(3);
     }
 
     @Test
@@ -262,7 +262,7 @@ class SearchServiceTest {
                 GuideRef.DUPLICATED_CONTEXT,
                 GuideRef.ALL_CONFIG,
                 GuideRef.ALL_BUILDITEMS));
-        assertThat(result.total()).isEqualTo(10);
+        assertThat(result.total().exact()).isEqualTo(10);
     }
 
     @Test

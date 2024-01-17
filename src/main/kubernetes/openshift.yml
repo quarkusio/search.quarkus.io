@@ -14,6 +14,18 @@ spec:
   # Without this, we'd end up with a verbatim copy of this (obviously incomplete) DeploymentConfig.
   template:
     spec:
+      # Make sure the app runs in the same zone as the backend
+      # See https://docs.openshift.com/container-platform/4.14/nodes/scheduling/nodes-scheduler-pod-affinity.html
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - search-backend
+              topologyKey: topology.kubernetes.io/zone
       containers:
         - name: search-quarkus-io
           # Oddly enough, the quarkus-openshift extension doesn't generate this
@@ -146,6 +158,18 @@ spec:
         app.kubernetes.io/part-of: search-quarkus-io
         app.kubernetes.io/managed-by: quarkus
     spec:
+      # Make sure the backend pods all run in the same zone
+      # See https://docs.openshift.com/container-platform/4.14/nodes/scheduling/nodes-scheduler-pod-affinity.html
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - search-backend
+              topologyKey: topology.kubernetes.io/zone
       containers:
         - name: opensearch
           image: opensearch-fixed:current
@@ -153,10 +177,10 @@ spec:
           resources:
             limits:
               cpu: 2000m
-              memory: 2Gi
+              memory: 3Gi
             requests:
               cpu: 1000m
-              memory: 1Gi
+              memory: 2Gi
           readinessProbe:
             httpGet:
               scheme: HTTP

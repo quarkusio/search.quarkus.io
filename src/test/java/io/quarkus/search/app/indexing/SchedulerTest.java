@@ -59,7 +59,7 @@ class SchedulerTest {
                     .then()
                     .statusCode(200)
                     .extract().body().as(SEARCH_RESULT_SEARCH_HITS)
-                    .total()).isPositive();
+                    .total().lowerBound()).isPositive();
         });
     }
 
