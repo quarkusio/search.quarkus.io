@@ -13,11 +13,14 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -54,6 +57,12 @@ public class FailureCollector implements Closeable {
      * @param exception An exception that has caused the failure.
      */
     public record Failure(Level level, Stage stage, String details, Exception exception) {
+        static Comparator<Failure> COMPARATOR = Comparator.comparing(Failure::level)
+                .thenComparing(Failure::stage)
+                .thenComparing(Failure::details)
+                // Not perfect, but then how likely it is to get
+                // two failures with everything identical except the exception?
+                .thenComparing(f -> System.identityHashCode(f.exception()));
     }
 
     private final EnumMap<Level, List<Failure>> failures = new EnumMap<>(Level.class);
@@ -107,12 +116,9 @@ public class FailureCollector implements Closeable {
         if (failures.isEmpty()) {
             return;
         }
-        Log.warn("Reporting indexing status summary:");
-        for (List<Failure> list : failures.values()) {
-            for (Failure failure : list) {
-                Log.warn(failure, failure.exception);
-            }
-        }
+        StringBuilder sb = new StringBuilder();
+        toMarkdown(sb, failures, false);
+        Log.warn(sb);
     }
 
     private static class GithubFailureReporter {
@@ -145,9 +151,7 @@ public class FailureCollector implements Closeable {
                     StringBuilder newMessage = new StringBuilder(STATUS_REPORT_HEADER)
                             .append(status).append('\n');
 
-                    for (Map.Entry<Level, List<Failure>> entry : failures.entrySet()) {
-                        report(newMessage, entry.getValue(), entry.getKey());
-                    }
+                    toMarkdown(newMessage, failures, true);
 
                     if (STATUS_WARNING.equals(status)) {
                         var lastRecentCommentByMe = getStatusCommentsSince(issue,
@@ -211,45 +215,55 @@ public class FailureCollector implements Closeable {
                 return STATUS_CRITICAL;
             }
         }
+    }
 
-        private static void report(StringBuilder sb, List<Failure> failures, Level level) {
-            if (failures.isEmpty()) {
-                return;
-            }
-            sb.append("\n### ").append(level).append("\n");
-            Map<Stage, List<Failure>> map = failures.stream().collect(
-                    Collectors.groupingBy(Failure::stage));
-            for (Stage stage : Stage.values()) {
-                List<Failure> list = map.getOrDefault(stage, List.of());
-                if (!list.isEmpty()) {
-                    sb.append("* ").append(stage).append(":\n");
-                    for (Failure failure : list) {
-                        sb.append("  * ").append(failure.details()).append('\n');
+    private static void toMarkdown(StringBuilder sb, Map<Level, List<Failure>> failures, boolean includeException) {
+        for (Map.Entry<Level, List<Failure>> entry : failures.entrySet()) {
+            toMarkdown(sb, entry.getValue(), entry.getKey(), includeException);
+        }
+    }
+
+    private static void toMarkdown(StringBuilder sb, List<Failure> failures, Level level, boolean includeException) {
+        if (failures.isEmpty()) {
+            return;
+        }
+        sb.append("\n### ").append(level).append("\n");
+        Map<Stage, Set<Failure>> map = failures.stream().collect(
+                // Sort failures so that two runs with the same failures will produce the same report
+                // This is critical when we try to limit the frequency of identical reports (see GH reporter)
+                Collectors.groupingBy(Failure::stage, Collectors.toCollection(() -> new TreeSet<>(Failure.COMPARATOR))));
+        for (Stage stage : Stage.values()) {
+            Set<Failure> set = map.getOrDefault(stage, Set.of());
+            if (!set.isEmpty()) {
+                sb.append("* ").append(stage).append(":\n");
+                for (Failure failure : set) {
+                    sb.append("  * ").append(failure.details()).append('\n');
+                    if (includeException) {
                         formatException(sb, failure.exception());
                     }
                 }
             }
         }
+    }
 
-        private static void formatException(StringBuilder sb, Exception exception) {
-            if (exception == null) {
-                return;
-            }
-
-            sb.append("\n    <details>\n")
-                    .append("      <summary>")
-                    .append("Exception details: <code>").append(exception.getClass().getName())
-                    .append("</code></summary>\n\n");
-
-            try (StringWriter writer = new StringWriter();
-                    PrintWriter printWriter = new PrintWriter(writer)) {
-                exception.printStackTrace(printWriter);
-                sb.append(writer.toString().replaceAll("(?m)^", "        "));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            sb.append("\n    </details>\n\n");
+    private static void formatException(StringBuilder sb, Exception exception) {
+        if (exception == null) {
+            return;
         }
+
+        sb.append("\n    <details>\n")
+                .append("      <summary>")
+                .append("Exception details: <code>").append(exception.getClass().getName())
+                .append("</code></summary>\n\n");
+
+        try (StringWriter writer = new StringWriter();
+                PrintWriter printWriter = new PrintWriter(writer)) {
+            exception.printStackTrace(printWriter);
+            sb.append(writer.toString().replaceAll("(?m)^", "        "));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        sb.append("\n    </details>\n\n");
     }
 }
