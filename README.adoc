@@ -107,16 +107,54 @@ Then start it this way:
 [source,shell]
 ----
 podman pod create -p 8080:8080 -p 9000:9000 -p 9200:9200 --name search.quarkus.io
-podman container run -d --name elasticearch --pod search.quarkus.io \
-    -e "discovery.type=single-node" -e "xpack.security.enabled=false" \
-    -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    docker.io/opensearchproject/opensearch:2.11.0
+# Start multiple OpenSearch containers
+podman container run -d --name search-backend-0 --pod search.quarkus.io \
+    --cpus=2 --memory=2g \
+    -e "node.name=search-backend-0" \
+    -e "discovery.seed_hosts=localhost" \
+    -e "cluster.initial_cluster_manager_nodes=search-backend-0,search-backend-1,search-backend-2" \
+    -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
+    -e "DISABLE_SECURITY_PLUGIN=true" \
+    -e "cluster.routing.allocation.disk.threshold_enabled=false" \
+    opensearch-custom-plugin:2.11.0
+podman container run -d --name search-backend-1 --pod search.quarkus.io \
+    --cpus=2 --memory=2g \
+    -e "node.name=search-backend-1" \
+    -e "discovery.seed_hosts=localhost" \
+    -e "cluster.initial_cluster_manager_nodes=search-backend-0,search-backend-1,search-backend-2" \
+    -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
+    -e "DISABLE_SECURITY_PLUGIN=true" \
+    -e "cluster.routing.allocation.disk.threshold_enabled=false" \
+    opensearch-custom-plugin:2.11.0
+podman container run -d --name search-backend-2 --pod search.quarkus.io \
+    --cpus=2 --memory=2g \
+    -e "node.name=search-backend-2" \
+    -e "discovery.seed_hosts=localhost" \
+    -e "cluster.initial_cluster_manager_nodes=search-backend-0,search-backend-1,search-backend-2" \
+    -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
+    -e "DISABLE_SECURITY_PLUGIN=true" \
+    -e "cluster.routing.allocation.disk.threshold_enabled=false" \
+    opensearch-custom-plugin:2.11.0
 # Then the app; this will fetch the actual data on startup (might take a while):
-podman container run -it --rm --pod search.quarkus.io search-quarkus-io:999-SNAPSHOT
-# OR, if you already have a local clone of quarkus.io:
-podman container run -it --rm --pod search.quarkus.io \
-    -v $HOME/path/to/quarkusio.github.io:/mnt/quarkus-io:ro,z \
-    -e QUARKUSIO_GIT_URI=file:/mnt/quarkus-io \
+podman container run -it --rm --name search.quarkus.io --pod search.quarkus.io search-quarkus-io:999-SNAPSHOT
+# OR, if you already have locals clones of *.quarkus.io:
+# (you might need to run quarkus dev with those repos first to get them all in sync)
+REPOS_DIR=$HOME/path/to/dir/containing/repos
+podman container run -it --rm --name search.quarkus.io --pod search.quarkus.io \
+    --cpus=1 --memory=1g \
+    -v $REPOS_DIR/quarkusio.github.io:/mnt/quarkus.io:ro,z \
+    -v $REPOS_DIR/cn.quarkus.io:/mnt/cn.quarkus.io:ro,z \
+    -v $REPOS_DIR/es.quarkus.io:/mnt/es.quarkus.io:ro,z \
+    -v $REPOS_DIR/ja.quarkus.io:/mnt/ja.quarkus.io:ro,z \
+    -v $REPOS_DIR/pt.quarkus.io:/mnt/pt.quarkus.io:ro,z \
+    -e INDEXING_ERROR_REPORTING_TYPE=log \
+    -e GITHUB_OAUTH=ignored \
+    -e GITHUB_STATUS_ISSUE_ID=1 \
+    -e QUARKUSIO_GIT_URI=file:/mnt/quarkus.io \
+    -e QUARKUSIO_LOCALIZED_CN_GIT_URI=file:/mnt/cn.quarkus.io \
+    -e QUARKUSIO_LOCALIZED_ES_GIT_URI=file:/mnt/es.quarkus.io \
+    -e QUARKUSIO_LOCALIZED_JA_GIT_URI=file:/mnt/ja.quarkus.io \
+    -e QUARKUSIO_LOCALIZED_PT_GIT_URI=file:/mnt/pt.quarkus.io \
     search-quarkus-io:999-SNAPSHOT
 ----
 
