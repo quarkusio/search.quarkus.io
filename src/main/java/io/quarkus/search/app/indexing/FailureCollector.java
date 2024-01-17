@@ -13,11 +13,14 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -54,6 +57,12 @@ public class FailureCollector implements Closeable {
      * @param exception An exception that has caused the failure.
      */
     public record Failure(Level level, Stage stage, String details, Exception exception) {
+        static Comparator<Failure> COMPARATOR = Comparator.comparing(Failure::level)
+                .thenComparing(Failure::stage)
+                .thenComparing(Failure::details)
+                // Not perfect, but then how likely it is to get
+                // two failures with everything identical except the exception?
+                .thenComparing(f -> System.identityHashCode(f.exception()));
     }
 
     private final EnumMap<Level, List<Failure>> failures = new EnumMap<>(Level.class);
@@ -219,13 +228,15 @@ public class FailureCollector implements Closeable {
             return;
         }
         sb.append("\n### ").append(level).append("\n");
-        Map<Stage, List<Failure>> map = failures.stream().collect(
-                Collectors.groupingBy(Failure::stage));
+        Map<Stage, Set<Failure>> map = failures.stream().collect(
+                // Sort failures so that two runs with the same failures will produce the same report
+                // This is critical when we try to limit the frequency of identical reports (see GH reporter)
+                Collectors.groupingBy(Failure::stage, Collectors.toCollection(() -> new TreeSet<>(Failure.COMPARATOR))));
         for (Stage stage : Stage.values()) {
-            List<Failure> list = map.getOrDefault(stage, List.of());
-            if (!list.isEmpty()) {
+            Set<Failure> set = map.getOrDefault(stage, Set.of());
+            if (!set.isEmpty()) {
                 sb.append("* ").append(stage).append(":\n");
-                for (Failure failure : list) {
+                for (Failure failure : set) {
                     sb.append("  * ").append(failure.details()).append('\n');
                     if (includeException) {
                         formatException(sb, failure.exception());
