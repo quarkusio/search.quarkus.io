@@ -31,7 +31,8 @@ import org.jboss.resteasy.reactive.RestQuery;
 @Path("/")
 public class SearchService {
 
-    private static final Integer PAGE_SIZE = 50;
+    private static final int PAGE_SIZE = 50;
+    private static final long TOTAL_HIT_COUNT_THRESHOLD = 100;
     private static final String MAX_FOR_PERF_MESSAGE = "{jakarta.validation.constraints.Max.message} for performance reasons";
 
     @Inject
@@ -105,8 +106,9 @@ public class SearchService {
                         f -> f.unified().noMatchSize(0).numberOfFragments(contentSnippets).fragmentSize(contentSnippetsLength))
                 .sort(f -> f.score().then().field("title_sort"))
                 .routing(VersionAndLanguageRoutingBinder.key(version, language))
+                .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)
                 .fetch(page * PAGE_SIZE, PAGE_SIZE);
-        return new SearchResult<>(result.total().hitCount(), result.hits());
+        return new SearchResult<>(result);
     }
 
     private String localizedField(String field, Language language) {

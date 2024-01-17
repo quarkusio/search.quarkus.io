@@ -14,6 +14,18 @@ spec:
   # Without this, we'd end up with a verbatim copy of this (obviously incomplete) DeploymentConfig.
   template:
     spec:
+      # Make sure the app runs in the same zone as the backend
+      # See https://docs.openshift.com/container-platform/4.14/nodes/scheduling/nodes-scheduler-pod-affinity.html
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - search-backend
+              topologyKey: topology.kubernetes.io/zone
       containers:
         - name: search-quarkus-io
           # Oddly enough, the quarkus-openshift extension doesn't generate this
@@ -133,7 +145,7 @@ metadata:
 # See https://www.hafifbilgiler.com/hafif-bilgiler/elasticsearch-installation-on-openshift/
 spec:
   serviceName: search-backend
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: search-backend
@@ -146,6 +158,18 @@ spec:
         app.kubernetes.io/part-of: search-quarkus-io
         app.kubernetes.io/managed-by: quarkus
     spec:
+      # Make sure the backend pods all run in the same zone
+      # See https://docs.openshift.com/container-platform/4.14/nodes/scheduling/nodes-scheduler-pod-affinity.html
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - search-backend
+              topologyKey: topology.kubernetes.io/zone
       containers:
         - name: opensearch
           image: opensearch-fixed:current
@@ -153,10 +177,10 @@ spec:
           resources:
             limits:
               cpu: 2000m
-              memory: 2Gi
+              memory: 3Gi
             requests:
               cpu: 1000m
-              memory: 1Gi
+              memory: 2Gi
           readinessProbe:
             httpGet:
               scheme: HTTP
@@ -180,12 +204,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            # https://opensearch.org/docs/latest/install-and-configure/install-opensearch/docker/#sample-docker-composeyml
-            # Rely on OpenShift's internal DNS to address the other hosts
-            - name: discovery.seed_hosts
-              value: "search-backend-0.search-backend,search-backend-1.search-backend,search-backend-2.search-backend"
-            - name: cluster.initial_cluster_manager_nodes
-              value: "search-backend-0,search-backend-1,search-backend-2"
+            # We don't have enough nodes/memory available in the cluster to allow for 3 decently-sized pods,
+            # and 3 pods with low memory perform badly, so we'll have to make do with a single pod.
+            - name: discovery.type
+              value: "single-node"
             # Memory locking doesn't work on our OpenShift instance,
             # but this shouldn't be too bad as we don't expect swapping to be enabled.
             - name: bootstrap.memory_lock
