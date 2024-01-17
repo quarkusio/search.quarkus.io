@@ -152,11 +152,11 @@ spec:
           imagePullPolicy: Always
           resources:
             limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
               cpu: 1000m
               memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 500Mi
           readinessProbe:
             httpGet:
               scheme: HTTP
@@ -186,11 +186,13 @@ spec:
               value: "search-backend-0.search-backend,search-backend-1.search-backend,search-backend-2.search-backend"
             - name: cluster.initial_cluster_manager_nodes
               value: "search-backend-0,search-backend-1,search-backend-2"
+            # Memory locking doesn't work on our OpenShift instance,
+            # but this shouldn't be too bad as we don't expect swapping to be enabled.
             - name: bootstrap.memory_lock
               value: "false"
             # OpenSearch doesn't seem to automatically adapt -Xmx to available memory, for some reason
             - name: OPENSEARCH_JAVA_OPTS
-              value: -Xms512m -Xmx512m
+              value: -Xms1g -Xmx1g
             # This is necessary to avoid OpenSearch trying to install various things on startup,
             # which leads to filesystem operations (chmod/chown) that won't work
             # because only user 1000 has the relevant permissions,
