@@ -1,5 +1,7 @@
 package io.quarkus.search.app.indexing;
 
+import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -18,6 +20,7 @@ import io.quarkus.search.app.util.SimpleExecutor;
 
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.scheduler.Scheduled;
 import io.quarkus.vertx.http.ManagementInterface;
@@ -31,10 +34,8 @@ import org.hibernate.search.util.common.impl.Closer;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 
-import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
-import io.smallrye.mutiny.subscription.FixedDemandPacer;
 
 @ApplicationScoped
 public class IndexingService {
@@ -69,23 +70,7 @@ public class IndexingService {
     void indexOnStartup(@Observes StartupEvent ev) {
         switch (indexingConfig.onStartup().when()) {
             case ALWAYS -> Log.infof("Reindexing on startup");
-            case INDEXES_EMPTY -> {
-                try {
-                    long documentCount = QuarkusTransaction.requiringNew().call(() -> searchSession.search(
-                            Object.class)
-                            .where(f -> f.matchAll())
-                            .fetchTotalHitCount());
-                    if (documentCount >= 0L) {
-                        Log.infof("Not reindexing on startup: index are present, reachable, and contain %s documents."
-                                + " Call endpoint '%s' to reindex explicitly.",
-                                documentCount, REINDEX_ENDPOINT_PATH);
-                        return;
-                    }
-                    Log.infof("Reindexing on startup: indexes are empty.");
-                } catch (RuntimeException e) {
-                    Log.infof(e, "Reindexing on startup: could not determine the content of indexes.");
-                }
-            }
+            case INDEXES_EMPTY -> Log.infof("Reindexing on startup if indexes are empty");
             case NEVER -> {
                 Log.infof("Not reindexing on startup: disabled through configuration."
                         + " Call endpoint '%s' to reindex explicitly.",
@@ -94,22 +79,35 @@ public class IndexingService {
             }
         }
         var waitInterval = indexingConfig.onStartup().waitInterval();
-        // https://smallrye.io/smallrye-mutiny/2.0.0/guides/polling/#how-to-use-polling
-        Multi.createBy().repeating()
-                .supplier(this::isSearchBackendAccessible)
-                .until(backendAccessible -> backendAccessible)
-                .onItem().invoke(() -> {
-                    Log.infof("Search backend is not reachable yet, waiting...");
-                })
-                .onCompletion().call(() -> Uni.createFrom()
+        waitForeverFor(this::isSearchBackendReachable, waitInterval,
+                () -> Log.infof("Reindexing on startup: search backend is not reachable yet, waiting..."))
+                .chain(() -> waitForeverFor(this::isSearchBackendReady, waitInterval,
+                        () -> Log.infof("Reindexing on startup: search backend is not ready yet, waiting...")))
+                .chain(() -> Uni.createFrom()
                         .item(() -> {
+                            if (IndexingConfig.OnStartup.When.INDEXES_EMPTY.equals(indexingConfig.onStartup().when())) {
+                                try {
+                                    long documentCount = QuarkusTransaction.requiringNew().call(
+                                            () -> searchSession.search(Object.class)
+                                                    .where(f -> f.matchAll())
+                                                    .fetchTotalHitCount());
+                                    if (documentCount > 0L) {
+                                        Log.infof("Not reindexing on startup:"
+                                                + " index are present, reachable, and contain %s documents."
+                                                + " Call endpoint '%s' to reindex explicitly.",
+                                                documentCount, REINDEX_ENDPOINT_PATH);
+                                        return null;
+                                    }
+                                    Log.infof("Reindexing on startup: indexes are empty.");
+                                } catch (RuntimeException e) {
+                                    Log.infof(
+                                            e, "Reindexing on startup: could not determine the content of indexes");
+                                }
+                            }
                             reindex();
                             return null;
                         })
                         .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()))
-                // https://smallrye.io/smallrye-mutiny/2.5.1/guides/controlling-demand/#pacing-the-demand
-                .paceDemand().on(Infrastructure.getDefaultWorkerPool())
-                .using(new FixedDemandPacer(1L, waitInterval))
                 .subscribe().with(
                         // We don't care about the items, we just want this to run.
                         ignored -> {
@@ -130,10 +128,23 @@ public class IndexingService {
         }
     }
 
-    private boolean isSearchBackendAccessible() {
+    private boolean isSearchBackendReachable() {
         try {
             searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
                     .performRequest(new Request("GET", "/"));
+            return true;
+        } catch (IOException e) {
+            Log.debug("Caught exception when testing whether the search backend is reachable", e);
+            return false;
+        }
+    }
+
+    private boolean isSearchBackendReady() {
+        try {
+            String requiredStatus = LaunchMode.NORMAL.equals(LaunchMode.current()) ? "green" : "yellow";
+            searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
+                    .performRequest(new Request("GET", "/_cluster/health?wait_for_status=%s&timeout=0s"
+                            .formatted(requiredStatus)));
             return true;
         } catch (IOException e) {
             Log.debug("Caught exception when testing whether the search backend is reachable", e);
@@ -187,13 +198,12 @@ public class IndexingService {
                 if (Rollover.recoverInconsistentAliases(searchMapping)) {
                     Log.info("Creating missing indexes after aliases were recovered");
                     searchMapping.scope(Object.class).schemaManager().createIfMissing();
-                } else {
-                    throw e;
+                    return;
                 }
             } catch (RuntimeException e2) {
                 e.addSuppressed(e2);
-                throw new IllegalStateException("Failed to create indexes: " + e.getMessage(), e);
             }
+            throw new IllegalStateException("Failed to create indexes: " + e.getMessage(), e);
         }
     }
 
