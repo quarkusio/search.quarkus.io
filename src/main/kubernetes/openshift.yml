@@ -186,6 +186,8 @@ spec:
               value: "search-backend-0.search-backend,search-backend-1.search-backend,search-backend-2.search-backend"
             - name: cluster.initial_cluster_manager_nodes
               value: "search-backend-0,search-backend-1,search-backend-2"
+            # Memory locking doesn't work on our OpenShift instance,
+            # but this shouldn't be too bad as we don't expect swapping to be enabled.
             - name: bootstrap.memory_lock
               value: "false"
             # OpenSearch doesn't seem to automatically adapt -Xmx to available memory, for some reason
