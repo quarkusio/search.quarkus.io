@@ -91,7 +91,7 @@ public class IndexingService {
                                             () -> searchSession.search(Object.class)
                                                     .where(f -> f.matchAll())
                                                     .fetchTotalHitCount());
-                                    if (documentCount >= 0L) {
+                                    if (documentCount > 0L) {
                                         Log.infof("Not reindexing on startup:"
                                                 + " index are present, reachable, and contain %s documents."
                                                 + " Call endpoint '%s' to reindex explicitly.",
