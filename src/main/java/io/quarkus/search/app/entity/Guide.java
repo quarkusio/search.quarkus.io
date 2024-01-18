@@ -1,7 +1,5 @@
 package io.quarkus.search.app.entity;
 
-import static io.quarkus.search.app.quarkusio.QuarkusIO.QUARKUS_ORIGIN;
-
 import java.net.URI;
 import java.util.Objects;
 import java.util.Set;
@@ -36,7 +34,7 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexingDe
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 
 @Entity
-@Indexed(routingBinder = @RoutingBinderRef(type = VersionAndLanguageRoutingBinder.class))
+@Indexed(routingBinder = @RoutingBinderRef(type = QuarkusVersionAndLanguageRoutingBinder.class))
 public class Guide {
     @Id
     @JavaType(URIType.class)
@@ -46,7 +44,7 @@ public class Guide {
     @Enumerated(EnumType.STRING)
     public Language language;
 
-    public String version;
+    public String quarkusVersion;
 
     @KeywordField
     public String type;
@@ -86,13 +84,6 @@ public class Guide {
     @KeywordField(name = "extensions_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
     public Set<String> extensions = Set.of();
 
-    /**
-     * @return {@code true} if the guide is a Quarkus guide, {@code false} if this guide is a Quarkiverse guide.
-     */
-    public boolean quarkusGuide() {
-        return QUARKUS_ORIGIN.equals(origin);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -112,7 +103,7 @@ public class Guide {
 
     @Override
     public String toString() {
-        return "Guide{" +
+        return getClass().getSimpleName() + "{" +
                 "url=<" + url + '>' +
                 '}';
     }

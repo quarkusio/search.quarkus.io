@@ -1,20 +1,29 @@
 package io.quarkus.search.app.entity;
 
+import java.util.List;
+
 import org.hibernate.search.mapper.pojo.bridge.RoutingBridge;
 import org.hibernate.search.mapper.pojo.bridge.binding.RoutingBindingContext;
 import org.hibernate.search.mapper.pojo.bridge.mapping.programmatic.RoutingBinder;
 import org.hibernate.search.mapper.pojo.bridge.runtime.RoutingBridgeRouteContext;
 import org.hibernate.search.mapper.pojo.route.DocumentRoutes;
 
-public class VersionAndLanguageRoutingBinder implements RoutingBinder {
-    public static String key(String version, Language language) {
+public class QuarkusVersionAndLanguageRoutingBinder implements RoutingBinder {
+    private static String key(String version, Language language) {
+        if (language == null) {
+            return version;
+        }
         return version + "/" + language.code;
+    }
+
+    public static List<String> searchKeys(String version, Language language) {
+        return List.of(key(version, language), key(version, null));
     }
 
     @Override
     public void bind(RoutingBindingContext context) {
         context.dependencies()
-                .use("version")
+                .use("quarkusVersion")
                 .use("language");
 
         context.bridge(Guide.class, new GuideRoutingBridge());
@@ -25,7 +34,7 @@ public class VersionAndLanguageRoutingBinder implements RoutingBinder {
         @Override
         public void route(DocumentRoutes routes, Object entityIdentifier, Guide entity,
                 RoutingBridgeRouteContext context) {
-            routes.addRoute().routingKey(key(entity.version, entity.language));
+            routes.addRoute().routingKey(key(entity.quarkusVersion, entity.language));
         }
 
         @Override
