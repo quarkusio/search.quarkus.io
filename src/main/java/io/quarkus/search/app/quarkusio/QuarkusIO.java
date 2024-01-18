@@ -252,13 +252,13 @@ public class QuarkusIO implements AutoCloseable {
         return map;
     }
 
-    private Stream<? extends Guide> translateGuide(Guide guide, Map<Language, Catalog> transaltions) {
+    private Stream<? extends Guide> translateGuide(Guide guide, Map<Language, Catalog> translations) {
         return Stream.concat(
                 Stream.of(guide),
                 localizedSites.entrySet().stream().map(entry -> {
                     Language language = entry.getKey();
                     GitCloneDirectory repository = entry.getValue();
-                    Catalog messages = transaltions.get(language);
+                    Catalog messages = translations.get(language);
 
                     Guide translated = new Guide();
                     translated.url = localizedUrl(language, guide);
