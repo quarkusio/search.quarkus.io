@@ -17,7 +17,7 @@ import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
-import io.quarkus.search.app.entity.VersionAndLanguageRoutingBinder;
+import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
@@ -105,7 +105,7 @@ public class SearchService {
                 .highlighter("highlighter_content",
                         f -> f.unified().noMatchSize(0).numberOfFragments(contentSnippets).fragmentSize(contentSnippetsLength))
                 .sort(f -> f.score().then().field("title_sort"))
-                .routing(VersionAndLanguageRoutingBinder.key(version, language))
+                .routing(QuarkusVersionAndLanguageRoutingBinder.searchKeys(version, language))
                 .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)
                 .fetch(page * PAGE_SIZE, PAGE_SIZE);
         return new SearchResult<>(result);

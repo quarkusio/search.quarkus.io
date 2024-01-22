@@ -84,7 +84,7 @@ public class QuarkusIO implements AutoCloseable {
     private final GitCloneDirectory mainRepository;
     private final Map<Language, GitCloneDirectory> localizedSites;
     private final Map<Language, URI> localizedSiteUris;
-    private final CloseableDirectory prefetchedQuarkiverseGuides = CloseableDirectory.temp("quarkiverse-guides-");
+    private final CloseableDirectory prefetchedGuides = CloseableDirectory.temp("quarkiverse-guides-");
     private final FailureCollector failureCollector;
 
     public QuarkusIO(QuarkusIOConfig config, GitCloneDirectory mainRepository,
@@ -100,7 +100,7 @@ public class QuarkusIO implements AutoCloseable {
     @Override
     public void close() throws Exception {
         try (var closer = new Closer<Exception>()) {
-            closer.push(CloseableDirectory::close, prefetchedQuarkiverseGuides);
+            closer.push(CloseableDirectory::close, prefetchedGuides);
             closer.push(GitCloneDirectory::close, mainRepository);
             closer.pushAll(GitCloneDirectory::close, localizedSites.values());
         }
@@ -116,14 +116,14 @@ public class QuarkusIO implements AutoCloseable {
     private Stream<Guide> versionedGuides() throws IOException {
         return Files.list(mainRepository.resolve("_data").resolve("versioned"))
                 .flatMap(p -> {
-                    var version = p.getFileName().toString().replace('-', '.');
+                    var quarkusVersion = p.getFileName().toString().replace('-', '.');
                     Path quarkiverse = p.resolve("index").resolve("quarkiverse.yaml");
                     Path quarkus = p.resolve("index").resolve("quarkus.yaml");
                     Map<Language, Catalog> translations = translations(
                             (directory, language) -> resolveTranslationPath(p.getFileName().toString(),
                                     quarkus.getFileName().toString(), directory, language));
 
-                    Stream<Guide> quarkusGuides = parseYamlMetadata(webUri, quarkus, version)
+                    Stream<Guide> quarkusGuides = parseYamlMetadata(webUri, quarkus, quarkusVersion)
                             .flatMap(guide -> translateGuide(guide, translations));
                     if (Files.exists(quarkiverse)) {
                         // the full content won't be translated, but the title/summary may be, so we want to get that info out if available
@@ -134,8 +134,7 @@ public class QuarkusIO implements AutoCloseable {
                                         quarkiverse.getFileName().toString(), directory, language));
                         return Stream.concat(
                                 quarkusGuides,
-                                parseYamlQuarkiverseMetadata(webUri, quarkiverse, version)
-                                        .flatMap(guide -> translateGuide(guide, quarkiverseTranslations)));
+                                parseYamlQuarkiverseMetadata(quarkiverse, quarkusVersion));
                     } else {
                         return quarkusGuides;
                     }
@@ -170,7 +169,7 @@ public class QuarkusIO implements AutoCloseable {
     }
 
     @SuppressWarnings("unchecked")
-    private Stream<Guide> parseYamlMetadata(URI webUri, Path quarkusYamlPath, String version) {
+    private Stream<Guide> parseYamlMetadata(URI webUri, Path quarkusYamlPath, String quarkusVersion) {
         return parse(quarkusYamlPath, quarkusYaml -> {
             Set<Guide> parsed = new HashSet<>();
             for (Map<String, Object> parsedGuide : ((Map<String, List<Object>>) quarkusYaml.get("types")).entrySet()
@@ -178,7 +177,7 @@ public class QuarkusIO implements AutoCloseable {
                     .flatMap(e -> e.getValue().stream())
                     .map(e -> (Map<String, Object>) e).toList()) {
 
-                Guide guide = createGuide(webUri, version, toString(parsedGuide.get("type")), parsedGuide, "summary");
+                Guide guide = createGuide(webUri, quarkusVersion, toString(parsedGuide.get("type")), parsedGuide, "summary");
                 guide.categories = toSet(parsedGuide.get("categories"));
                 guide.keywords = toString(parsedGuide.get("keywords"));
                 guide.topics = toSet(parsedGuide.get("topics"));
@@ -192,13 +191,13 @@ public class QuarkusIO implements AutoCloseable {
     }
 
     @SuppressWarnings("unchecked")
-    private Stream<Guide> parseYamlQuarkiverseMetadata(URI webUri, Path quarkusYamlPath, String version) {
+    private Stream<Guide> parseYamlQuarkiverseMetadata(Path quarkusYamlPath, String quarkusVersion) {
         return parse(quarkusYamlPath, quarkusYaml -> {
             Set<Guide> parsed = new HashSet<>();
             for (Map.Entry<String, List<Map<String, Object>>> type : ((Map<String, List<Map<String, Object>>>) quarkusYaml
                     .get("types")).entrySet()) {
                 for (Map<String, Object> parsedGuide : type.getValue()) {
-                    Guide guide = createGuide(webUri, version, type.getKey(), parsedGuide, "summary");
+                    Guide guide = createQuarkiverseGuide(quarkusVersion, type.getKey(), parsedGuide, "summary");
                     guide.categories = toSet(parsedGuide.get("categories"));
                     parsed.add(guide);
                 }
@@ -252,41 +251,38 @@ public class QuarkusIO implements AutoCloseable {
         return map;
     }
 
-    private Stream<? extends Guide> translateGuide(Guide guide, Map<Language, Catalog> transaltions) {
+    private Stream<Guide> translateGuide(Guide guide, Map<Language, Catalog> translations) {
+        if (guide.language == null) {
+            // Quarkiverse guides are not translated; we use a single instance for all languages.
+            return Stream.of(guide);
+        }
         return Stream.concat(
                 Stream.of(guide),
                 localizedSites.entrySet().stream().map(entry -> {
                     Language language = entry.getKey();
                     GitCloneDirectory repository = entry.getValue();
-                    Catalog messages = transaltions.get(language);
+                    Catalog messages = translations.get(language);
 
                     Guide translated = new Guide();
                     translated.url = localizedUrl(language, guide);
                     translated.language = language;
                     translated.type = guide.type;
-                    translated.version = guide.version;
+                    translated.quarkusVersion = guide.quarkusVersion;
                     translated.origin = guide.origin;
                     translated.title = translate(messages, guide.title);
                     translated.summary = translate(messages, guide.summary);
-                    // If it is a quarkiverse guide, it means that it is an external url, we can't do much about it
-                    // and we just use the same provider/file that we've already used for the original guide in English;
-                    // otherwise we try to find a corresponding translated HTML:
-                    if (guide.quarkusGuide()) {
-                        GitInputProvider gitInputProvider = new GitInputProvider(
-                                repository.git(), repository.pagesTree(),
-                                localizedHtmlPath(guide.version, guide.url.getPath()));
-                        if (!gitInputProvider.isFileAvailable()) {
-                            // if  a file is not present we do not want to add such guide. Since if the html is not there
-                            // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
-                            failureCollector.warning(FailureCollector.Stage.TRANSLATION,
-                                    "Guide " + translated
-                                            + " is ignored since we were not able to find an HTML content file for it.");
-                            return null;
-                        }
-                        translated.htmlFullContentProvider = gitInputProvider;
-                    } else {
-                        translated.htmlFullContentProvider = guide.htmlFullContentProvider;
+                    GitInputProvider gitInputProvider = new GitInputProvider(
+                            repository.git(), repository.pagesTree(),
+                            localizedHtmlPath(guide.quarkusVersion, guide.url.getPath()));
+                    if (!gitInputProvider.isFileAvailable()) {
+                        // if  a file is not present we do not want to add such guide. Since if the html is not there
+                        // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
+                        failureCollector.warning(FailureCollector.Stage.TRANSLATION,
+                                "Guide " + translated
+                                        + " is ignored since we were not able to find an HTML content file for it.");
+                        return null;
                     }
+                    translated.htmlFullContentProvider = gitInputProvider;
                     translated.categories = guide.categories;
                     translated.extensions = guide.extensions;
                     translated.keywords = translate(messages, guide.keywords);
@@ -312,21 +308,10 @@ public class QuarkusIO implements AutoCloseable {
     private URI localizedUrl(Language language, Guide guide) {
         URI url = guide.url;
         try {
-            // if we have a Quarkus "local" guide then we have to replace the "host" part to use the localized one
-            // that we store in the web uris:
-            if (guide.quarkusGuide()) {
-                URI localized = localizedSiteUris.get(language);
-                return new URI(
-                        localized.getScheme(), localized.getAuthority(), url.getPath(),
-                        url.getQuery(), url.getFragment());
-            } else {
-                // otherwise since the link for Quarkiverse (external) guides is exactly the same for all the languages/versions
-                // and we've already added a version parameter to the query part of the url, we just append the language to it
-                // to make it unique:
-                return new URI(
-                        url.getScheme(), url.getAuthority(), url.getPath(),
-                        url.getQuery() + "&language=" + language.code, url.getFragment());
-            }
+            URI localized = localizedSiteUris.get(language);
+            return new URI(
+                    localized.getScheme(), localized.getAuthority(), url.getPath(),
+                    url.getQuery(), url.getFragment());
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(
                     "Cannot create a localized version of the URL (%s). It is expected to have a correctly formatted URL at this point to a Quarkiverse guide (i.e. http://smth.smth/smth) : %s"
@@ -360,35 +345,52 @@ public class QuarkusIO implements AutoCloseable {
         return parser.apply(quarkusYaml);
     }
 
-    private Guide createGuide(URI webUri, String version, String type, Map<String, Object> parsedGuide,
+    private Guide createGuide(URI urlBase, String quarkusVersion, String type, Map<String, Object> parsedGuide,
             String summaryKey) {
-        Guide guide = new Guide();
-        guide.language = Language.ENGLISH;
-        guide.type = type;
-        guide.title = renderMarkdown(toString(parsedGuide.get("title")));
-        guide.origin = toString(parsedGuide.get("origin"));
-        guide.version = version;
-        guide.summary = renderMarkdown(toString(parsedGuide.get(summaryKey)));
         String parsedUrl = toString(parsedGuide.get("url"));
-        URI uri;
         if (parsedUrl.startsWith("http")) {
             // we are looking at a quarkiverse guide:
-            uri = httpUrl(version, parsedUrl);
-            guide.htmlFullContentProvider = new UrlInputProvider(prefetchedQuarkiverseGuides, uri, failureCollector);
-
-            if (guide.origin == null) {
-                guide.origin = QUARKIVERSE_ORIGIN;
-            }
+            return createQuarkiverseGuide(quarkusVersion, type, parsedGuide, summaryKey);
         } else {
-            uri = httpUrl(webUri, version, parsedUrl);
-            guide.htmlFullContentProvider = new GitInputProvider(mainRepository.git(), mainRepository.pagesTree(),
-                    htmlPath(version, parsedUrl));
-
-            if (guide.origin == null) {
-                guide.origin = QUARKUS_ORIGIN;
-            }
+            return createCoreGuide(urlBase, quarkusVersion, type, parsedGuide, summaryKey);
         }
-        guide.url = uri;
+    }
+
+    private Guide createCoreGuide(URI urlBase, String quarkusVersion, String type, Map<String, Object> parsedGuide,
+            String summaryKey) {
+        Guide guide = new Guide();
+        guide.quarkusVersion = quarkusVersion;
+        guide.language = Language.ENGLISH;
+        guide.origin = toString(parsedGuide.get("origin"));
+        if (guide.origin == null) {
+            guide.origin = QUARKUS_ORIGIN;
+        }
+        guide.type = type;
+        guide.title = renderMarkdown(toString(parsedGuide.get("title")));
+        guide.summary = renderMarkdown(toString(parsedGuide.get(summaryKey)));
+        String parsedUrl = toString(parsedGuide.get("url"));
+        guide.url = httpUrl(urlBase, quarkusVersion, parsedUrl);
+        guide.htmlFullContentProvider = new GitInputProvider(mainRepository.git(), mainRepository.pagesTree(),
+                htmlPath(quarkusVersion, parsedUrl));
+        return guide;
+    }
+
+    private Guide createQuarkiverseGuide(String quarkusVersion, String type, Map<String, Object> parsedGuide,
+            String summaryKey) {
+        Guide guide = new Guide();
+        guide.quarkusVersion = quarkusVersion;
+        // This is on purpose and will lead to the same guide instance being used for all languages
+        guide.language = null;
+        guide.origin = toString(parsedGuide.get("origin"));
+        if (guide.origin == null) {
+            guide.origin = QUARKIVERSE_ORIGIN;
+        }
+        guide.type = type;
+        guide.title = renderMarkdown(toString(parsedGuide.get("title")));
+        guide.summary = renderMarkdown(toString(parsedGuide.get(summaryKey)));
+        String parsedUrl = toString(parsedGuide.get("url"));
+        guide.url = httpUrl(quarkusVersion, parsedUrl);
+        guide.htmlFullContentProvider = new UrlInputProvider(prefetchedGuides, guide.url, failureCollector);
         return guide;
     }
 
