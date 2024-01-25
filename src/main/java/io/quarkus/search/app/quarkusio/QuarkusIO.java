@@ -403,8 +403,8 @@ public class QuarkusIO implements AutoCloseable {
         if (value == null) {
             return Set.of();
         }
-        if (value instanceof String) {
-            return toSet((String) value);
+        if (value instanceof String string) {
+            return toSet(string);
         }
         if (value instanceof Collection<?>) {
             return new HashSet<>((Collection<String>) value);

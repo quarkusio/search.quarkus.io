@@ -24,9 +24,9 @@ public final class GitTestUtils {
         if (config == null) {
             return;
         }
-        if (config instanceof StoredConfig) {
+        if (config instanceof StoredConfig storedConfig) {
             try {
-                ((StoredConfig) config).clear();
+                storedConfig.clear();
             } catch (Exception e) {
                 LOG.warnf("Unable to clear Git config %s", config);
             }
