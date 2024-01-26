@@ -9,3 +9,5 @@ updates:
         patterns:
           - "*maven*plugin*"
           - "org.apache.maven*:*"
+        exclude-patterns:
+          - "io.quarkus*"
