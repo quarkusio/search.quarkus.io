@@ -102,8 +102,16 @@ public class I18nFullTextFieldAnnotationProcessor implements PropertyMappingAnno
             }
 
             @Override
-            public void write(DocumentElement target, Language discriminator, S bridgedElement) {
-                target.addValue(fields.get(discriminator), bridge.toIndexedValue(bridgedElement, null));
+            public void write(DocumentElement target, Language language, S bridgedElement) {
+                if (language != null) {
+                    target.addValue(fields.get(language), bridge.toIndexedValue(bridgedElement, null));
+                } else {
+                    // No language: this happens for Quarkiverse guides in particular.
+                    // Just populate all language fields with the same value.
+                    for (IndexFieldReference<String> field : fields.values()) {
+                        target.addValue(field, bridge.toIndexedValue(bridgedElement, null));
+                    }
+                }
             }
         }
     }

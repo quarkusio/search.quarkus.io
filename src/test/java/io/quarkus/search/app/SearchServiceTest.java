@@ -165,7 +165,8 @@ class SearchServiceTest {
             "https://ja.quarkus.io",
             "https://pt.quarkus.io",
             "https://quarkus-site-pr-1825-preview.surge.sh",
-            "https://quarkus-website-pr-1825-preview.surge.sh"
+            "https://quarkus-website-pr-1825-preview.surge.sh",
+            "https://quarkus-pr-main-38430-preview.surge.sh"
     })
     void cors_allowed(String origin) {
         given()

@@ -62,11 +62,11 @@ public class URIType extends AbstractClassJavaType<URI> {
         if (value == null) {
             return null;
         }
-        if (value instanceof URI) {
-            return (URI) value;
+        if (value instanceof URI rI) {
+            return rI;
         }
-        if (value instanceof CharSequence) {
-            return fromString((CharSequence) value);
+        if (value instanceof CharSequence sequence) {
+            return fromString(sequence);
         }
         throw unknownWrap(value.getClass());
     }
