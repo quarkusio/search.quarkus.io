@@ -1,33 +1,3 @@
-kind: Deployment
-apiVersion: apps/v1
-metadata:
-  name: search-quarkus-io
-spec:
-  replicas: 1
-  template:
-    spec:
-      # Make sure the app runs in the same zone as the backend
-      # See https://docs.openshift.com/container-platform/4.14/nodes/scheduling/nodes-scheduler-pod-affinity.html
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/name
-                    operator: In
-                    values:
-                      - search-backend
-              topologyKey: topology.kubernetes.io/zone
-      containers:
-        - name: search-quarkus-io
-          # Oddly enough, the quarkus-openshift extension doesn't generate this
-          # if we define our own Deployment. So we add it back.
-          env:
-            - name: KUBERNETES_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
----
 apiVersion: image.openshift.io/v1
 kind: "ImageStream"
 metadata:
@@ -150,18 +120,6 @@ spec:
         app.kubernetes.io/part-of: search-quarkus-io
         app.kubernetes.io/managed-by: quarkus
     spec:
-      # Make sure the backend pods all run in the same zone
-      # See https://docs.openshift.com/container-platform/4.14/nodes/scheduling/nodes-scheduler-pod-affinity.html
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/name
-                    operator: In
-                    values:
-                      - search-backend
-              topologyKey: topology.kubernetes.io/zone
       containers:
         - name: opensearch
           image: opensearch-fixed:current
