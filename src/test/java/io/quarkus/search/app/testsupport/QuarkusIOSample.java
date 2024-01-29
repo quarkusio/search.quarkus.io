@@ -390,8 +390,8 @@ public final class QuarkusIOSample {
             c.addLocalizedMetadata(language, SAMPLED_NON_LATEST_VERSION);
             c.addLocalizedQuarkiverseMetadata(language, SAMPLED_NON_LATEST_VERSION);
             for (GuideRef guideRef : GuideRef.local()) {
-                c.addLocalizedGuide(guideRef, QuarkusVersions.LATEST);
-                c.addLocalizedGuide(guideRef, SAMPLED_NON_LATEST_VERSION);
+                c.addLocalizedGuide(language, guideRef, QuarkusVersions.LATEST);
+                c.addLocalizedGuide(language, guideRef, SAMPLED_NON_LATEST_VERSION);
             }
         }
     }
@@ -409,7 +409,7 @@ public final class QuarkusIOSample {
         }
 
         public FilterDefinitionCollector addGuide(GuideRef ref, String version) {
-            String htmlPath = QuarkusIO.htmlPath(version, ref.name());
+            String htmlPath = QuarkusIO.htmlPath(Language.ENGLISH, version, ref.name());
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
@@ -429,9 +429,8 @@ public final class QuarkusIOSample {
             return this;
         }
 
-        public FilterDefinitionCollector addLocalizedGuide(GuideRef ref, String version) {
-            String htmlPath = QuarkusIO.htmlPath(version, ref.name());
-            htmlPath = "docs" + (htmlPath.startsWith("/") ? "" : "/") + htmlPath;
+        public FilterDefinitionCollector addLocalizedGuide(Language language, GuideRef ref, String version) {
+            String htmlPath = QuarkusIO.htmlPath(language, version, ref.name());
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
         }
