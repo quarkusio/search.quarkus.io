@@ -4,14 +4,6 @@ metadata:
   name: search-quarkus-io
 spec:
   replicas: 1
-  strategy:
-    type: Rolling
-    rollingParams:
-      # The default, 600, doesn't seem to be enough.
-      # We reindex all data on deployment, and that takes time.
-      timeoutSeconds: 1200
-  # This is necessary to have the quarkus-openshift extension generate the container definition.
-  # Without this, we'd end up with a verbatim copy of this (obviously incomplete) Deployment.
   template:
     spec:
       # Make sure the app runs in the same zone as the backend
