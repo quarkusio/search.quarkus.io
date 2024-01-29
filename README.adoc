@@ -93,7 +93,23 @@ update all samples at the same time.
 [[production]]
 == Production
 
-If you want to start a (production) container locally, you can build one with the following command:
+=== OpenShift configuration
+
+The production environment uses OpenShift.
+You can generate the OpenShift configuration by running this:
+
+[source,shell]
+----
+quarkus build -DskipTests
+# OR
+./mvnw package -DskipTests
+----
+
+The generated file will be in `target/kubernetes/openshift.yml`.
+
+=== Running it with podman
+
+If you want to start a (production) container locally with podman, you can build one with the following command:
 
 [source,shell]
 ----
