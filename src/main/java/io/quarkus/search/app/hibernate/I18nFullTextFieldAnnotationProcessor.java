@@ -1,6 +1,7 @@
 package io.quarkus.search.app.hibernate;
 
 import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -25,6 +26,7 @@ import org.hibernate.search.mapper.pojo.model.PojoModelProperty;
 
 public class I18nFullTextFieldAnnotationProcessor implements PropertyMappingAnnotationProcessor<I18nFullTextField> {
 
+    // The (incubating) AlternativeBinder doesn't handle generics like Map<..., T> at the moment.
     @SuppressWarnings("unchecked")
     @Override
     public void process(PropertyMappingStep mapping, I18nFullTextField annotation,
@@ -36,41 +38,57 @@ public class I18nFullTextFieldAnnotationProcessor implements PropertyMappingAnno
                 .orElseGet(() -> BeanReference.ofInstance((value, ctx) -> Objects.toString(value, null)));
 
         mapping.hostingType()
-                .binder(AlternativeBinder.create(
-                        Language.class,
-                        context.annotatedElement().name(),
-                        Object.class,
-                        beanResolver -> BeanHolder.of(new LanguageAlternativeBinderDelegate<>(
-                                annotation.name().isEmpty() ? null : annotation.name(),
-                                annotation.analyzerPrefix(),
-                                annotation.searchAnalyzerPrefix(),
-                                annotation.termVector(),
-                                annotation.highlightable(),
-                                beanResolver.resolve(valueBridgeRef)))));
+                .binder(Map.class.isAssignableFrom(context.annotatedElement().javaClass())
+                        ? AlternativeBinder.create(
+                                Language.class,
+                                context.annotatedElement().name(),
+                                Map.class,
+                                beanResolver -> BeanHolder.of(LanguageAlternativeBinderDelegate.forMap(annotation,
+                                        valueBridgeRef.resolve(beanResolver).get())))
+                        : AlternativeBinder.create(
+                                Language.class,
+                                context.annotatedElement().name(),
+                                Object.class,
+                                beanResolver -> BeanHolder.of(LanguageAlternativeBinderDelegate.forSingle(annotation,
+                                        valueBridgeRef.resolve(beanResolver).get()))));
     }
 
-    public static class LanguageAlternativeBinderDelegate<S> implements AlternativeBinderDelegate<Language, S> {
+    static class LanguageAlternativeBinderDelegate<T>
+            implements AlternativeBinderDelegate<Language, T> {
+
+        static <V> AlternativeBinderDelegate<Language, V> forSingle(
+                I18nFullTextField annotation, ValueBridge<V, String> valueBridge) {
+            return new LanguageAlternativeBinderDelegate<>(
+                    annotation, fields -> new SingleValueBridge<>(valueBridge, fields));
+        }
+
+        // The (incubating) AlternativeBinder doesn't handle generics like Map<..., T> at the moment.
+        @SuppressWarnings({ "rawtypes", "unchecked" })
+        static <V> AlternativeBinderDelegate<Language, Map> forMap(
+                I18nFullTextField annotation, ValueBridge<V, String> valueBridge) {
+            return new LanguageAlternativeBinderDelegate<>(
+                    annotation, (LanguageBridgeFactory) fields -> new MapBridge<>(valueBridge, fields));
+        }
 
         private final String name;
         private final String analyzerPrefix;
         private final String searchAnalyzerPrefix;
         private final TermVector termVector;
         private final Set<Highlightable> highlightable;
-        private final ValueBridge<S, String> bridge;
+        private final LanguageBridgeFactory<T> bridgeFactory;
 
-        public LanguageAlternativeBinderDelegate(String name, String analyzerPrefix, String searchAnalyzerPrefix,
-                TermVector termVector,
-                Highlightable[] highlightable, BeanHolder<? extends ValueBridge<S, String>> bridge) {
-            this.name = name;
-            this.analyzerPrefix = analyzerPrefix;
-            this.searchAnalyzerPrefix = searchAnalyzerPrefix;
-            this.termVector = termVector;
-            this.highlightable = Set.of(highlightable);
-            this.bridge = bridge.get();
+        private LanguageAlternativeBinderDelegate(I18nFullTextField annotation,
+                LanguageBridgeFactory<T> bridgeFactory) {
+            this.name = annotation.name().isEmpty() ? null : annotation.name();
+            this.analyzerPrefix = annotation.analyzerPrefix();
+            this.searchAnalyzerPrefix = annotation.searchAnalyzerPrefix();
+            this.termVector = annotation.termVector();
+            this.highlightable = Set.of(annotation.highlightable());
+            this.bridgeFactory = bridgeFactory;
         }
 
         @Override
-        public AlternativeValueBridge<Language, S> bind(IndexSchemaElement indexSchemaElement,
+        public AlternativeValueBridge<Language, T> bind(IndexSchemaElement indexSchemaElement,
                 PojoModelProperty fieldValueSource) {
             EnumMap<Language, IndexFieldReference<String>> fields = new EnumMap<>(Language.class);
             String fieldNamePrefix = (name != null ? name : fieldValueSource.name()) + "_";
@@ -88,28 +106,58 @@ public class I18nFullTextFieldAnnotationProcessor implements PropertyMappingAnno
                 fields.put(language, field);
             }
 
-            return new Bridge<>(bridge, fields);
+            return bridgeFactory.create(fields);
         }
 
-        private static class Bridge<S> implements AlternativeValueBridge<Language, S> {
+        private interface LanguageBridgeFactory<T> {
+            AlternativeValueBridge<Language, T> create(EnumMap<Language, IndexFieldReference<String>> fields);
+        }
 
-            private final ValueBridge<S, String> bridge;
+        private static class SingleValueBridge<V> implements AlternativeValueBridge<Language, V> {
+
+            private final ValueBridge<V, String> delegate;
             private final EnumMap<Language, IndexFieldReference<String>> fields;
 
-            private Bridge(ValueBridge<S, String> bridge, EnumMap<Language, IndexFieldReference<String>> fields) {
-                this.bridge = bridge;
+            private SingleValueBridge(ValueBridge<V, String> delegate, EnumMap<Language, IndexFieldReference<String>> fields) {
+                this.delegate = delegate;
                 this.fields = fields;
             }
 
             @Override
-            public void write(DocumentElement target, Language language, S bridgedElement) {
+            public void write(DocumentElement target, Language language, V bridgedElement) {
                 if (language != null) {
-                    target.addValue(fields.get(language), bridge.toIndexedValue(bridgedElement, null));
+                    target.addValue(fields.get(language), delegate.toIndexedValue(bridgedElement, null));
                 } else {
                     // No language: this happens for Quarkiverse guides in particular.
                     // Just populate all language fields with the same value.
                     for (IndexFieldReference<String> field : fields.values()) {
-                        target.addValue(field, bridge.toIndexedValue(bridgedElement, null));
+                        target.addValue(field, delegate.toIndexedValue(bridgedElement, null));
+                    }
+                }
+            }
+        }
+
+        private static class MapBridge<V> implements AlternativeValueBridge<Language, Map<Language, V>> {
+
+            private final ValueBridge<V, String> delegate;
+            private final EnumMap<Language, IndexFieldReference<String>> fields;
+
+            private MapBridge(ValueBridge<V, String> delegate, EnumMap<Language, IndexFieldReference<String>> fields) {
+                this.delegate = delegate;
+                this.fields = fields;
+            }
+
+            @Override
+            public void write(DocumentElement target, Language language, Map<Language, V> bridgedElement) {
+                if (language != null) {
+                    target.addValue(fields.get(language), delegate.toIndexedValue(bridgedElement.get(language), null));
+                } else {
+                    // No language: this happens for Quarkiverse guides in particular.
+                    // Just populate all language fields with the corresponding value from the map.
+                    for (Map.Entry<Language, IndexFieldReference<String>> entry : fields.entrySet()) {
+                        language = entry.getKey();
+                        var field = entry.getValue();
+                        target.addValue(field, delegate.toIndexedValue(bridgedElement.get(language), null));
                     }
                 }
             }
