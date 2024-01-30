@@ -26,6 +26,7 @@ import io.quarkus.test.component.QuarkusComponentTestExtension;
 import org.hibernate.search.util.common.impl.Closer;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -181,6 +182,9 @@ class FetchingServiceTest {
                     localizedDirectories.get(Language.CHINESE).path().toUri().toString())
             .configProperty("quarkusio.localized.ja.git-uri",
                     localizedDirectories.get(Language.JAPANESE).path().toUri().toString())
+            // Disable indexing, as it's not necessary here and makes the test slower.
+            .configProperty("indexing.on-startup.when", "never")
+            .configProperty("quarkus.elasticsearch.devservices.enabled", "false")
             .build();
 
     @Inject
@@ -192,90 +196,91 @@ class FetchingServiceTest {
             try (var guides = quarkusIO.guides()) {
                 assertThat(guides)
                         .hasSize(10)
-                        .satisfiesExactlyInAnyOrder(
-                                isGuide("https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "Some title",
-                                        "This is a summary",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "何かのタイトル",
-                                        "これは概要です",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "何かのタイトル",
-                                        "これは概要です",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "何かのタイトル",
-                                        "これは概要です",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "何かのタイトル",
-                                        "これは概要です",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-
-                                isGuide("https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        // Even though there's a translation available it is "fuzzy", hence we ignore it
-                                        // and use the original message:
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML));
+                        .allSatisfy(guide -> assertThat(guide).satisfies(switch (guide.url.toString()) {
+                            case "https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "Some title",
+                                    "This is a summary",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "何かのタイトル",
+                                    "これは概要です",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "何かのタイトル",
+                                    "これは概要です",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "何かのタイトル",
+                                    "これは概要です",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "何かのタイトル",
+                                    "これは概要です",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    // Even though there's a translation available it is "fuzzy", hence we ignore it
+                                    // and use the original message:
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            default -> Assertions.<Consumer<Guide>> fail("Unexpected URL: " + guide.url);
+                        }));
             }
         }
         // now let's update some guides and make sure that the content is fetched correctly:
@@ -290,90 +295,91 @@ class FetchingServiceTest {
             try (var guides = quarkusIO.guides()) {
                 assertThat(guides)
                         .hasSize(10)
-                        .satisfiesExactlyInAnyOrder(
-                                isGuide("https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "Some updated title",
-                                        "This is an updated summary",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        FETCHED_GUIDE_1_CONTENT_HTML_UPDATED),
-                                isGuide("https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "Some updated title",
-                                        "This is an updated summary",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "Some updated title",
-                                        "This is an updated summary",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "Some updated title",
-                                        "This is an updated summary",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-                                isGuide("https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME,
-                                        "Some updated title",
-                                        "This is an updated summary",
-                                        "keyword1 keyword2",
-                                        Set.of("category1", "category2"),
-                                        Set.of("topic1", "topic2"),
-                                        Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                        JA_FETCHED_GUIDE_1_CONTENT_HTML),
-
-                                isGuide("https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        // Even though there's a translation available it is "fuzzy", hence we ignore it
-                                        // and use the original message:
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML),
-                                isGuide("https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME,
-                                        "Some other title",
-                                        "This is a different summary.",
-                                        null,
-                                        Set.of("getting-started"),
-                                        Set.of(),
-                                        Set.of(),
-                                        JA_FETCHED_GUIDE_2_CONTENT_HTML));
+                        .allSatisfy(guide -> assertThat(guide).satisfies(switch (guide.url.toString()) {
+                            case "https://quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "Some updated title",
+                                    "This is an updated summary",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    FETCHED_GUIDE_1_CONTENT_HTML_UPDATED);
+                            case "https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "Some updated title",
+                                    "This is an updated summary",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "Some updated title",
+                                    "This is an updated summary",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "Some updated title",
+                                    "This is an updated summary",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
+                                    "Some updated title",
+                                    "This is an updated summary",
+                                    "keyword1 keyword2",
+                                    Set.of("category1", "category2"),
+                                    Set.of("topic1", "topic2"),
+                                    Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
+                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                            case "https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    // Even though there's a translation available it is "fuzzy", hence we ignore it
+                                    // and use the original message:
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            case "https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
+                                    "Some other title",
+                                    "This is a different summary.",
+                                    null,
+                                    Set.of("getting-started"),
+                                    Set.of(),
+                                    Set.of(),
+                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                            default -> Assertions.<Consumer<Guide>> fail("Unexpected URL: " + guide.url);
+                        }));
             }
         }
     }
@@ -516,11 +522,10 @@ class FetchingServiceTest {
             <p>こちらはもう一方のガイド本体です
             """;
 
-    private static Consumer<Guide> isGuide(String url, String title, String summary, String keywords,
+    private static Consumer<Guide> isGuide(String title, String summary, String keywords,
             Set<String> categories, Set<String> topics, Set<String> extensions, String content) {
         return guide -> {
             SoftAssertions.assertSoftly(softly -> {
-                softly.assertThat(guide).extracting("url").asString().isEqualTo(url);
                 softly.assertThat(guide).extracting("title").isEqualTo(title);
                 softly.assertThat(guide).extracting("summary").isEqualTo(summary);
                 softly.assertThat(guide).extracting("keywords").isEqualTo(keywords);
