@@ -1,7 +1,5 @@
 package io.quarkus.search.app.hibernate;
 
-import static io.quarkus.search.app.entity.Language.localizedName;
-
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
@@ -66,12 +64,12 @@ public @interface I18nFullTextField {
 
             // Create one field per language, populated from the relevant data in I18nData
             for (Language language : Language.values()) {
-                mapping.fullTextField(localizedName(fieldNamePrefix, language))
+                mapping.fullTextField(language.addSuffix(fieldNamePrefix))
                         .valueBinder(new I18nDataBinder(language, valueBridgeRef))
                         .termVector(annotation.termVector())
                         .highlightable(Set.of(annotation.highlightable()))
-                        .analyzer(localizedName(annotation.analyzerPrefix(), language))
-                        .searchAnalyzer(localizedName(annotation.searchAnalyzerPrefix(), language));
+                        .analyzer(language.addSuffix(annotation.analyzerPrefix()))
+                        .searchAnalyzer(language.addSuffix(annotation.searchAnalyzerPrefix()));
             }
         }
 

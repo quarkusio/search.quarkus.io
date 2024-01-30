@@ -22,6 +22,10 @@ public enum Language {
         this.locale = locale;
     }
 
+    public String addSuffix(String prefix) {
+        return prefix == null || prefix.isEmpty() ? null : "%s_%s".formatted(prefix, code);
+    }
+
     @SuppressWarnings("unused")
     public static Language fromString(String value) {
         for (Language language : values()) {
@@ -30,9 +34,5 @@ public enum Language {
             }
         }
         return null;
-    }
-
-    public static String localizedName(String prefix, Language language) {
-        return prefix == null || prefix.isEmpty() ? null : "%s_%s".formatted(prefix, language.code);
     }
 }

@@ -1,7 +1,5 @@
 package io.quarkus.search.app.hibernate;
 
-import static io.quarkus.search.app.entity.Language.localizedName;
-
 import java.util.EnumSet;
 import java.util.regex.Pattern;
 
@@ -34,15 +32,15 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
             .compile("(?:[a-z_$][a-z0-9_$]*\\.)+([A-Z][A-Za-z0-9_$]*)$");
 
     public static String defaultAnalyzer(Language language) {
-        return localizedName(DEFAULT, language);
+        return language.addSuffix(DEFAULT);
     }
 
     public static String defaultSearchAnalyzer(Language language) {
-        return localizedName(DEFAULT_SEARCH, language);
+        return language.addSuffix(DEFAULT_SEARCH);
     }
 
     public static String autocompleteAnalyzer(Language language) {
-        return localizedName(AUTOCOMPLETE, language);
+        return language.addSuffix(AUTOCOMPLETE);
     }
 
     @Override
@@ -78,7 +76,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                             "lowercase", "asciifolding",
                             result.autocompleteEdgeNgram())
                     .charFilters("html_strip");
-            context.normalizer(localizedName(SORT, language)).custom()
+            context.normalizer(language.addSuffix(SORT)).custom()
                     .tokenFilters("lowercase");
         }
 
@@ -110,7 +108,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase", "asciifolding",
                         japanese.autocompleteEdgeNgram())
                 .charFilters("icu_normalizer", "html_strip");
-        context.normalizer(localizedName(SORT, Language.JAPANESE)).custom()
+        context.normalizer(Language.JAPANESE.addSuffix(SORT)).custom()
                 .tokenFilters("lowercase");
 
         // chinese
@@ -142,7 +140,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase", "asciifolding",
                         chinese.autocompleteEdgeNgram())
                 .charFilters("html_strip");
-        context.normalizer(localizedName(SORT, Language.CHINESE)).custom()
+        context.normalizer(Language.CHINESE.addSuffix(SORT)).custom()
                 .tokenFilters("lowercase");
     }
 
