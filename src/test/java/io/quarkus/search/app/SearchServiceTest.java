@@ -415,6 +415,20 @@ class SearchServiceTest {
     }
 
     @Test
+    void language_quarkiverse() {
+        var result = given()
+                .queryParam("q", "クラウドストレージ") // means "Cloud storage"
+                .queryParam("language", "ja")
+                .queryParam("version", "main")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.hits()).extracting(GuideSearchHit::url).satisfiesExactlyInAnyOrder(
+                uri -> assertThat(uri.toString()).startsWith(GuideRef.QUARKIVERSE_AMAZON_S3.name()));
+    }
+
+    @Test
     void quoteEmptyQuoteTitleTranslation() {
         var result = given()
                 // this title has a blank string in a translation file for CN, so we want to look for it and make sure that we won't fail to retrieve the results:
