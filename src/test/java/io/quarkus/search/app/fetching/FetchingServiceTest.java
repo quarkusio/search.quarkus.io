@@ -2,7 +2,6 @@ package io.quarkus.search.app.fetching;
 
 import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,10 +10,12 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
 import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.hibernate.InputProvider;
 import io.quarkus.search.app.indexing.FailureCollector;
@@ -548,22 +549,27 @@ class FetchingServiceTest {
         return guide -> {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(guide).extracting("language").isEqualTo(language);
-                softly.assertThat(guide).extracting("title", InstanceOfAssertFactories.MAP)
+                softly.assertThat(guide).extracting(g -> g.title.asMap(), InstanceOfAssertFactories.MAP)
                         .containsExactlyInAnyOrderEntriesOf(Map.of(language, title));
-                softly.assertThat(guide).extracting("summary", InstanceOfAssertFactories.MAP)
+                softly.assertThat(guide).extracting(g -> g.summary.asMap(), InstanceOfAssertFactories.MAP)
                         .containsExactlyInAnyOrderEntriesOf(Map.of(language, summary));
-                softly.assertThat(guide).extracting("keywords", InstanceOfAssertFactories.MAP)
+                softly.assertThat(guide).extracting(g -> g.keywords.asMap(), InstanceOfAssertFactories.MAP)
                         .containsExactlyInAnyOrderEntriesOf(keywords == null ? Map.of() : Map.of(language, keywords));
                 softly.assertThat(guide).extracting("categories", InstanceOfAssertFactories.COLLECTION)
                         .containsExactlyInAnyOrderElementsOf(categories);
-                softly.assertThat(guide).extracting("topics", InstanceOfAssertFactories.COLLECTION)
-                        .containsExactlyInAnyOrderElementsOf(topics);
+                softly.assertThat(guide)
+                        .extracting(g -> g.topics.stream().map(I18nData::asMap).collect(Collectors.toList()),
+                                InstanceOfAssertFactories.COLLECTION)
+                        .containsExactlyInAnyOrderElementsOf(topics.stream().map(t -> Map.of(language, t)).toList());
                 softly.assertThat(guide).extracting("extensions", InstanceOfAssertFactories.COLLECTION)
                         .containsExactlyInAnyOrderElementsOf(extensions);
                 softly.assertThat(guide)
-                        .extracting("htmlFullContentProvider", InstanceOfAssertFactories.type(InputProvider.class))
-                        .extracting(uncheckedIO(InputProvider::open), InstanceOfAssertFactories.INPUT_STREAM)
-                        .hasContent(content);
+                        .extracting(g -> g.htmlFullContentProvider.asMap(), InstanceOfAssertFactories.MAP)
+                        .containsOnlyKeys(language)
+                        .allSatisfy((ignored, inputProvider) -> assertThat(inputProvider)
+                                .asInstanceOf(InstanceOfAssertFactories.type(InputProvider.class))
+                                .extracting(uncheckedIO(InputProvider::open), InstanceOfAssertFactories.INPUT_STREAM)
+                                .hasContent(content));
             });
         };
     }

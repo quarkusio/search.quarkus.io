@@ -1,5 +1,7 @@
 package io.quarkus.search.app.hibernate;
 
+import static io.quarkus.search.app.entity.Language.localizedName;
+
 import java.util.EnumSet;
 import java.util.regex.Pattern;
 
@@ -32,19 +34,15 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
             .compile("(?:[a-z_$][a-z0-9_$]*\\.)+([A-Z][A-Za-z0-9_$]*)$");
 
     public static String defaultAnalyzer(Language language) {
-        return localizedAnalyzer(DEFAULT, language);
+        return localizedName(DEFAULT, language);
     }
 
     public static String defaultSearchAnalyzer(Language language) {
-        return localizedAnalyzer(DEFAULT_SEARCH, language);
+        return localizedName(DEFAULT_SEARCH, language);
     }
 
     public static String autocompleteAnalyzer(Language language) {
-        return localizedAnalyzer(AUTOCOMPLETE, language);
-    }
-
-    public static String localizedAnalyzer(String prefix, Language language) {
-        return "%s_%s".formatted(prefix, language.code);
+        return localizedName(AUTOCOMPLETE, language);
     }
 
     @Override
@@ -55,7 +53,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         for (Language language : englishLanguages) {
             SharedFilters result = sharedFilters(context, language);
 
-            // default:
             context.analyzer(defaultAnalyzer(language)).custom()
                     .tokenizer("standard")
                     .tokenFilters(result.possessiveStemmer(), result.stop(),
@@ -73,8 +70,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                             "lowercase", "asciifolding",
                             result.synonymsGraphFilter())
                     .charFilters("html_strip");
-
-            // autocomplete:
             context.analyzer(autocompleteAnalyzer(language)).custom()
                     .tokenizer("standard")
                     .tokenFilters(result.possessiveStemmer(), result.stop(),
@@ -83,6 +78,8 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                             "lowercase", "asciifolding",
                             result.autocompleteEdgeNgram())
                     .charFilters("html_strip");
+            context.normalizer(localizedName(SORT, language)).custom()
+                    .tokenFilters("lowercase");
         }
 
         // japanese
@@ -105,8 +102,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase", "asciifolding",
                         japanese.synonymsGraphFilter())
                 .charFilters("icu_normalizer", "html_strip");
-
-        // autocomplete:
         context.analyzer(autocompleteAnalyzer(Language.JAPANESE)).custom()
                 .tokenizer("kuromoji_tokenizer")
                 .tokenFilters("kuromoji_baseform", "kuromoji_part_of_speech", japanese.possessiveStemmer(),
@@ -115,6 +110,8 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase", "asciifolding",
                         japanese.autocompleteEdgeNgram())
                 .charFilters("icu_normalizer", "html_strip");
+        context.normalizer(localizedName(SORT, Language.JAPANESE)).custom()
+                .tokenFilters("lowercase");
 
         // chinese
         // https://www.elastic.co/guide/en/elasticsearch/plugins/current/_reimplementing_and_extending_the_analyzers.html
@@ -138,8 +135,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase", "asciifolding",
                         chinese.synonymsGraphFilter(), "smartcn_stop")
                 .charFilters("html_strip");
-
-        // autocomplete:
         context.analyzer(autocompleteAnalyzer(Language.CHINESE)).custom()
                 .tokenizer("smartcn_tokenizer")
                 .tokenFilters(chinese.possessiveStemmer(), "smartcn_stop", chinese.stop(),
@@ -147,8 +142,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase", "asciifolding",
                         chinese.autocompleteEdgeNgram())
                 .charFilters("html_strip");
-
-        context.normalizer(SORT).custom()
+        context.normalizer(localizedName(SORT, Language.CHINESE)).custom()
                 .tokenFilters("lowercase");
     }
 

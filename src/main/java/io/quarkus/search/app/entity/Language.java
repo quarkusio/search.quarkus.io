@@ -32,4 +32,7 @@ public enum Language {
         return null;
     }
 
+    public static String localizedName(String prefix, Language language) {
+        return prefix == null || prefix.isEmpty() ? null : "%s_%s".formatted(prefix, language.code);
+    }
 }

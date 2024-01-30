@@ -8,13 +8,13 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Set;
 
 import io.quarkus.search.app.entity.Language;
 
-import org.hibernate.search.engine.backend.analysis.AnalyzerNames;
-import org.hibernate.search.engine.backend.types.Highlightable;
-import org.hibernate.search.engine.backend.types.TermVector;
+import org.hibernate.search.engine.backend.types.Aggregable;
+import org.hibernate.search.engine.backend.types.Projectable;
+import org.hibernate.search.engine.backend.types.Searchable;
+import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.engine.environment.bean.BeanReference;
 import org.hibernate.search.engine.environment.bean.BeanRetrieval;
 import org.hibernate.search.mapper.pojo.bridge.ValueBridge;
@@ -28,19 +28,21 @@ import org.hibernate.search.mapper.pojo.mapping.definition.programmatic.Property
 @Documented
 @Target({ ElementType.METHOD, ElementType.FIELD })
 @Retention(RetentionPolicy.RUNTIME)
-@Repeatable(I18nFullTextField.List.class)
-@PropertyMapping(processor = @PropertyMappingAnnotationProcessorRef(type = I18nFullTextField.Processor.class, retrieval = BeanRetrieval.CONSTRUCTOR))
-public @interface I18nFullTextField {
+@Repeatable(I18nKeywordField.List.class)
+@PropertyMapping(processor = @PropertyMappingAnnotationProcessorRef(type = I18nKeywordField.Processor.class, retrieval = BeanRetrieval.CONSTRUCTOR))
+public @interface I18nKeywordField {
 
     String name() default "";
 
-    String analyzerPrefix() default AnalyzerNames.DEFAULT;
+    String normalizerPrefix() default "";
 
-    String searchAnalyzerPrefix() default "";
+    Searchable searchable() default Searchable.DEFAULT;
 
-    Highlightable[] highlightable() default { Highlightable.DEFAULT };
+    Sortable sortable() default Sortable.DEFAULT;
 
-    TermVector termVector() default TermVector.DEFAULT;
+    Projectable projectable() default Projectable.DEFAULT;
+
+    Aggregable aggregable() default Aggregable.DEFAULT;
 
     ValueBridgeRef valueBridge() default @ValueBridgeRef;
 
@@ -48,13 +50,13 @@ public @interface I18nFullTextField {
     @Target({ ElementType.METHOD, ElementType.FIELD })
     @Retention(RetentionPolicy.RUNTIME)
     @interface List {
-        I18nFullTextField[] value();
+        I18nKeywordField[] value();
     }
 
-    class Processor implements PropertyMappingAnnotationProcessor<I18nFullTextField> {
+    class Processor implements PropertyMappingAnnotationProcessor<I18nKeywordField> {
         @SuppressWarnings("unchecked") // Allowing raw types for legacy reasons (see ValueBridgeRef)
         @Override
-        public void process(PropertyMappingStep mapping, I18nFullTextField annotation,
+        public void process(PropertyMappingStep mapping, I18nKeywordField annotation,
                 PropertyMappingAnnotationProcessorContext context) {
             BeanReference<? extends ValueBridge<?, String>> valueBridgeRef = (BeanReference<? extends ValueBridge<?, String>>) context
                     .toBeanReference(ValueBridge.class,
@@ -66,12 +68,13 @@ public @interface I18nFullTextField {
 
             // Create one field per language, populated from the relevant data in I18nData
             for (Language language : Language.values()) {
-                mapping.fullTextField(localizedName(fieldNamePrefix, language))
+                mapping.keywordField(localizedName(fieldNamePrefix, language))
                         .valueBinder(new I18nDataBinder(language, valueBridgeRef))
-                        .termVector(annotation.termVector())
-                        .highlightable(Set.of(annotation.highlightable()))
-                        .analyzer(localizedName(annotation.analyzerPrefix(), language))
-                        .searchAnalyzer(localizedName(annotation.searchAnalyzerPrefix(), language));
+                        .searchable(annotation.searchable())
+                        .sortable(annotation.sortable())
+                        .projectable(annotation.projectable())
+                        .aggregable(annotation.aggregable())
+                        .normalizer(localizedName(annotation.normalizerPrefix(), language));
             }
         }
 

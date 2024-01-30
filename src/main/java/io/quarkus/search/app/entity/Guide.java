@@ -1,13 +1,12 @@
 package io.quarkus.search.app.entity;
 
 import java.net.URI;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -16,11 +15,11 @@ import jakarta.persistence.Transient;
 
 import io.quarkus.search.app.hibernate.AnalysisConfigurer;
 import io.quarkus.search.app.hibernate.I18nFullTextField;
+import io.quarkus.search.app.hibernate.I18nKeywordField;
 import io.quarkus.search.app.hibernate.InputProvider;
 import io.quarkus.search.app.hibernate.InputProviderHtmlBodyTextBridge;
 import io.quarkus.search.app.hibernate.URIType;
 
-import org.hibernate.Length;
 import org.hibernate.annotations.JavaType;
 import org.hibernate.search.engine.backend.types.Aggregable;
 import org.hibernate.search.engine.backend.types.Highlightable;
@@ -57,35 +56,33 @@ public class Guide {
 
     @I18nFullTextField(highlightable = Highlightable.UNIFIED, termVector = TermVector.WITH_POSITIONS_OFFSETS, analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nFullTextField(name = "title_autocomplete", analyzerPrefix = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
-    @KeywordField(name = "title_sort", normalizer = AnalysisConfigurer.SORT, searchable = Searchable.NO, sortable = Sortable.YES)
-    @ElementCollection
-    @Column(length = Length.LONG)
-    public Map<Language, String> title = new HashMap<>();
+    @I18nKeywordField(name = "title_sort", normalizerPrefix = AnalysisConfigurer.SORT, searchable = Searchable.NO, sortable = Sortable.YES)
+    @Embedded
+    public I18nData<String> title = new I18nData<>();
 
     @I18nFullTextField(highlightable = Highlightable.UNIFIED, termVector = TermVector.WITH_POSITIONS_OFFSETS, analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nFullTextField(name = "summary_autocomplete", analyzerPrefix = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
-    @ElementCollection
-    @Column(length = Length.LONG32)
-    public Map<Language, String> summary = new HashMap<>();
+    @Embedded
+    public I18nData<String> summary = new I18nData<>();
 
     @I18nFullTextField(analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nFullTextField(name = "keywords_autocomplete", analyzerPrefix = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
-    @ElementCollection
-    @Column(length = Length.LONG32)
-    public Map<Language, String> keywords = new HashMap<>();
+    @Embedded
+    public I18nData<String> keywords = new I18nData<>();
 
     @I18nFullTextField(name = "fullContent", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), highlightable = Highlightable.UNIFIED, termVector = TermVector.WITH_POSITIONS_OFFSETS, analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nFullTextField(name = "fullContent_autocomplete", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzerPrefix = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @Transient
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.NO)
-    public InputProvider htmlFullContentProvider;
+    public I18nData<InputProvider> htmlFullContentProvider = new I18nData<>();
 
     @KeywordField(name = "categories")
     public Set<String> categories = Set.of();
 
     @I18nFullTextField(name = "topics", analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
-    @KeywordField(name = "topics_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
-    public Set<String> topics = Set.of();
+    @I18nKeywordField(name = "topics_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
+    @ElementCollection
+    public List<I18nData<String>> topics = List.of();
 
     @KeywordField(name = "extensions_faceting", searchable = Searchable.YES, projectable = Projectable.YES, aggregable = Aggregable.YES)
     public Set<String> extensions = Set.of();
