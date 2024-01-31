@@ -500,7 +500,7 @@ public final class QuarkusIOSample {
             try {
                 Constructor<? extends FilterDefinition> constructor = annotation.localizedFilter()
                         .getConstructor(Language.class);
-                for (Language language : Language.nonDefault) {
+                for (Language language : Language.NON_DEFAULT) {
                     localizedFilterDef.put(language, constructor.newInstance(language));
                 }
             } catch (Exception e) {
