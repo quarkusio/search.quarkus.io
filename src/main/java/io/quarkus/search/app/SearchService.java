@@ -21,6 +21,7 @@ import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
+import org.hibernate.search.engine.search.common.ValueConvert;
 import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
@@ -56,9 +57,9 @@ public class SearchService {
                         f.id(),
                         f.field("type"),
                         f.field("origin"),
-                        f.highlight(localizedField("title", language)),
-                        f.highlight(localizedField("summary", language)),
-                        f.highlight(localizedField("fullContent", language)).highlighter("highlighter_content"))
+                        f.highlight(language.addSuffix("title")),
+                        f.highlight(language.addSuffix("summary")),
+                        f.highlight(language.addSuffix("fullContent")).highlighter("highlighter_content"))
                         .asList(GuideSearchHit::new))
                 .where((f, root) -> {
                     // Match all documents by default
@@ -70,15 +71,15 @@ public class SearchService {
 
                     if (q != null && !q.isBlank()) {
                         root.add(f.bool().must(f.simpleQueryString()
-                                .field(localizedField("title", language)).boost(10.0f)
-                                .field(localizedField("topics", language)).boost(10.0f)
-                                .field(localizedField("keywords", language)).boost(10.0f)
-                                .field(localizedField("summary", language)).boost(5.0f)
-                                .field(localizedField("fullContent", language))
-                                .field(localizedField("keywords_autocomplete", language)).boost(1.0f)
-                                .field(localizedField("title_autocomplete", language)).boost(1.0f)
-                                .field(localizedField("summary_autocomplete", language)).boost(0.5f)
-                                .field(localizedField("fullContent_autocomplete", language)).boost(0.1f)
+                                .field(language.addSuffix("title")).boost(10.0f)
+                                .field(language.addSuffix("topics")).boost(10.0f)
+                                .field(language.addSuffix("keywords")).boost(10.0f)
+                                .field(language.addSuffix("summary")).boost(5.0f)
+                                .field(language.addSuffix("fullContent"))
+                                .field(language.addSuffix("keywords_autocomplete")).boost(1.0f)
+                                .field(language.addSuffix("title_autocomplete")).boost(1.0f)
+                                .field(language.addSuffix("summary_autocomplete")).boost(0.5f)
+                                .field(language.addSuffix("fullContent_autocomplete")).boost(0.1f)
                                 .matching(q)
                                 // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
                                 // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side.
@@ -86,7 +87,8 @@ public class SearchService {
                                 .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR, SimpleQueryFlag.PHRASE)
                                 .defaultOperator(BooleanOperator.AND))
                                 .should(f.match().field("origin").matching("quarkus").boost(50.0f))
-                                .should(f.not(f.match().field(localizedField("topics", language)).matching("compatibility"))
+                                .should(f.not(f.match().field(language.addSuffix("topics"))
+                                        .matching("compatibility", ValueConvert.NO))
                                         .boost(50.0f)));
                     }
                 })
@@ -104,14 +106,11 @@ public class SearchService {
                 // * Also content is really huge, so we want to only get small parts of the sentences. We are allowing caller to pick the number of sentences and their length:
                 .highlighter("highlighter_content",
                         f -> f.unified().noMatchSize(0).numberOfFragments(contentSnippets).fragmentSize(contentSnippetsLength))
-                .sort(f -> f.score().then().field("title_sort"))
+                .sort(f -> f.score().then().field(language.addSuffix("title_sort")))
                 .routing(QuarkusVersionAndLanguageRoutingBinder.searchKeys(version, language))
                 .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)
                 .fetch(page * PAGE_SIZE, PAGE_SIZE);
         return new SearchResult<>(result);
     }
 
-    private String localizedField(String field, Language language) {
-        return "%s_%s".formatted(field, language.code);
-    }
 }

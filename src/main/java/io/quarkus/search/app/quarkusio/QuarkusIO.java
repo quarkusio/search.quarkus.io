@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 
 import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.indexing.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
@@ -63,7 +64,7 @@ public class QuarkusIO implements AutoCloseable {
         return httpPath(version, name) + ".html";
     }
 
-    public static String localizedHtmlPath(String version, String path) {
+    public static String localizedHtmlPath(String path) {
         return "docs" + path + ".html";
     }
 
@@ -178,8 +179,10 @@ public class QuarkusIO implements AutoCloseable {
 
                 Guide guide = createGuide(webUri, quarkusVersion, toString(parsedGuide.get("type")), parsedGuide, "summary");
                 guide.categories = toSet(parsedGuide.get("categories"));
-                putIfNotNull(guide.keywords, Language.ENGLISH, toString(parsedGuide.get("keywords")));
-                guide.topics = toSet(parsedGuide.get("topics"));
+                guide.keywords.set(Language.ENGLISH, toString(parsedGuide.get("keywords")));
+                guide.topics = toSet(parsedGuide.get("topics")).stream()
+                        .map(v -> new I18nData<>(Language.ENGLISH, v))
+                        .collect(Collectors.toList());
                 guide.extensions = toSet(parsedGuide.get("extensions"));
 
                 parsed.add(guide);
@@ -257,6 +260,7 @@ public class QuarkusIO implements AutoCloseable {
             translateAllForSameGuide(guide.title, translations);
             translateAllForSameGuide(guide.summary, translations);
             translateAllForSameGuide(guide.keywords, translations);
+            guide.topics.forEach(topics -> translateAllForSameGuide(topics, translations));
             return Stream.of(guide);
         }
         return Stream.concat(
@@ -276,7 +280,7 @@ public class QuarkusIO implements AutoCloseable {
                     translated.summary = translateOneForNewGuide(guide.summary, language, messages);
                     GitInputProvider gitInputProvider = new GitInputProvider(
                             repository.git(), repository.pagesTree(),
-                            localizedHtmlPath(guide.quarkusVersion, guide.url.getPath()));
+                            localizedHtmlPath(guide.url.getPath()));
                     if (!gitInputProvider.isFileAvailable()) {
                         // if  a file is not present we do not want to add such guide. Since if the html is not there
                         // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
@@ -285,35 +289,39 @@ public class QuarkusIO implements AutoCloseable {
                                         + " is ignored since we were not able to find an HTML content file for it.");
                         return null;
                     }
-                    translated.htmlFullContentProvider = gitInputProvider;
+                    translated.htmlFullContentProvider.set(language, gitInputProvider);
                     translated.categories = guide.categories;
                     translated.extensions = guide.extensions;
                     translated.keywords = translateOneForNewGuide(guide.keywords, language, messages);
-                    translated.topics = guide.topics;
+                    translated.topics = guide.topics.stream()
+                            .map(v -> translateOneForNewGuide(v, language, messages))
+                            .collect(Collectors.toList());
 
                     return translated;
                 }).filter(Objects::nonNull));
     }
 
-    private static void translateAllForSameGuide(Map<Language, String> map, Map<Language, Catalog> translations) {
-        String key = map.get(Language.ENGLISH);
+    private static void translateAllForSameGuide(I18nData<String> data, Map<Language, Catalog> translations) {
+        String key = data.get(Language.ENGLISH);
         if (key == null) {
             // No translation
             return;
         }
         for (Map.Entry<Language, Catalog> entry : translations.entrySet()) {
-            map.put(entry.getKey(), translate(entry.getValue(), key));
+            data.set(entry.getKey(), translate(entry.getValue(), key));
         }
     }
 
-    private static Map<Language, String> translateOneForNewGuide(Map<Language, String> map,
+    private static I18nData<String> translateOneForNewGuide(I18nData<String> oldData,
             Language language, Catalog translations) {
-        String key = map.get(Language.ENGLISH);
+        String key = oldData.get(Language.ENGLISH);
+        I18nData<String> translatedData = new I18nData<>();
         if (key == null) {
             // No translation
-            return Map.of();
+            return translatedData;
         }
-        return Map.of(language, translate(translations, key));
+        translatedData.set(language, translate(translations, key));
+        return translatedData;
     }
 
     private static String translate(Catalog messages, String key) {
@@ -327,13 +335,6 @@ public class QuarkusIO implements AutoCloseable {
                 ? key
                 // sometimes message might be an empty string. In that case we will return the original text
                 : message.getMsgstr() == null || message.getMsgstr().isBlank() ? key : message.getMsgstr();
-    }
-
-    private static void putIfNotNull(Map<Language, String> map, Language language, String value) {
-        if (value == null) {
-            return;
-        }
-        map.put(language, value);
     }
 
     private URI localizedUrl(Language language, Guide guide) {
@@ -397,12 +398,13 @@ public class QuarkusIO implements AutoCloseable {
             guide.origin = QUARKUS_ORIGIN;
         }
         guide.type = type;
-        guide.title.put(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get("title"))));
-        guide.summary.put(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get(summaryKey))));
+        guide.title.set(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get("title"))));
+        guide.summary.set(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get(summaryKey))));
         String parsedUrl = toString(parsedGuide.get("url"));
         guide.url = httpUrl(urlBase, quarkusVersion, parsedUrl);
-        guide.htmlFullContentProvider = new GitInputProvider(mainRepository.git(), mainRepository.pagesTree(),
-                htmlPath(quarkusVersion, parsedUrl));
+        guide.htmlFullContentProvider.set(Language.ENGLISH,
+                new GitInputProvider(mainRepository.git(), mainRepository.pagesTree(),
+                        htmlPath(quarkusVersion, parsedUrl)));
         return guide;
     }
 
@@ -417,11 +419,12 @@ public class QuarkusIO implements AutoCloseable {
             guide.origin = QUARKIVERSE_ORIGIN;
         }
         guide.type = type;
-        putIfNotNull(guide.title, Language.ENGLISH, renderMarkdown(toString(parsedGuide.get("title"))));
-        putIfNotNull(guide.summary, Language.ENGLISH, renderMarkdown(toString(parsedGuide.get(summaryKey))));
+        guide.title.set(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get("title"))));
+        guide.summary.set(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get(summaryKey))));
         String parsedUrl = toString(parsedGuide.get("url"));
         guide.url = httpUrl(quarkusVersion, parsedUrl);
-        guide.htmlFullContentProvider = new UrlInputProvider(prefetchedGuides, guide.url, failureCollector);
+        guide.htmlFullContentProvider.set(Language.ENGLISH,
+                new UrlInputProvider(prefetchedGuides, guide.url, failureCollector));
         return guide;
     }
 
