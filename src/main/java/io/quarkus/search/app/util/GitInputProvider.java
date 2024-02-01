@@ -5,8 +5,6 @@ import java.io.InputStream;
 
 import io.quarkus.search.app.hibernate.InputProvider;
 
-import io.quarkus.logging.Log;
-
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.revwalk.RevTree;
 
@@ -27,12 +25,7 @@ public class GitInputProvider implements InputProvider {
     }
 
     public boolean isFileAvailable() {
-        try {
-            return GitUtils.fileExists(git.getRepository(), tree, path);
-        } catch (IOException e) {
-            Log.warn("A problem occurred while trying to find a file in git tree: " + e.getMessage(), e);
-            return false;
-        }
+        return GitUtils.fileExists(git.getRepository(), tree, path);
     }
 
     @Override

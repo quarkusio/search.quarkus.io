@@ -1,12 +1,19 @@
 package io.quarkus.search.app.util;
 
+import static io.quarkus.search.app.util.GitUtils.revTree;
+
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import io.quarkus.search.app.fetching.LoggerProgressMonitor;
 
@@ -17,7 +24,10 @@ import org.hibernate.search.util.common.impl.SuppressingCloser;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.submodule.SubmoduleStatus;
 import org.jboss.logging.Logger;
 
 public class GitCloneDirectory implements Closeable {
@@ -55,16 +65,24 @@ public class GitCloneDirectory implements Closeable {
 
     private static final Logger log = Logger.getLogger(GitCloneDirectory.class);
     private static final List<String> ORDERED_REMOTES = Arrays.asList("upstream", "origin");
-    private final Git git;
 
+    private GitCloneDirectory root;
+    private final Git git;
     private final Details details;
     private final String remoteName;
     private RevTree pagesTree;
+    private RevTree sourcesTree;
+    private RevTree sourcesTranslationTree;
 
     public GitCloneDirectory(Git git, Details details, String remoteName) {
         this.git = git;
         this.details = details;
         this.remoteName = remoteName;
+    }
+
+    public GitCloneDirectory root(GitCloneDirectory root) {
+        this.root = root;
+        return this;
     }
 
     public Details details() {
@@ -75,28 +93,93 @@ public class GitCloneDirectory implements Closeable {
         return git;
     }
 
-    public Path resolve(String other) {
-        return details.directory().resolve(other);
-    }
-
     public Details directory() {
         return details;
     }
 
-    public Path resolve(Path other) {
-        return details.directory().resolve(other);
-    }
-
     public RevTree pagesTree() {
         if (this.pagesTree == null) {
-            try {
-                this.pagesTree = GitUtils.firstExistingRevTree(git.getRepository(),
-                        (remoteName == null ? "" : remoteName + "/") + details.branches.pages());
-            } catch (IOException e) {
-                throw new RuntimeException("Unable to locate pages branch: " + details.branches.pages(), e);
-            }
+            this.pagesTree = treeForBranch(this, details.branches().pages());
         }
         return pagesTree;
+    }
+
+    public RevTree sourcesTranslationTree() {
+        if (this.sourcesTranslationTree == null && root != null) {
+            this.sourcesTranslationTree = treeForBranch(this, details.branches().sources());
+        }
+        return sourcesTranslationTree;
+    }
+
+    public Stream<String> sourcesFileStream(String path, Predicate<String> filenameFilter) {
+        GitCloneDirectory cloneDirectory = root == null ? this : root;
+
+        return GitUtils.fileStream(cloneDirectory.git().getRepository(), sourcesTree(), path, filenameFilter);
+    }
+
+    private static RevTree treeForBranch(GitCloneDirectory cloneDirectory, String branch) {
+        try {
+            String ref;
+            if (cloneDirectory.remoteName == null) {
+                ref = branch;
+            } else {
+                Map<String, Ref> stringRefMap = cloneDirectory.git.lsRemote().setRemote(cloneDirectory.remoteName)
+                        .callAsMap();
+                ref = stringRefMap.get("refs/heads/" + branch).getObjectId().name();
+            }
+            return GitUtils.firstExistingRevTree(cloneDirectory.git.getRepository(), ref);
+        } catch (IOException | GitAPIException e) {
+            throw new RuntimeException("Unable to locate branch: " + cloneDirectory.details.branches.pages(), e);
+        }
+    }
+
+    public InputStream sourcesFile(String filename) {
+        GitCloneDirectory cloneDirectory = root == null ? this : root;
+        return GitUtils.file(cloneDirectory.git().getRepository(), sourcesTree(), filename);
+    }
+
+    private RevTree sourcesTree() {
+        if (this.sourcesTree == null) {
+            if (root == null) {
+                this.sourcesTree = treeForBranch(this, this.details.branches().sources());
+            } else {
+                Optional<ObjectId> rev = currentUpstreamSubmoduleSourcesHash();
+                if (rev.isEmpty()) {
+                    // not pointing to the upstream repo; no submodule; most likely we are in tests
+                    // hence just use the latest
+                    this.sourcesTree = treeForBranch(root, root.details.branches().sources());
+                } else {
+                    this.sourcesTree = revTree(root.git().getRepository(), rev.get());
+                }
+            }
+
+        }
+        return sourcesTree;
+    }
+
+    public ObjectId currentSourcesLatestHash() {
+        try {
+            return this.git().getRepository().resolve(
+                    (this.remoteName == null ? "" : this.remoteName + "/") +
+                            details().branches().sources());
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to resolve current sources branch latest hash id", e);
+        }
+    }
+
+    /**
+     * @return If repository has an upstream git submodule, we'll return the hash of the latest commit the module currently
+     *         points to;
+     *         or an empty optional otherwise (no submodules)
+     */
+    public Optional<ObjectId> currentUpstreamSubmoduleSourcesHash() {
+        try {
+            Map<String, SubmoduleStatus> statusMap = git.submoduleStatus().call();
+            return Optional.ofNullable(statusMap.get("upstream")).map(SubmoduleStatus::getIndexId);
+        } catch (GitAPIException e) {
+            throw new RuntimeException("Failed to list git submodule status for a repository: " + git.getRepository()
+                    .getRemoteNames() + ". " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -121,22 +204,13 @@ public class GitCloneDirectory implements Closeable {
             Git git = null;
             try {
                 git = Git.open(directory.toFile());
-                // let's make sure we are in a correct branch:
-                String sources = branches.sources();
-                if (!sources.equals(git.getRepository().getBranch())) {
-                    git.checkout()
-                            .setName(sources)
-                            .setProgressMonitor(LoggerProgressMonitor.create(log,
-                                    "Checking out ('%s') in repository '%s'".formatted(sources, directory)))
-                            .call();
-                }
                 String remoteName = inferRemoteName(git);
                 if (remoteName != null) {
                     update(git, remoteName);
                 }
                 // Else there's nowhere to pull from, so we don't even try.
                 return new GitCloneDirectory(git, this, remoteName);
-            } catch (IOException | GitAPIException e) {
+            } catch (IOException e) {
                 new SuppressingCloser(e).push(git);
                 throw new IllegalStateException("Wasn't able to open repository '%s': '%s".formatted(directory, e.getMessage()),
                         e);
@@ -151,12 +225,6 @@ public class GitCloneDirectory implements Closeable {
                         .setRefSpecs(branches.asRefArray())
                         .setProgressMonitor(LoggerProgressMonitor.create(log,
                                 "Fetching into '" + directory + "' (" + branches.pages() + "): "))
-                        .call();
-
-                // pull the sources branch, to update the working directory
-                git.pull()
-                        .setProgressMonitor(LoggerProgressMonitor.create(log,
-                                "Pulling into '" + directory + "' (" + branches.sources() + "): "))
                         .call();
             } catch (RuntimeException | GitAPIException e) {
                 new SuppressingCloser(e).push(git);

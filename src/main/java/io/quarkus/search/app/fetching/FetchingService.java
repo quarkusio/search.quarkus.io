@@ -58,8 +58,10 @@ public class FetchingService {
             }
             executor.waitForSuccessOrThrow(fetchingConfig.timeout());
             // If we get here, all tasks succeeded.
-            return new QuarkusIO(quarkusIOConfig, main.join(),
-                    localized.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().join())),
+            GitCloneDirectory mainRepository = main.join();
+            return new QuarkusIO(quarkusIOConfig, mainRepository,
+                    localized.entrySet().stream()
+                            .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().join().root(mainRepository))),
                     failureCollector);
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e)

@@ -69,7 +69,7 @@ public class FailureCollector implements Closeable {
     private final Consumer<EnumMap<Level, List<Failure>>> reporter;
 
     public FailureCollector() {
-        this.reporter = FailureCollector::logReporter;
+        this(IndexingConfig.GitErrorReporting.Type.LOG, Optional.empty());
     }
 
     public FailureCollector(IndexingConfig.GitErrorReporting config) {
@@ -113,7 +113,8 @@ public class FailureCollector implements Closeable {
     }
 
     private static void logReporter(EnumMap<Level, List<Failure>> failures) {
-        if (failures.isEmpty()) {
+        // failures are an enum map that we preinitialize, hence we check if there's anything in the lists:
+        if (failures.isEmpty() || failures.values().stream().allMatch(List::isEmpty)) {
             return;
         }
         StringBuilder sb = new StringBuilder();
