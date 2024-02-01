@@ -82,6 +82,23 @@ public class GitCloneDirectory implements Closeable {
 
     public GitCloneDirectory root(GitCloneDirectory root) {
         this.root = root;
+        if (root != null) {
+            Optional<ObjectId> objectId = currentUpstreamSubmoduleSourcesHash();
+            // if the hash is missing it means we are working with test repositories, and that is handled elsewhere
+            if (objectId.isPresent()) {
+                // need to make sure that the root repository will have the rev we need when we'd request a source file,
+                // or when the commit happened etc.
+                String hash = objectId.get().getName();
+                try {
+                    root.git().fetch().setRemote(root.remoteName).setRefSpecs(hash)
+                            .setProgressMonitor(
+                                    LoggerProgressMonitor.create(log, "Fetching from " + root.remoteName + " " + hash + ": "))
+                            .call();
+                } catch (GitAPIException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
         return this;
     }
 
