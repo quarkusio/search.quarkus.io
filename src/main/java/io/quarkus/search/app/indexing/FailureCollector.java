@@ -132,6 +132,7 @@ public class FailureCollector implements Closeable {
         private static final Pattern UPDATED_PATTERN = Pattern.compile("\\(updated [^)]+\\)");
         private static final DateTimeFormatter UPDATED_DATE_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ssZZZZZ",
                 Locale.ROOT);
+        private static final int GITHUB_MAX_COMMENT_LENGTH = 65536;
         private final IndexingConfig.GitErrorReporting.GithubReporter config;
 
         GithubFailureReporter(IndexingConfig.GitErrorReporting.GithubReporter config) {
@@ -149,10 +150,15 @@ public class FailureCollector implements Closeable {
 
                 // add comments if needed:
                 if (!STATUS_SUCCESS.equals(status)) {
-                    StringBuilder newMessage = new StringBuilder(STATUS_REPORT_HEADER)
+                    StringBuilder newMessageBuilder = new StringBuilder(STATUS_REPORT_HEADER)
                             .append(status).append('\n');
 
-                    toMarkdown(newMessage, failures, true);
+                    toMarkdown(newMessageBuilder, failures, true);
+                    String newMessage = newMessageBuilder.toString();
+                    if (newMessage.length() > GITHUB_MAX_COMMENT_LENGTH) {
+                        newMessage = ("### Message truncated as it was too long\n" + newMessage).substring(0,
+                                GITHUB_MAX_COMMENT_LENGTH);
+                    }
 
                     if (STATUS_WARNING.equals(status)) {
                         var lastRecentCommentByMe = getStatusCommentsSince(issue,
@@ -163,11 +169,11 @@ public class FailureCollector implements Closeable {
                                 && lastRecentCommentByMe.get().getBody().contentEquals(newMessage)) {
                             Log.infof("Skipping the issue comment because the same message was sent recently.");
                         } else {
-                            issue.comment(newMessage.toString());
+                            issue.comment(newMessage);
                         }
                     } else {
                         // For errors, always comment.
-                        issue.comment(newMessage.toString());
+                        issue.comment(newMessage);
                     }
                 }
 
@@ -236,13 +242,15 @@ public class FailureCollector implements Closeable {
         for (Stage stage : Stage.values()) {
             Set<Failure> set = map.getOrDefault(stage, Set.of());
             if (!set.isEmpty()) {
-                sb.append("* ").append(stage).append(":\n");
+                sb.append("<details>\n");
+                sb.append("  <summary>Issues with <code>").append(stage).append("</code>:</summary>\n\n");
                 for (Failure failure : set) {
                     sb.append("  * ").append(failure.details()).append('\n');
                     if (includeException) {
                         formatException(sb, failure.exception());
                     }
                 }
+                sb.append("</details>\n");
             }
         }
     }
@@ -255,16 +263,16 @@ public class FailureCollector implements Closeable {
         sb.append("\n    <details>\n")
                 .append("      <summary>")
                 .append("Exception details: <code>").append(exception.getClass().getName())
-                .append("</code></summary>\n\n");
+                .append("</code></summary>\n\n    ```java\n");
 
         try (StringWriter writer = new StringWriter();
                 PrintWriter printWriter = new PrintWriter(writer)) {
             exception.printStackTrace(printWriter);
-            sb.append(writer.toString().replaceAll("(?m)^", "        "));
+            sb.append(writer.toString().replaceAll("(?m)^", "    "));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        sb.append("\n    </details>\n\n");
+        sb.append("\n    ```\n    </details>\n\n");
     }
 }
