@@ -73,6 +73,7 @@ public class GitCloneDirectory implements Closeable {
     private RevTree pagesTree;
     private RevTree sourcesTree;
     private RevTree sourcesTranslationTree;
+    private ObjectId currentUpstreamSubmoduleSourcesHash;
 
     public GitCloneDirectory(Git git, Details details, String remoteName) {
         this.git = git;
@@ -190,13 +191,46 @@ public class GitCloneDirectory implements Closeable {
      *         or an empty optional otherwise (no submodules)
      */
     public Optional<ObjectId> currentUpstreamSubmoduleSourcesHash() {
-        try {
-            Map<String, SubmoduleStatus> statusMap = git.submoduleStatus().call();
-            return Optional.ofNullable(statusMap.get("upstream")).map(SubmoduleStatus::getIndexId);
-        } catch (GitAPIException e) {
-            throw new RuntimeException("Failed to list git submodule status for a repository: " + git.getRepository()
-                    .getRemoteNames() + ". " + e.getMessage(), e);
+        if (currentUpstreamSubmoduleSourcesHash != null) {
+            return Optional.of(currentUpstreamSubmoduleSourcesHash);
         }
+        // We want to get the hash from `git submodule status upstream`, but not from the current state of the branch we are in,
+        //  but rather from a state that we've fetched. As there seems to be no simple way of getting that info out... we will:
+        //  1. Get the name of a current branch we are in (so we can return to it after we are done)
+        //  2. Checkout in detached state the rev we are interested in.
+        //  3. Get the submodule status
+        //  4. Return back to from a detached state to the branch we were initially in.
+        String currentBranch = null;
+        try {
+            currentBranch = git.getRepository().getBranch();
+            try {
+                checkout(currentSourcesLatestHash().name());
+                Map<String, SubmoduleStatus> statusMap = git.submoduleStatus().addPath("upstream").call();
+                Optional<ObjectId> objectId = Optional.ofNullable(statusMap.get("upstream")).map(SubmoduleStatus::getIndexId);
+                objectId.ifPresent(id -> currentUpstreamSubmoduleSourcesHash = id);
+                return objectId;
+            } catch (GitAPIException e) {
+                throw new RuntimeException(
+                        "Failed to list git submodule status for a repository: " + git.getRepository()
+                                .getRemoteNames() + ". " + e.getMessage(),
+                        e);
+            } finally {
+                checkout(currentBranch);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Wasn't able to correctly determine the current branch: " + e.getMessage(), e);
+        } catch (GitAPIException e) {
+            throw new RuntimeException("Wasn't able to correctly switch back to '" + currentBranch + "'" + e.getMessage(), e);
+        }
+    }
+
+    private void checkout(String name) throws GitAPIException {
+        git.checkout()
+                .setName(name)
+                .setProgressMonitor(LoggerProgressMonitor.create(
+                        log,
+                        "Checking out ('%s') in repository '%s'".formatted(name, this)))
+                .call();
     }
 
     @Override
