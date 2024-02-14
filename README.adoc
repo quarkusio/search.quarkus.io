@@ -2,6 +2,21 @@
 
 > A Quarkus-powered application that allows full-text search in websites of the Quarkus organization such as https://quarkus.io.
 
+[[architecture]]
+== Architecture
+
+The application is deployed on an OpenShift cluster, next to an OpenSearch instance.
+
+It fetches the sources from quarkus.io and localized variants (pt.quarkus.io, ...) to index them,
+and exposes the search feature through a REST API.
+
+The webpage at https://quarkus.io/guides calls that API to perform search.
+
+// Source if you need to make changes:
+// https://miro.com/app/board/uXjVNtX8LlY=/?share_link_id=204315078797
+
+image::architecture.png[Architecture diagram]
+
 [[development]]
 == Development
 
