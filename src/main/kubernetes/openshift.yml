@@ -56,11 +56,11 @@ spec:
           imagePullPolicy: Always
           resources:
             limits:
-              cpu: 2000m
-              memory: 3Gi
+              cpu: '{{ .Values.opensearch.resources.limits.cpu }}'
+              memory: '{{ .Values.opensearch.resources.limits.memory }}'
             requests:
-              cpu: 1000m
-              memory: 2Gi
+              cpu: '{{ .Values.opensearch.resources.requests.cpu }}'
+              memory: '{{ .Values.opensearch.resources.requests.memory }}'
           readinessProbe:
             httpGet:
               scheme: HTTP
@@ -94,7 +94,7 @@ spec:
               value: "false"
             # OpenSearch doesn't seem to automatically adapt -Xmx to available memory, for some reason
             - name: OPENSEARCH_JAVA_OPTS
-              value: -Xms1g -Xmx1g
+              value: '{{ .Values.opensearch.envs.OPENSEARCH_JAVA_OPTS }}'
             # This is necessary to avoid OpenSearch trying to install various things on startup,
             # which leads to filesystem operations (chmod/chown) that won't work
             # because only user 1000 has the relevant permissions,
