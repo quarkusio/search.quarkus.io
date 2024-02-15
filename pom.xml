@@ -23,6 +23,7 @@
   </issueManagement>
   <properties>
     <compiler-plugin.version>3.12.1</compiler-plugin.version>
+    <docker.buildArg.OPENSEARCH_VERSION>${version.opensearch}</docker.buildArg.OPENSEARCH_VERSION>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -36,6 +37,7 @@
     <version.docker.plugin>0.44.0</version.docker.plugin>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
+    <version.opensearch>2.11.0</version.opensearch>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -210,6 +212,7 @@
           <jvmArgs>${test.jvm.args}</jvmArgs>
           <systemProperties>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
+            <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
           </systemProperties>
         </configuration>
       </plugin>
@@ -234,6 +237,7 @@
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
+            <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
           </systemPropertyVariables>
           <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
             <usePhrasedFileName>true</usePhrasedFileName>
@@ -315,9 +319,9 @@
             <image>
               <name>opensearch-custom</name>
               <build>
-                <dockerFile>${project.basedir}/Dockerfile</dockerFile>
+                <dockerFile>${project.basedir}/src/main/docker/opensearch-custom.Dockerfile</dockerFile>
                 <tags>
-                  <tag>2.11.0</tag>
+                  <tag>${version.opensearch}</tag>
                 </tags>
               </build>
             </image>

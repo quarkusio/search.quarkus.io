@@ -101,7 +101,7 @@ spec:
             # and we can't run with user 1000 on OpenShift.
             # See also:
             # - https://github.com/opensearch-project/opensearch-devops/issues/97
-            # - Dockerfile in this git repo
+            # - src/main/docker/opensearch-custom.Dockerfile
             - name: DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI
               value: 'true'
             - name: DISABLE_INSTALL_DEMO_CONFIG
