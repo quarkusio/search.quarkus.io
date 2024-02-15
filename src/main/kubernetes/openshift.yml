@@ -1,73 +1,3 @@
-apiVersion: image.openshift.io/v1
-kind: "ImageStream"
-metadata:
-  name: opensearch
-  annotations:
-    openshift.io/display-name: opensearch
-  labels:
-    app.kubernetes.io/name: search-backend
-    app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
-spec:
-  lookupPolicy:
-    local: true
-  tags:
-    - name: current
-      from:
-        kind: DockerImage
-        name: docker.io/opensearchproject/opensearch:2.11.0
----
-apiVersion: image.openshift.io/v1
-kind: "ImageStream"
-metadata:
-  name: opensearch-fixed
-  annotations:
-    openshift.io/display-name: opensearch-fixed
-  labels:
-    app.kubernetes.io/name: search-backend
-    app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
-spec:
-  lookupPolicy:
-    local: true
----
-apiVersion: build.openshift.io/v1
-kind: BuildConfig
-metadata:
-  name: opensearch-fixed-build
-  labels:
-    app.kubernetes.io/name: search-backend
-    app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
-spec:
-  triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChange:
-        from:
-          kind: ImageStreamTag
-          name: opensearch:current
-  source:
-    # Workaround for https://github.com/opensearch-project/opensearch-devops/issues/97
-    dockerfile: |-
-      FROM opensearch:current
-      RUN chmod -R go=u /usr/share/opensearch
-      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-kuromoji
-      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-smartcn
-      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-icu
-  strategy:
-    type: Docker
-    dockerStrategy:
-      from:
-        kind: ImageStreamTag
-        name: opensearch:current
-  output:
-    to:
-      kind: ImageStreamTag
-      name: opensearch-fixed:current
 ---
 apiVersion: v1
 kind: Service
@@ -78,7 +8,6 @@ metadata:
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
     app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
 spec:
   ports:
     - name: http
@@ -103,7 +32,6 @@ metadata:
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
     app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
 # See https://www.hafifbilgiler.com/hafif-bilgiler/elasticsearch-installation-on-openshift/
 spec:
   serviceName: search-backend
@@ -118,11 +46,13 @@ spec:
         app.kubernetes.io/name: search-backend
         app.kubernetes.io/component: datastore
         app.kubernetes.io/part-of: search-quarkus-io
-        app.kubernetes.io/managed-by: quarkus
+      annotations:
+        alpha.image.policy.openshift.io/resolve-names: '*'
     spec:
       containers:
         - name: opensearch
-          image: opensearch-fixed:current
+          # The image gets pushed manually as part of the "deploy" workflow.
+          image: opensearch-custom:latest
           imagePullPolicy: Always
           resources:
             limits:
@@ -171,7 +101,7 @@ spec:
             # and we can't run with user 1000 on OpenShift.
             # See also:
             # - https://github.com/opensearch-project/opensearch-devops/issues/97
-            # - BuildConfig opensearch-fixed-build
+            # - Dockerfile in this git repo
             - name: DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI
               value: 'true'
             - name: DISABLE_INSTALL_DEMO_CONFIG
@@ -195,20 +125,9 @@ spec:
           app.kubernetes.io/name: search-backend
           app.kubernetes.io/component: datastore
           app.kubernetes.io/part-of: search-quarkus-io
-          app.kubernetes.io/managed-by: quarkus
       spec:
         accessModes: [ "ReadWriteOnce" ]
         storageClassName: "gp2"
         resources:
           requests:
             storage: 5Gi
-  triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-          - search-backend
-        from:
-          kind: ImageStreamTag
-          name: opensearch-fixed:current

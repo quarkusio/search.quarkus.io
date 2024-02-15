@@ -25,6 +25,10 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      QUARKUS_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
+      TAG: ${{ github.sha }}
+
     steps:
     - uses: actions/checkout@v2
 
@@ -33,6 +37,11 @@ jobs:
       with:
         distribution: temurin
         java-version: 17
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+      with:
+         version: 'v3.13.3'
 
     - name: Log in to OpenShift (Dev)
       if: ${{ github.ref == 'refs/heads/main' }}
@@ -50,8 +59,31 @@ jobs:
         openshift_token: ${{ secrets.OPENSHIFT_TOKEN_PROD }}
         namespace: ${{ env.OPENSHIFT_NAMESPACE_PROD }}
 
-    - name: Delete problematic image
-      run: oc delete is ubi-quarkus-native-binary-s2i || true
+    - name: Create ImageStreams
+      run: |
+        oc create imagestream search-quarkus-io || true
+        oc create imagestream opensearch-custom || true
+        # https://docs.openshift.com/container-platform/4.14/openshift_images/using-imagestreams-with-kube-resources.html
+        oc set image-lookup search-quarkus-io
+        oc set image-lookup opensearch-custom
 
-    - name: Build and deploy
-      run: mvn clean package -Dquarkus.kubernetes.deploy=true -Dquarkus.native.container-build=true -Drevision=${{ github.sha }}
+    - name: Log in to OpenShift container registry
+      run: docker login -u "$(oc whoami)" -p "$(oc whoami --show-token)" "$(oc registry info)"
+
+    - name: Build container images and Helm charts, push app container image
+      run: |
+        ./mvnw clean package \
+          -Drevision="$TAG" \
+          -Dquarkus.container-image.build=true \
+          -Dquarkus.container-image.push=true \
+          -Dquarkus.container-image.registry="$(oc registry info)" \
+          -Dquarkus.container-image.group="$(oc project --short)"
+
+    - name: Push OpenSearch container image
+      run: |
+        docker push "opensearch-custom:latest" "$(oc registry info)/$(oc project --short)/opensearch-custom:latest"
+
+    - name: Deploy Helm charts
+      run: |
+        helm upgrade --install search-quarkus-io ./target/helm/openshift/search-quarkus-io \
+          -f ./src/main/helm/values.$QUARKUS_PROFILE.yaml

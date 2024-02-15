@@ -162,6 +162,11 @@
       <artifactId>quarkus-hibernate-validator</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.quarkiverse.helm</groupId>
+      <artifactId>quarkus-helm</artifactId>
+      <version>1.2.1</version>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
@@ -308,7 +313,7 @@
         <configuration>
           <images>
             <image>
-              <name>opensearch-custom-plugin</name>
+              <name>opensearch-custom</name>
               <build>
                 <dockerFile>${project.basedir}/Dockerfile</dockerFile>
                 <tags>
