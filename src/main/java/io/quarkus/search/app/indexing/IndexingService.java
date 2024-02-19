@@ -116,7 +116,7 @@ public class IndexingService {
                         t -> Log.errorf(t, "Reindexing on startup failed: %s", t.getMessage()));
     }
 
-    @Scheduled(cron = "{indexing.scheduled.cron}")
+    @Scheduled(cron = "{indexing.scheduled.cron}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void indexOnTime() {
         try {
             Log.infof("Scheduled reindex starting...");
