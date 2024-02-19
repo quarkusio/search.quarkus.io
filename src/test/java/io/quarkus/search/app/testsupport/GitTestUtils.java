@@ -1,5 +1,8 @@
 package io.quarkus.search.app.testsupport;
 
+import java.io.IOException;
+
+import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.util.SystemReader;
@@ -15,7 +18,7 @@ public final class GitTestUtils {
     public static void cleanGitUserConfig() {
         try {
             clearRecursively(SystemReader.getInstance().getUserConfig());
-        } catch (Exception e) {
+        } catch (RuntimeException | ConfigInvalidException | IOException e) {
             LOG.warn("Unable to get Git user config");
         }
     }
@@ -27,7 +30,7 @@ public final class GitTestUtils {
         if (config instanceof StoredConfig storedConfig) {
             try {
                 storedConfig.clear();
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 LOG.warnf("Unable to clear Git config %s", config);
             }
         }

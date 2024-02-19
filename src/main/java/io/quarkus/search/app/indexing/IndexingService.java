@@ -122,7 +122,7 @@ public class IndexingService {
             Log.infof("Scheduled reindex finished.");
         } catch (ReindexingAlreadyInProgressException e) {
             Log.infof("Indexing was already started by some other process.");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             Log.errorf(e, "Failed to start scheduled reindex: %s", e.getMessage());
         }
     }
@@ -226,7 +226,7 @@ public class IndexingService {
 
             rollover.commit();
             Log.info("Indexing success");
-        } catch (Exception e) {
+        } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
         }
     }
@@ -266,7 +266,7 @@ public class IndexingService {
                         try {
                             Log.tracef("About to persist: %s", doc);
                             session.persist(doc);
-                        } catch (Exception e) {
+                        } catch (RuntimeException e) {
                             throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
                         }
                     }
