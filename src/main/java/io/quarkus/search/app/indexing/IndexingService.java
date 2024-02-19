@@ -3,12 +3,14 @@ package io.quarkus.search.app.indexing;
 import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
@@ -146,6 +148,24 @@ public class IndexingService {
         } catch (IOException e) {
             Log.debug("Caught exception when testing whether the search backend is reachable", e);
             return false;
+        }
+    }
+
+    @SuppressWarnings("BusyWait")
+    @PreDestroy
+    protected void waitForReindexingToFinish() throws InterruptedException {
+        if (!reindexingInProgress.get()) {
+            return;
+        }
+
+        var timeout = indexingConfig.timeout();
+        var until = Instant.now().plus(timeout);
+        do {
+            Log.info("Shutdown requested, but indexing is in progress, waiting...");
+            Thread.sleep(5000);
+        } while (reindexingInProgress.get() && Instant.now().isBefore(until));
+        if (reindexingInProgress.get()) {
+            throw new IllegalStateException("Shutdown requested, aborting indexing which took more than " + timeout);
         }
     }
 
