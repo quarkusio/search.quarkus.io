@@ -42,14 +42,6 @@ class SchedulerTest {
     };
     private static final String GUIDES_SEARCH = "/guides/search";
 
-    protected int managementPort() {
-        if (getClass().getName().endsWith("IT")) {
-            return 9000;
-        } else {
-            return 9001;
-        }
-    }
-
     @Test
     void scheduler() {
         // since we've disabled the index-on-start there should be no indexes until the scheduler kicks in:

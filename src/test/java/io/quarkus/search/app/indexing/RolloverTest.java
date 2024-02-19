@@ -26,6 +26,7 @@ import org.hibernate.search.mapper.orm.entity.SearchIndexedEntity;
 import org.hibernate.search.mapper.orm.mapping.SearchMapping;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -95,6 +96,12 @@ class RolloverTest {
 
     @BeforeEach
     void recreateIndexes() {
+        deleteAllIndexes();
+        searchMapping.scope(Object.class).schemaManager().createOrValidate();
+    }
+
+    @AfterEach
+    void deleteAllIndexes() {
         Set<String> aliasedIndexes = searchMapping.allIndexedEntities().stream()
                 .map(this::aliased)
                 .map(Rollover.GetAliasedResult::allAliasedIndexes)
@@ -107,7 +114,6 @@ class RolloverTest {
                 throw new IllegalStateException(e);
             }
         }
-        searchMapping.scope(Object.class).schemaManager().createOrValidate();
     }
 
     @Test

@@ -3,12 +3,14 @@ package io.quarkus.search.app.indexing;
 import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
@@ -114,16 +116,16 @@ public class IndexingService {
                         t -> Log.errorf(t, "Reindexing on startup failed: %s", t.getMessage()));
     }
 
-    @Scheduled(cron = "{indexing.scheduled.cron}")
+    @Scheduled(cron = "{indexing.scheduled.cron}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void indexOnTime() {
         try {
-            Log.infof("Scheduled reindex starting...");
+            Log.infof("Scheduled reindexing starting...");
             reindex();
-            Log.infof("Scheduled reindex finished.");
+            Log.infof("Scheduled reindexing finished.");
         } catch (ReindexingAlreadyInProgressException e) {
             Log.infof("Indexing was already started by some other process.");
-        } catch (Exception e) {
-            Log.errorf(e, "Failed to start scheduled reindex: %s", e.getMessage());
+        } catch (RuntimeException e) {
+            Log.errorf(e, "Failed to start scheduled reindexing: %s", e.getMessage());
         }
     }
 
@@ -146,6 +148,24 @@ public class IndexingService {
         } catch (IOException e) {
             Log.debug("Caught exception when testing whether the search backend is reachable", e);
             return false;
+        }
+    }
+
+    @SuppressWarnings("BusyWait")
+    @PreDestroy
+    protected void waitForReindexingToFinish() throws InterruptedException {
+        if (!reindexingInProgress.get()) {
+            return;
+        }
+
+        var timeout = indexingConfig.timeout();
+        var until = Instant.now().plus(timeout);
+        do {
+            Log.info("Shutdown requested, but indexing is in progress, waiting...");
+            Thread.sleep(5000);
+        } while (reindexingInProgress.get() && Instant.now().isBefore(until));
+        if (reindexingInProgress.get()) {
+            throw new IllegalStateException("Shutdown requested, aborting indexing which took more than " + timeout);
         }
     }
 
@@ -226,7 +246,7 @@ public class IndexingService {
 
             rollover.commit();
             Log.info("Indexing success");
-        } catch (Exception e) {
+        } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
         }
     }
@@ -266,7 +286,7 @@ public class IndexingService {
                         try {
                             Log.tracef("About to persist: %s", doc);
                             session.persist(doc);
-                        } catch (Exception e) {
+                        } catch (RuntimeException e) {
                             throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
                         }
                     }

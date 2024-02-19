@@ -136,7 +136,7 @@ public class FetchingService {
     public void cleanupTemporaryFolders() {
         try (Closer<IOException> closer = new Closer<>()) {
             closer.pushAll(CloseableDirectory::close, tempDirectories);
-        } catch (Exception e) {
+        } catch (RuntimeException | IOException e) {
             throw new IllegalStateException(
                     "Failed to close directories '%s': %s".formatted(tempDirectories, e.getMessage()), e);
         }
