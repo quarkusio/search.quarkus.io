@@ -119,13 +119,13 @@ public class IndexingService {
     @Scheduled(cron = "{indexing.scheduled.cron}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void indexOnTime() {
         try {
-            Log.infof("Scheduled reindex starting...");
+            Log.infof("Scheduled reindexing starting...");
             reindex();
-            Log.infof("Scheduled reindex finished.");
+            Log.infof("Scheduled reindexing finished.");
         } catch (ReindexingAlreadyInProgressException e) {
             Log.infof("Indexing was already started by some other process.");
         } catch (RuntimeException e) {
-            Log.errorf(e, "Failed to start scheduled reindex: %s", e.getMessage());
+            Log.errorf(e, "Failed to start scheduled reindexing: %s", e.getMessage());
         }
     }
 
