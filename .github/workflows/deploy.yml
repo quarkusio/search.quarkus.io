@@ -27,7 +27,6 @@ jobs:
 
     env:
       QUARKUS_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
-      TAG: ${{ github.sha }}
 
     steps:
     - uses: actions/checkout@v2
@@ -73,7 +72,7 @@ jobs:
     - name: Build container images and Helm charts, push app container image
       run: |
         ./mvnw clean package \
-          -Drevision="$TAG" \
+          -Drevision="${{ github.sha }}" \
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
           -Dquarkus.container-image.registry="$(oc registry info)" \
