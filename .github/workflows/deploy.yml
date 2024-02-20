@@ -80,7 +80,10 @@ jobs:
 
     - name: Push OpenSearch container image
       run: |
-        docker push "opensearch-custom:latest" "$(oc registry info)/$(oc project --short)/opensearch-custom:latest"
+        REMOTE_IMAGE_REF="$(oc registry info)/$(oc project --short)/opensearch-custom:latest"
+        # docker doesn't allow the `push source target` syntax, so we have to do this in two steps.
+        docker image tag "opensearch-custom:latest" "$REMOTE_IMAGE_REF"
+        docker push "$REMOTE_IMAGE_REF"
 
     - name: Deploy Helm charts
       run: |
