@@ -98,4 +98,4 @@ jobs:
     - name: Deploy Helm charts
       run: |
         helm upgrade --install search-quarkus-io ./target/helm/openshift/search-quarkus-io \
-          -f ./src/main/helm/values.$QUARKUS_PROFILE.yaml
+          -f ./src/main/helm/values.$HELM_PROFILE.yaml
