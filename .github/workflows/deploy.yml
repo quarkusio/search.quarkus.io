@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      QUARKUS_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
+      HELM_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
 
     steps:
     - uses: actions/checkout@v2
