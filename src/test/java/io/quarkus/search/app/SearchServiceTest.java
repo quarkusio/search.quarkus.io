@@ -5,7 +5,6 @@ import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -17,6 +16,7 @@ import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.testsupport.GuideRef;
 import io.quarkus.search.app.testsupport.QuarkusIOSample;
+import io.quarkus.search.app.testsupport.SetupUtil;
 
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -31,7 +31,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.ThrowingConsumer;
-import org.awaitility.Awaitility;
 
 import io.restassured.RestAssured;
 import io.restassured.common.mapper.TypeRef;
@@ -46,14 +45,6 @@ class SearchServiceTest {
     };
     private static final String GUIDES_SEARCH = "/guides/search";
 
-    protected int managementPort() {
-        if (getClass().getName().endsWith("IT")) {
-            return 9000;
-        } else {
-            return 9001;
-        }
-    }
-
     private SearchResult<GuideSearchHit> search(String term) {
         return given()
                 .queryParam("q", term)
@@ -64,12 +55,8 @@ class SearchServiceTest {
     }
 
     @BeforeAll
-    void waitForIndexing() {
-        Awaitility.await().timeout(Duration.ofMinutes(1)).untilAsserted(() -> {
-            when().get("http://localhost:" + managementPort() + "/q/health/ready")
-                    .then()
-                    .statusCode(200);
-        });
+    void setup() {
+        SetupUtil.waitForIndexing(getClass());
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails(LogDetail.BODY);
     }
 
