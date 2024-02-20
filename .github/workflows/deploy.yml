@@ -61,7 +61,7 @@ jobs:
       id: oc-registry
       run: |
         echo -n "OC_REGISTRY_URL=" >> "$GITHUB_OUTPUT"
-        oc whoami --show-token >> "$GITHUB_OUTPUT"
+        oc registry info >> "$GITHUB_OUTPUT"
     - name: Log in to OpenShift Container Registry
       uses: docker/login-action@v3
       with:
