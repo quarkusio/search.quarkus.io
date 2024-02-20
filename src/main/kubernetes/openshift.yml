@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
     app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/version: {{ .Values.app.version }}
 spec:
   ports:
     - name: http
@@ -32,6 +33,7 @@ metadata:
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
     app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/version: {{ .Values.app.version }}
 # See https://www.hafifbilgiler.com/hafif-bilgiler/elasticsearch-installation-on-openshift/
 spec:
   serviceName: search-backend
