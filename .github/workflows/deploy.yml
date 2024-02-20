@@ -69,10 +69,18 @@ jobs:
         username: ignored
         password: ${{ github.ref == 'refs/heads/production' && secrets.OPENSHIFT_TOKEN_PROD || secrets.OPENSHIFT_TOKEN_DEV }}
 
+    # Helm in particular needs semantic versions
+    # See https://github.com/helm/helm/issues/9342#issuecomment-775269042
+    # See the parts about pre-release versions in https://semver.org/#semantic-versioning-specification-semver
+    - name: Generate app version
+      id: app-version
+      run: |
+        echo "VALUE=1.0.0-$(date -u '+%Y%m%d%H%M%S')+${{ github.sha }}" >> $GITHUB_OUTPUT
+
     - name: Build container images and Helm charts, push app container image
       run: |
         ./mvnw clean package \
-          -Drevision="${{ github.sha }}" \
+          -Drevision="${{ steps.app-version.outputs.value }}" \
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
           -Dquarkus.container-image.registry="$(oc registry info)" \
