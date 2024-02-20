@@ -72,10 +72,12 @@ jobs:
     # Helm in particular needs semantic versions
     # See https://github.com/helm/helm/issues/9342#issuecomment-775269042
     # See the parts about pre-release versions in https://semver.org/#semantic-versioning-specification-semver
+    # Ideally we should use a "+" before the SHA, but that won't work with Quarkus
+    # See https://github.com/quarkusio/quarkus/blob/da1a782e04b01b2e165d65474163050d497340c1/extensions/container-image/spi/src/main/java/io/quarkus/container/spi/ImageReference.java#L60
     - name: Generate app version
       id: app-version
       run: |
-        echo "VALUE=1.0.0-$(date -u '+%Y%m%d%H%M%S')+${{ github.sha }}" >> $GITHUB_OUTPUT
+        echo "VALUE=1.0.0-$(date -u '+%Y%m%d%H%M%S')-${{ github.sha }}" >> $GITHUB_OUTPUT
 
     - name: Build container images and Helm charts, push app container image
       run: |
