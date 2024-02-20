@@ -67,7 +67,7 @@ jobs:
         oc set image-lookup opensearch-custom
 
     - name: Log in to OpenShift container registry
-      run: docker login -u "$(oc whoami)" -p "$(oc whoami --show-token)" "$(oc registry info)"
+      run: oc whoami --show-token | docker login -u "ignored" --password-stdin "$(oc registry info)"
 
     - name: Build container images and Helm charts, push app container image
       run: |
