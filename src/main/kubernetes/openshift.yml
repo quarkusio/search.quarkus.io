@@ -52,6 +52,7 @@ spec:
       containers:
         - name: opensearch
           # The image gets pushed manually as part of the "deploy" workflow.
+          # This gets replaced with the correct image ref (exact tag).
           image: opensearch-custom:latest
           imagePullPolicy: Always
           resources:

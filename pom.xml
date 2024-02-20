@@ -211,6 +211,7 @@
         <configuration>
           <jvmArgs>${test.jvm.args}</jvmArgs>
           <systemProperties>
+            <maven.revision>${revision}</maven.revision>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
             <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
           </systemProperties>
@@ -236,6 +237,7 @@
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
+            <maven.revision>${revision}</maven.revision>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
             <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
           </systemPropertyVariables>
