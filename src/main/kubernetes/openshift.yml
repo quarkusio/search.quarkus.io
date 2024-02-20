@@ -7,7 +7,8 @@ metadata:
     app: search-backend
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/part-of: '{{ .Values.app.name }}'
+    app.kubernetes.io/version: '{{ .Values.app.version }}'
 spec:
   ports:
     - name: http
@@ -31,7 +32,8 @@ metadata:
     app: search-backend
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
+    app.kubernetes.io/part-of: '{{ .Values.app.name }}'
+    app.kubernetes.io/version: '{{ .Values.app.version }}'
 # See https://www.hafifbilgiler.com/hafif-bilgiler/elasticsearch-installation-on-openshift/
 spec:
   serviceName: search-backend
@@ -45,13 +47,15 @@ spec:
         app: search-backend
         app.kubernetes.io/name: search-backend
         app.kubernetes.io/component: datastore
-        app.kubernetes.io/part-of: search-quarkus-io
+        app.kubernetes.io/part-of: '{{ .Values.app.name }}'
+        app.kubernetes.io/version: '{{ .Values.app.version }}'
       annotations:
         alpha.image.policy.openshift.io/resolve-names: '*'
     spec:
       containers:
         - name: opensearch
           # The image gets pushed manually as part of the "deploy" workflow.
+          # This gets replaced with the correct image ref (exact tag).
           image: opensearch-custom:latest
           imagePullPolicy: Always
           resources:

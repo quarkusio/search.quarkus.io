@@ -90,7 +90,7 @@ jobs:
 
     - name: Push OpenSearch container image
       run: |
-        REMOTE_IMAGE_REF="$(oc registry info)/$(oc project --short)/opensearch-custom:latest"
+        REMOTE_IMAGE_REF="$(oc registry info)/$(oc project --short)/opensearch-custom:${{ steps.app-version.outputs.value }}"
         # docker doesn't allow the `push source target` syntax, so we have to do this in two steps.
         docker image tag "opensearch-custom:latest" "$REMOTE_IMAGE_REF"
         docker push "$REMOTE_IMAGE_REF"
