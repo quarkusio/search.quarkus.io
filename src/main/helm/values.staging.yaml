@@ -1,4 +1,8 @@
 app:
+  envs:
+    # Avoid overloading the rather resource-constrained OpenSearch instance
+    INDEXING_BULK_SIZE: "10"
+    INDEXING_QUEUE_COUNT: "8"
   resources:
     limits:
       cpu: 500m
@@ -8,7 +12,7 @@ app:
       memory: 500Mi
 opensearch:
   envs:
-    OPENSEARCH_JAVA_OPTS: ' -Xms500m -Xmx500m '
+    OPENSEARCH_JAVA_OPTS: ' -Xms700m -Xmx700m '
   resources:
     limits:
       cpu: 1000m
