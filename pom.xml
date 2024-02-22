@@ -323,8 +323,10 @@
               <build>
                 <dockerFile>${project.basedir}/src/main/docker/opensearch-custom.Dockerfile</dockerFile>
                 <tags>
-                  <tag>latest</tag><!-- Used in deployment workflow, so we don't have to know about the exact version -->
-                  <tag>${version.opensearch}</tag><!-- Workaround until we get https://github.com/quarkusio/quarkus/pull/38896 -->
+                  <!-- Used in deployment workflow, so we don't have to know about the exact version -->
+                  <tag>latest</tag>
+                  <!-- Workaround until we get https://github.com/quarkusio/quarkus/pull/38896 -->
+                  <tag>${version.opensearch}</tag>
                 </tags>
               </build>
             </image>
