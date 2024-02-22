@@ -16,7 +16,7 @@ public final class MutinyUtils {
         // https://smallrye.io/smallrye-mutiny/2.0.0/guides/polling/#how-to-use-polling
         return Multi.createBy().repeating()
                 .supplier(condition)
-                .until(backendReachable -> backendReachable)
+                .until(conditionMet -> conditionMet)
                 .onItem().invoke(onRetry)
                 // https://smallrye.io/smallrye-mutiny/2.5.1/guides/controlling-demand/#pacing-the-demand
                 .paceDemand().on(Infrastructure.getDefaultWorkerPool())

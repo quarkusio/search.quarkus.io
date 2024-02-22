@@ -3,12 +3,14 @@ package io.quarkus.search.app.indexing;
 import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
@@ -28,7 +30,6 @@ import org.hibernate.Session;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.mapper.orm.mapping.SearchMapping;
 import org.hibernate.search.mapper.orm.session.SearchSession;
-import org.hibernate.search.util.common.impl.Closer;
 
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
@@ -114,16 +115,16 @@ public class IndexingService {
                         t -> Log.errorf(t, "Reindexing on startup failed: %s", t.getMessage()));
     }
 
-    @Scheduled(cron = "{indexing.scheduled.cron}")
+    @Scheduled(cron = "{indexing.scheduled.cron}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void indexOnTime() {
         try {
-            Log.infof("Scheduled reindex starting...");
+            Log.infof("Scheduled reindexing starting...");
             reindex();
-            Log.infof("Scheduled reindex finished.");
+            Log.infof("Scheduled reindexing finished.");
         } catch (ReindexingAlreadyInProgressException e) {
             Log.infof("Indexing was already started by some other process.");
-        } catch (Exception e) {
-            Log.errorf(e, "Failed to start scheduled reindex: %s", e.getMessage());
+        } catch (RuntimeException e) {
+            Log.errorf(e, "Failed to start scheduled reindexing: %s", e.getMessage());
         }
     }
 
@@ -146,6 +147,24 @@ public class IndexingService {
         } catch (IOException e) {
             Log.debug("Caught exception when testing whether the search backend is reachable", e);
             return false;
+        }
+    }
+
+    @SuppressWarnings("BusyWait")
+    @PreDestroy
+    protected void waitForReindexingToFinish() throws InterruptedException {
+        if (!reindexingInProgress.get()) {
+            return;
+        }
+
+        var timeout = indexingConfig.timeout();
+        var until = Instant.now().plus(timeout);
+        do {
+            Log.info("Shutdown requested, but indexing is in progress, waiting...");
+            Thread.sleep(5000);
+        } while (reindexingInProgress.get() && Instant.now().isBefore(until));
+        if (reindexingInProgress.get()) {
+            throw new IllegalStateException("Shutdown requested, aborting indexing which took more than " + timeout);
         }
     }
 
@@ -206,17 +225,10 @@ public class IndexingService {
 
     private void indexAll(FailureCollector failureCollector) {
         Log.info("Indexing...");
-        try (Rollover rollover = Rollover.start(searchMapping);
-                Closer<IOException> closer = new Closer<>()) {
-            // Reset the database before we start
-            clearDatabaseWithoutIndexes();
+        try (Rollover rollover = Rollover.start(searchMapping)) {
             try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector)) {
                 indexQuarkusIo(quarkusIO);
             }
-
-            // We don't use the database for searching,
-            // so let's make sure to clear it after we're done indexing.
-            closer.push(IndexingService::clearDatabaseWithoutIndexes, this);
 
             // Refresh BEFORE committing the rollover,
             // so that the new indexes are fully refreshed
@@ -226,7 +238,7 @@ public class IndexingService {
 
             rollover.commit();
             Log.info("Indexing success");
-        } catch (Exception e) {
+        } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
         }
     }
@@ -262,24 +274,17 @@ public class IndexingService {
         QuarkusTransaction.requiringNew()
                 .timeout((int) indexingConfig.timeout().toSeconds())
                 .run(() -> {
+                    var indexingPlan = searchSession.indexingPlan();
                     for (T doc : docs) {
                         try {
-                            Log.tracef("About to persist: %s", doc);
-                            session.persist(doc);
-                        } catch (Exception e) {
+                            Log.tracef("About to index: %s", doc);
+                            // Not using session.persist because 1. we don't need it and 2. it takes time and memory
+                            indexingPlan.addOrUpdate(doc);
+                        } catch (RuntimeException e) {
                             throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
                         }
                     }
                 });
-    }
-
-    private void clearDatabaseWithoutIndexes() {
-        Log.info("Clearing database...");
-        try {
-            session.getSessionFactory().getSchemaManager().truncateMappedObjects();
-        } catch (RuntimeException e) {
-            throw new RuntimeException("Failed to clear the database: " + e.getMessage(), e);
-        }
     }
 
 }

@@ -2,6 +2,21 @@
 
 > A Quarkus-powered application that allows full-text search in websites of the Quarkus organization such as https://quarkus.io.
 
+[[architecture]]
+== Architecture
+
+The application is deployed on an OpenShift cluster, next to an OpenSearch instance.
+
+It fetches the sources from quarkus.io and localized variants (pt.quarkus.io, ...) to index them,
+and exposes the search feature through a REST API.
+
+The webpage at https://quarkus.io/guides calls that API to perform search.
+
+// Source if you need to make changes:
+// https://miro.com/app/board/uXjVNtX8LlY=/?share_link_id=204315078797
+
+image::architecture.png[Architecture diagram]
+
 [[development]]
 == Development
 
@@ -113,9 +128,9 @@ If you want to start a (production) container locally with podman, you can build
 
 [source,shell]
 ----
-quarkus build -DskipTests -Dquarkus.container-image.build=true -Dquarkus.container-image.builder=jib
+quarkus build -DskipTests -Dquarkus.container-image.build=true
 # OR
-./mvnw install -DskipTests -Dquarkus.container-image.build=true -Dquarkus.container-image.builder=jib
+./mvnw install -DskipTests -Dquarkus.container-image.build=true
 ----
 
 Then start it this way:
@@ -132,7 +147,7 @@ podman container run -d --name search-backend-0 --pod search.quarkus.io \
     -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
     -e "DISABLE_SECURITY_PLUGIN=true" \
     -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    opensearch-custom-plugin:2.11.0
+    opensearch-custom:latest
 podman container run -d --name search-backend-1 --pod search.quarkus.io \
     --cpus=2 --memory=2g \
     -e "node.name=search-backend-1" \
@@ -141,7 +156,7 @@ podman container run -d --name search-backend-1 --pod search.quarkus.io \
     -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
     -e "DISABLE_SECURITY_PLUGIN=true" \
     -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    opensearch-custom-plugin:2.11.0
+    opensearch-custom:latest
 podman container run -d --name search-backend-2 --pod search.quarkus.io \
     --cpus=2 --memory=2g \
     -e "node.name=search-backend-2" \
@@ -150,7 +165,7 @@ podman container run -d --name search-backend-2 --pod search.quarkus.io \
     -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
     -e "DISABLE_SECURITY_PLUGIN=true" \
     -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    opensearch-custom-plugin:2.11.0
+    opensearch-custom:latest
 # Then the app; this will fetch the actual data on startup (might take a while):
 podman container run -it --rm --name search.quarkus.io --pod search.quarkus.io search-quarkus-io:999-SNAPSHOT
 # OR, if you already have locals clones of *.quarkus.io:

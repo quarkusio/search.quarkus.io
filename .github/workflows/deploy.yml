@@ -25,6 +25,9 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      HELM_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
+
     steps:
     - uses: actions/checkout@v2
 
@@ -34,24 +37,65 @@ jobs:
         distribution: temurin
         java-version: 17
 
-    - name: Log in to OpenShift (Dev)
-      if: ${{ github.ref == 'refs/heads/main' }}
+    - name: Set up Helm
+      uses: azure/setup-helm@v4.0.0
+      with:
+         version: 'v3.13.3'
+
+    - name: Log in to OpenShift
       uses: redhat-actions/oc-login@v1
       with:
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
-        openshift_token: ${{ secrets.OPENSHIFT_TOKEN_DEV }}
-        namespace: ${{ env.OPENSHIFT_NAMESPACE_DEV }}
+        openshift_token: ${{ github.ref == 'refs/heads/production' && secrets.OPENSHIFT_TOKEN_PROD || secrets.OPENSHIFT_TOKEN_DEV }}
+        namespace: ${{ github.ref == 'refs/heads/production' && secrets.OPENSHIFT_NAMESPACE_PROD || secrets.OPENSHIFT_NAMESPACE_DEV }}
 
-    - name: Log in to OpenShift (Prod)
-      if: ${{ github.ref == 'refs/heads/production' }}
-      uses: redhat-actions/oc-login@v1
+    - name: Create ImageStreams
+      run: |
+        oc create imagestream search-quarkus-io || true
+        oc create imagestream opensearch-custom || true
+        # https://docs.openshift.com/container-platform/4.14/openshift_images/using-imagestreams-with-kube-resources.html
+        oc set image-lookup search-quarkus-io
+        oc set image-lookup opensearch-custom
+
+    - name: Retrieve OpenShift Container Registry URL
+      id: oc-registry
+      run: |
+        echo -n "OC_REGISTRY_URL=" >> "$GITHUB_OUTPUT"
+        oc registry info >> "$GITHUB_OUTPUT"
+    - name: Log in to OpenShift Container Registry
+      uses: docker/login-action@v3
       with:
-        openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
-        openshift_token: ${{ secrets.OPENSHIFT_TOKEN_PROD }}
-        namespace: ${{ env.OPENSHIFT_NAMESPACE_PROD }}
+        registry: ${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}
+        username: ignored
+        password: ${{ github.ref == 'refs/heads/production' && secrets.OPENSHIFT_TOKEN_PROD || secrets.OPENSHIFT_TOKEN_DEV }}
 
-    - name: Delete problematic image
-      run: oc delete is ubi-quarkus-native-binary-s2i || true
+    # Helm in particular needs semantic versions
+    # See https://github.com/helm/helm/issues/9342#issuecomment-775269042
+    # See the parts about pre-release versions in https://semver.org/#semantic-versioning-specification-semver
+    # Ideally we should use a "+" before the SHA, but that won't work with Quarkus
+    # See https://github.com/quarkusio/quarkus/blob/da1a782e04b01b2e165d65474163050d497340c1/extensions/container-image/spi/src/main/java/io/quarkus/container/spi/ImageReference.java#L60
+    - name: Generate app version
+      id: app-version
+      run: |
+        echo "VALUE=1.0.0-$(date -u '+%Y%m%d%H%M%S')-${{ github.sha }}" >> $GITHUB_OUTPUT
 
-    - name: Build and deploy
-      run: mvn clean package -Dquarkus.kubernetes.deploy=true -Dquarkus.native.container-build=true -Drevision=${{ github.sha }}
+    - name: Build container images and Helm charts, push app container image
+      run: |
+        ./mvnw clean package \
+          -Drevision="${{ steps.app-version.outputs.value }}" \
+          -Dquarkus.container-image.build=true \
+          -Dquarkus.container-image.push=true \
+          -Dquarkus.container-image.registry="$(oc registry info)" \
+          -Dquarkus.container-image.group="$(oc project --short)"
+
+    - name: Push OpenSearch container image
+      run: |
+        REMOTE_IMAGE_REF="$(oc registry info)/$(oc project --short)/opensearch-custom:${{ steps.app-version.outputs.value }}"
+        # docker doesn't allow the `push source target` syntax, so we have to do this in two steps.
+        docker image tag "opensearch-custom:latest" "$REMOTE_IMAGE_REF"
+        docker push "$REMOTE_IMAGE_REF"
+
+    - name: Deploy Helm charts
+      run: |
+        helm upgrade --install search-quarkus-io ./target/helm/openshift/search-quarkus-io \
+          -f ./src/main/helm/values.$HELM_PROFILE.yaml

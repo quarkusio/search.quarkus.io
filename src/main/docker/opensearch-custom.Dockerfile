@@ -1,4 +1,7 @@
-FROM opensearchproject/opensearch:2.11.0
+FROM opensearchproject/opensearch:2.11.1
+
+# Workaround for https://github.com/opensearch-project/opensearch-devops/issues/97
+RUN chmod -R go=u /usr/share/opensearch
 
 RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-kuromoji
 RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-smartcn

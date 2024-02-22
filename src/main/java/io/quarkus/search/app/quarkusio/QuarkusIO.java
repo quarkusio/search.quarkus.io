@@ -2,6 +2,7 @@ package io.quarkus.search.app.quarkusio;
 
 import static io.quarkus.search.app.util.MarkdownRenderer.renderMarkdown;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -43,7 +44,7 @@ import org.fedorahosted.tennera.jgettext.Message;
 import org.fedorahosted.tennera.jgettext.PoParser;
 import org.yaml.snakeyaml.Yaml;
 
-public class QuarkusIO implements AutoCloseable {
+public class QuarkusIO implements Closeable {
 
     public static final String QUARKUS_ORIGIN = "quarkus";
     private static final String QUARKIVERSE_ORIGIN = "quarkiverse";
@@ -140,8 +141,8 @@ public class QuarkusIO implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
-        try (var closer = new Closer<Exception>()) {
+    public void close() throws IOException {
+        try (var closer = new Closer<IOException>()) {
             closer.push(CloseableDirectory::close, prefetchedGuides);
             closer.pushAll(GitCloneDirectory::close, allSites.values());
         }

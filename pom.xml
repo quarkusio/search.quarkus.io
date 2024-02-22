@@ -28,14 +28,16 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.7.1</quarkus.version>
+    <quarkus.version>3.7.3</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.5</surefire-plugin.version>
     <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
-    <version.docker.plugin>0.43.4</version.docker.plugin>
+    <version.docker.plugin>0.44.0</version.docker.plugin>
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
+    <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
+    <version.opensearch>2.11</version.opensearch>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -162,6 +164,11 @@
       <artifactId>quarkus-hibernate-validator</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.quarkiverse.helm</groupId>
+      <artifactId>quarkus-helm</artifactId>
+      <version>1.2.2</version>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
@@ -204,7 +211,9 @@
         <configuration>
           <jvmArgs>${test.jvm.args}</jvmArgs>
           <systemProperties>
+            <maven.revision>${revision}</maven.revision>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
+            <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
           </systemProperties>
         </configuration>
       </plugin>
@@ -228,7 +237,9 @@
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
+            <maven.revision>${revision}</maven.revision>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
+            <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
           </systemPropertyVariables>
           <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
             <usePhrasedFileName>true</usePhrasedFileName>
@@ -308,11 +319,14 @@
         <configuration>
           <images>
             <image>
-              <name>opensearch-custom-plugin</name>
+              <name>opensearch-custom</name>
               <build>
-                <dockerFile>${project.basedir}/Dockerfile</dockerFile>
+                <dockerFile>${project.basedir}/src/main/docker/opensearch-custom.Dockerfile</dockerFile>
                 <tags>
-                  <tag>2.11.0</tag>
+                  <!-- Used in deployment workflow, so we don't have to know about the exact version -->
+                  <tag>latest</tag>
+                  <!-- Workaround until we get https://github.com/quarkusio/quarkus/pull/38896 -->
+                  <tag>${version.opensearch}</tag>
                 </tags>
               </build>
             </image>

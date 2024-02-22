@@ -1,73 +1,3 @@
-apiVersion: image.openshift.io/v1
-kind: "ImageStream"
-metadata:
-  name: opensearch
-  annotations:
-    openshift.io/display-name: opensearch
-  labels:
-    app.kubernetes.io/name: search-backend
-    app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
-spec:
-  lookupPolicy:
-    local: true
-  tags:
-    - name: current
-      from:
-        kind: DockerImage
-        name: docker.io/opensearchproject/opensearch:2.11.0
----
-apiVersion: image.openshift.io/v1
-kind: "ImageStream"
-metadata:
-  name: opensearch-fixed
-  annotations:
-    openshift.io/display-name: opensearch-fixed
-  labels:
-    app.kubernetes.io/name: search-backend
-    app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
-spec:
-  lookupPolicy:
-    local: true
----
-apiVersion: build.openshift.io/v1
-kind: BuildConfig
-metadata:
-  name: opensearch-fixed-build
-  labels:
-    app.kubernetes.io/name: search-backend
-    app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
-spec:
-  triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChange:
-        from:
-          kind: ImageStreamTag
-          name: opensearch:current
-  source:
-    # Workaround for https://github.com/opensearch-project/opensearch-devops/issues/97
-    dockerfile: |-
-      FROM opensearch:current
-      RUN chmod -R go=u /usr/share/opensearch
-      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-kuromoji
-      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-smartcn
-      RUN /usr/share/opensearch/bin/opensearch-plugin install --batch analysis-icu
-  strategy:
-    type: Docker
-    dockerStrategy:
-      from:
-        kind: ImageStreamTag
-        name: opensearch:current
-  output:
-    to:
-      kind: ImageStreamTag
-      name: opensearch-fixed:current
 ---
 apiVersion: v1
 kind: Service
@@ -77,8 +7,8 @@ metadata:
     app: search-backend
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
+    app.kubernetes.io/part-of: '{{ .Values.app.name }}'
+    app.kubernetes.io/version: '{{ .Values.app.version }}'
 spec:
   ports:
     - name: http
@@ -102,8 +32,8 @@ metadata:
     app: search-backend
     app.kubernetes.io/name: search-backend
     app.kubernetes.io/component: datastore
-    app.kubernetes.io/part-of: search-quarkus-io
-    app.kubernetes.io/managed-by: quarkus
+    app.kubernetes.io/part-of: '{{ .Values.app.name }}'
+    app.kubernetes.io/version: '{{ .Values.app.version }}'
 # See https://www.hafifbilgiler.com/hafif-bilgiler/elasticsearch-installation-on-openshift/
 spec:
   serviceName: search-backend
@@ -117,20 +47,24 @@ spec:
         app: search-backend
         app.kubernetes.io/name: search-backend
         app.kubernetes.io/component: datastore
-        app.kubernetes.io/part-of: search-quarkus-io
-        app.kubernetes.io/managed-by: quarkus
+        app.kubernetes.io/part-of: '{{ .Values.app.name }}'
+        app.kubernetes.io/version: '{{ .Values.app.version }}'
+      annotations:
+        alpha.image.policy.openshift.io/resolve-names: '*'
     spec:
       containers:
         - name: opensearch
-          image: opensearch-fixed:current
+          # The image gets pushed manually as part of the "deploy" workflow.
+          # This gets replaced with the correct image ref (exact tag).
+          image: opensearch-custom:latest
           imagePullPolicy: Always
           resources:
             limits:
-              cpu: 2000m
-              memory: 3Gi
+              cpu: '{{ .Values.opensearch.resources.limits.cpu }}'
+              memory: '{{ .Values.opensearch.resources.limits.memory }}'
             requests:
-              cpu: 1000m
-              memory: 2Gi
+              cpu: '{{ .Values.opensearch.resources.requests.cpu }}'
+              memory: '{{ .Values.opensearch.resources.requests.memory }}'
           readinessProbe:
             httpGet:
               scheme: HTTP
@@ -164,14 +98,14 @@ spec:
               value: "false"
             # OpenSearch doesn't seem to automatically adapt -Xmx to available memory, for some reason
             - name: OPENSEARCH_JAVA_OPTS
-              value: -Xms1g -Xmx1g
+              value: '{{ .Values.opensearch.envs.OPENSEARCH_JAVA_OPTS }}'
             # This is necessary to avoid OpenSearch trying to install various things on startup,
             # which leads to filesystem operations (chmod/chown) that won't work
             # because only user 1000 has the relevant permissions,
             # and we can't run with user 1000 on OpenShift.
             # See also:
             # - https://github.com/opensearch-project/opensearch-devops/issues/97
-            # - BuildConfig opensearch-fixed-build
+            # - src/main/docker/opensearch-custom.Dockerfile
             - name: DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI
               value: 'true'
             - name: DISABLE_INSTALL_DEMO_CONFIG
@@ -195,20 +129,9 @@ spec:
           app.kubernetes.io/name: search-backend
           app.kubernetes.io/component: datastore
           app.kubernetes.io/part-of: search-quarkus-io
-          app.kubernetes.io/managed-by: quarkus
       spec:
         accessModes: [ "ReadWriteOnce" ]
         storageClassName: "gp2"
         resources:
           requests:
             storage: 5Gi
-  triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-          - search-backend
-        from:
-          kind: ImageStreamTag
-          name: opensearch-fixed:current
