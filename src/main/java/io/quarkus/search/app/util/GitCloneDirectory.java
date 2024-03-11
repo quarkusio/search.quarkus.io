@@ -273,7 +273,21 @@ public class GitCloneDirectory implements Closeable {
                 // fetch remote branches to make sure we'll use up-to-date data
                 git.fetch()
                         .setRemote(remoteName)
-                        .setRefSpecs(branches.asRefArray())
+                        // Do not set refspecs explicitly. For some reason even if the specs are formatted as:
+                        //   [ refs/heads/main refs/heads/docs]
+                        //  we don't get any changes in `git show-ref` results
+                        //  But! Because we've specified only the branches we need during the cloning our .git/config should look as:
+                        //  [remote "upstream"]
+                        //        url = https://github.com/quarkusio/*****************
+                        //        fetch = +refs/heads/main:refs/remotes/upstream/main
+                        //        fetch = +refs/heads/docs:refs/remotes/upstream/docs
+                        //
+                        //  Which means that if we run:
+                        //    git fetch --verbose
+                        //     = [up to date]      main       -> upstream/main
+                        //     = [up to date]      docs       -> upstream/docs
+                        //
+                        //  Only the branches we are interested in are fetched.
                         .setProgressMonitor(LoggerProgressMonitor.create(log,
                                 "Fetching into '" + directory + "' (" + branches.pages() + "): "))
                         .call();
@@ -309,10 +323,6 @@ public class GitCloneDirectory implements Closeable {
     public record Branches(String sources, String pages) {
         public List<String> asRefList() {
             return List.of("refs/heads/" + sources, "refs/heads/" + pages);
-        }
-
-        public String[] asRefArray() {
-            return asRefList().toArray(String[]::new);
         }
     }
 }
