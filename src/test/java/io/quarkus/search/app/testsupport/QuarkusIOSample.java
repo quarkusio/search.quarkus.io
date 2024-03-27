@@ -449,6 +449,7 @@ public final class QuarkusIOSample {
 
         public FilterDefinitionCollector addLocalizedGuide(Language language, GuideRef ref, String version) {
             String htmlPath = QuarkusIO.htmlPath(language, version, ref.name());
+            htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
         }
