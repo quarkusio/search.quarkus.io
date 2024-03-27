@@ -1,7 +1,6 @@
 package io.quarkus.search.app;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -60,7 +59,9 @@ class SynonymSearchServiceTest {
                 Arguments.of("config",
                         "All <span class=\"highlighted\">configuration</span> options"),
                 Arguments.of("config option",
-                        "All <span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>"));
+                        "All <span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>"),
+                Arguments.of("jpa",
+                        "Using Hibernate ORM and <span class=\"highlighted\">Jakarta</span> <span class=\"highlighted\">Persistence</span>"));
     }
 
     @ParameterizedTest

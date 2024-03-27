@@ -341,6 +341,7 @@ public final class QuarkusIOSample {
 
     public static class SearchServiceSynonymsFilterDefinition extends AbstractGuideRefSetFilterDefinition {
         private static final GuideRef[] GUIDES = new GuideRef[] {
+                GuideRef.HIBERNATE_ORM,
                 GuideRef.RESTEASY_REACTIVE_REFERENCE,
                 GuideRef.VERTX_REFERENCE,
                 GuideRef.DEV_SERVICES_REFERENCE,

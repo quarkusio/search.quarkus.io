@@ -19,7 +19,8 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
             "resteasy, rest, rest api, rest easy",
             "vert.x, vertx, vertex",
             "configuration, config",
-            "configuration properties, config properties, configuration options, config options"
+            "configuration properties, config properties, configuration options, config options",
+            "jakarta persistence, jpa, java persistence api, java persistence"
     };
 
     public static final String DEFAULT = "basic_analyzer";
