@@ -29,10 +29,12 @@ import java.util.stream.Collectors;
 import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.FileUtils;
 import io.quarkus.search.app.util.GitCloneDirectory;
 
+import io.quarkus.runtime.configuration.ConfigUtils;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
 
@@ -49,6 +51,8 @@ import org.yaml.snakeyaml.Yaml;
  * Helper to create a simulated quarkus.io repository to use for fetching in test/dev mode.
  */
 public final class QuarkusIOSample {
+
+    public static final List<String> REMOTES = Arrays.asList("upstream", "origin", null);
 
     private QuarkusIOSample() {
     }
@@ -68,42 +72,55 @@ public final class QuarkusIOSample {
     }
 
     // Run this to update the bundle in src/test/resources.
+    // Remotes to try to copy the data from are "upstream", "origin" and the local branch.
     // Expects to be run with the project root as the current working directory.
-    // Expects at least one argument: the path to your local clone of quarkus.io,
-    // with the next arguments being interpreted as a pair of language code and localized site repository
-    // Remotes to try to copy the data from are
-    // "origin" and the local branch.
+    // Expects arguments to be either:
+    // * Empty: the path to local clones of quarkus.io will be retrieved from .env.
+    // * One or more: the path to your local clone of quarkus.io,
+    //   with the next arguments being interpreted as a pair of language code and localized site repository
     public static void main(String[] args) throws IOException {
-        if (args.length % 2 == 0) {
-            throw new IllegalArgumentException("Expected at least 1 argument, got none."
-                    + " Arguments must follow the pattern: main-repository [lang1 lang1-repository ... [langN langN-repository ]]."
-                    + " Where language-specific repositories are optional and if provided must provide a language and its repository.");
-        }
-        Path originalPath = Path.of(args[0]);
-        if (!Files.isDirectory(originalPath)) {
-            throw new IllegalArgumentException(originalPath + " is not a directory");
-        }
-        List<String> remotes = Arrays.asList("upstream", "origin", null);
-
-        try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-            copy(originalPath, remotes, copyRootDir.path(), new AllFilterDefinition(), QuarkusIO.MAIN_BRANCHES, true);
-            Path sampleAbsolutePath = testResourcesSamplePath();
-
-            Files.deleteIfExists(sampleAbsolutePath);
-            FileUtils.zip(copyRootDir.path(), sampleAbsolutePath);
-        }
-
-        for (int i = 1; i < args.length; i += 2) {
-            Language language = Language.fromString(args[i]);
-            if (language == null) {
-                throw new IllegalArgumentException(args[i] + " is not a supported language.");
+        Map<Language, Path> paths = new LinkedHashMap<>();
+        if (args.length == 0) {
+            // Default to using paths from .env
+            var config = ConfigUtils.emptyConfigBuilder()
+                    .withProfile("dev")
+                    .withMapping(QuarkusIOConfig.class)
+                    .build();
+            var quarkusIOConfig = config.getConfigMapping(QuarkusIOConfig.class);
+            paths.put(Language.ENGLISH, Path.of(quarkusIOConfig.gitUri()));
+            quarkusIOConfig.localized()
+                    .forEach((language, siteConfig) -> paths.put(Language.fromString(language), Path.of(siteConfig.gitUri())));
+        } else {
+            if (args.length % 2 == 0) {
+                throw new IllegalArgumentException("Expected an odd number of arguments, got " + args.length + "."
+                        + " Arguments must follow the pattern: main-repository [lang1 lang1-repository ... [langN langN-repository ]]."
+                        + " Where language-specific repositories are optional and if provided must provide a language and its repository.");
             }
-            Path originalLocalizedPath = Path.of(args[i + 1]);
+            paths.put(Language.ENGLISH, Path.of(args[0]));
+
+            for (int i = 1; i < args.length; i += 2) {
+                paths.put(Language.fromString(args[i]), Path.of(args[i + 1]));
+            }
+        }
+        generate(paths);
+    }
+
+    public static void generate(Map<Language, Path> paths) throws IOException {
+        for (Map.Entry<Language, Path> entry : paths.entrySet()) {
+            var language = entry.getKey();
+            var path = entry.getValue();
+            if (!Files.isDirectory(path)) {
+                throw new IllegalArgumentException(path + " is not a directory");
+            }
+            boolean isMainLanguage = Language.ENGLISH == language;
 
             try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-                copy(originalLocalizedPath, remotes, copyRootDir.path(), new AllLocalizedFilterDefinition(language),
-                        QuarkusIO.LOCALIZED_BRANCHES, false);
-                Path sampleAbsolutePath = testResourcesSamplePath(language);
+                copy(path, REMOTES, copyRootDir.path(),
+                        isMainLanguage ? new AllFilterDefinition() : new AllLocalizedFilterDefinition(language),
+                        isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES,
+                        isMainLanguage);
+                Path sampleAbsolutePath = isMainLanguage ? testResourcesSamplePath()
+                        : testResourcesSamplePath(language);
 
                 Files.deleteIfExists(sampleAbsolutePath);
                 FileUtils.zip(copyRootDir.path(), sampleAbsolutePath);
