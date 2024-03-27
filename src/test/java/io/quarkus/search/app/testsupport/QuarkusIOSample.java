@@ -114,8 +114,11 @@ public final class QuarkusIOSample {
             }
             boolean isMainLanguage = Language.ENGLISH == language;
 
-            try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-                copy(path, REMOTES, copyRootDir.path(),
+            try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building");
+                    GitCloneDirectory clone = GitCloneDirectory.openAndUpdate( path,
+                            isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES )) {
+                GitTestUtils.cleanGitUserConfig();
+                copy(clone.git().getRepository(), copyRootDir.path(),
                         isMainLanguage ? new AllFilterDefinition() : new AllLocalizedFilterDefinition(language),
                         isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES,
                         isMainLanguage);
@@ -140,10 +143,13 @@ public final class QuarkusIOSample {
             GitCloneDirectory.Branches branches, boolean failOnMissing) {
         CloseableDirectory copyRootDir = null;
         try (CloseableDirectory unzippedQuarkusIoSample = CloseableDirectory.temp("quarkusio-sample-unzipped")) {
+            copyRootDir = CloseableDirectory.temp( filterDef.toString() );
             FileUtils.unzip(path, unzippedQuarkusIoSample.path());
-            copyRootDir = CloseableDirectory.temp(filterDef.toString());
-            copy(unzippedQuarkusIoSample.path(), Collections.singletonList(null),
-                    copyRootDir.path(), filterDef, branches, failOnMissing);
+            try (Git originalGit = Git.open(unzippedQuarkusIoSample.path().toFile())) {
+                GitTestUtils.cleanGitUserConfig();
+                Repository originalRepo = originalGit.getRepository();
+                copy( originalRepo, copyRootDir.path(), filterDef, branches, failOnMissing );
+            }
             return copyRootDir;
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e).push(copyRootDir);
@@ -152,55 +158,48 @@ public final class QuarkusIOSample {
         }
     }
 
-    public static void copy(Path quarkusIoLocalPath, List<String> originalRemotes,
+    public static void copy(Repository originalRepo,
             Path copyRootPath, FilterDefinition filterDef, GitCloneDirectory.Branches branches, boolean failOnMissing) {
-        try (Git originalGit = Git.open(quarkusIoLocalPath.toFile())) {
+        var collector = new FilterDefinitionCollector();
+        filterDef.define(collector);
+        if (collector.sourceCopyPathToOriginalPath.isEmpty() && collector.pagesCopyPathToOriginalPath.isEmpty()) {
+            throw new IllegalStateException("No path to copy");
+        }
+
+        try (Git copyGit = Git.init().setInitialBranch(branches.pages())
+                .setDirectory(copyRootPath.toFile()).call()) {
             GitTestUtils.cleanGitUserConfig();
 
-            Repository originalRepo = originalGit.getRepository();
+            RevCommit initialCommit = copyGit.commit().setMessage("Initial commit")
+                    .setAllowEmpty(true)
+                    .call();
 
-            var collector = new FilterDefinitionCollector();
-            filterDef.define(collector);
-            if (collector.sourceCopyPathToOriginalPath.isEmpty() && collector.pagesCopyPathToOriginalPath.isEmpty()) {
-                throw new IllegalStateException("No path to copy");
-            }
+            copyIfNecessary(originalRepo, branches.pages(),
+                    copyRootPath, copyGit,
+                    collector.pagesCopyPathToOriginalPath, failOnMissing);
 
-            try (Git copyGit = Git.init().setInitialBranch(branches.pages())
-                    .setDirectory(copyRootPath.toFile()).call()) {
-                GitTestUtils.cleanGitUserConfig();
+            copyGit.checkout()
+                    .setName(branches.sources())
+                    .setCreateBranch(true)
+                    .setStartPoint(initialCommit)
+                    .call();
+            copyIfNecessary(originalRepo, branches.sources(),
+                    copyRootPath, copyGit,
+                    collector.sourceCopyPathToOriginalPath, failOnMissing);
 
-                RevCommit initialCommit = copyGit.commit().setMessage("Initial commit")
-                        .setAllowEmpty(true)
-                        .call();
-
-                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, branches.pages(),
-                        copyRootPath, copyGit,
-                        collector.pagesCopyPathToOriginalPath, failOnMissing);
-
-                copyGit.checkout()
-                        .setName(branches.sources())
-                        .setCreateBranch(true)
-                        .setStartPoint(initialCommit)
-                        .call();
-                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, branches.sources(),
-                        copyRootPath, copyGit,
-                        collector.sourceCopyPathToOriginalPath, failOnMissing);
-
-                editIfNecessary(quarkusIoLocalPath,
-                        copyRootPath, copyGit,
-                        collector.yamlQuarkusFilesToFilter);
-
-            }
+            editIfNecessary(originalRepo,
+                    copyRootPath, copyGit,
+                    collector.yamlQuarkusFilesToFilter);
         } catch (RuntimeException | IOException | GitAPIException e) {
             throw new IllegalStateException(
                     "Couldn't copy QuarkusIO from '%s' to '%s' with filter '%s': %s"
-                            .formatted(quarkusIoLocalPath, copyRootPath, filterDef, e.getMessage()),
+                            .formatted(originalRepo, copyRootPath, filterDef, e.getMessage()),
                     e);
         }
     }
 
-    private static void copyIfNecessary(Path quarkusIoLocalPath, Repository originalRepo,
-            List<String> originalRemotes, String originalBranch,
+    private static void copyIfNecessary(Repository originalRepo,
+            String originalBranch,
             Path copyRootPath, Git copyGit, Map<String, String> copyPathToOriginalPath, boolean failOnMissing)
             throws IOException, GitAPIException {
         if (copyPathToOriginalPath.isEmpty()) {
@@ -208,8 +207,8 @@ public final class QuarkusIOSample {
         }
         GitCopier copier = GitCopier.create(originalRepo,
                 failOnMissing,
-                // For convenience, we try multiple origins
-                originalRemotes.stream()
+                // For convenience, we try multiple remotes
+                REMOTES.stream()
                         .map(r -> r != null ? r + "/" + originalBranch : originalBranch)
                         .toArray(String[]::new));
         copier.copy(copyRootPath, copyPathToOriginalPath);
@@ -218,14 +217,14 @@ public final class QuarkusIOSample {
                 Copying from %s
 
                 Copies:%s"""
-                .formatted(quarkusIoLocalPath,
+                .formatted(originalRepo,
                         copyPathToOriginalPath.entrySet().stream()
                                 .map(e -> e.getValue() + " => " + e.getKey())
                                 .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
                 .call();
     }
 
-    private static void editIfNecessary(Path quarkusIoLocalPath, Path copyRootPath, Git copyGit,
+    private static void editIfNecessary(Repository originalRepo, Path copyRootPath, Git copyGit,
             Map<String, Consumer<Path>> yamlQuarkusFilesToFilter)
             throws IOException, GitAPIException {
         if (yamlQuarkusFilesToFilter.isEmpty()) {
@@ -241,7 +240,7 @@ public final class QuarkusIOSample {
 
                 Edited:%s"""
                 .formatted(
-                        quarkusIoLocalPath,
+                        originalRepo,
                         yamlQuarkusFilesToFilter.values().stream()
                                 .map(Object::toString)
                                 .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
