@@ -298,9 +298,11 @@ class SearchServiceTest {
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .satisfiesOnlyOnce(uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.name()))
                 .satisfiesOnlyOnce(
-                        uri -> assertThat(uri).asString().contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.name()));
+                        uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.nameBeforeRestRenaming()))
+                .satisfiesOnlyOnce(
+                        uri -> assertThat(uri).asString()
+                                .contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.nameBeforeRestRenaming()));
     }
 
     @Test

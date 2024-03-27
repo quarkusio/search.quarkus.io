@@ -5,5 +5,6 @@ public final class QuarkusVersions {
     }
 
     public static final String LATEST = "latest";
+    public static final String MAIN = "main";
 
 }

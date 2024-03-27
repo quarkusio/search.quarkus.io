@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -57,7 +56,7 @@ public final class QuarkusIOSample {
     private QuarkusIOSample() {
     }
 
-    public static final String SAMPLED_NON_LATEST_VERSION = "main";
+    public static final String SAMPLED_NON_LATEST_VERSION = QuarkusVersions.MAIN;
 
     private static Path testResourcesSamplePath() {
         return Path.of(System.getProperty("maven.project.testResourceDirectory", "src/test/resources"))
@@ -115,8 +114,8 @@ public final class QuarkusIOSample {
             boolean isMainLanguage = Language.ENGLISH == language;
 
             try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building");
-                    GitCloneDirectory clone = GitCloneDirectory.openAndUpdate( path,
-                            isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES )) {
+                    GitCloneDirectory clone = GitCloneDirectory.openAndUpdate(path,
+                            isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES)) {
                 GitTestUtils.cleanGitUserConfig();
                 copy(clone.git().getRepository(), copyRootDir.path(),
                         isMainLanguage ? new AllFilterDefinition() : new AllLocalizedFilterDefinition(language),
@@ -143,12 +142,12 @@ public final class QuarkusIOSample {
             GitCloneDirectory.Branches branches, boolean failOnMissing) {
         CloseableDirectory copyRootDir = null;
         try (CloseableDirectory unzippedQuarkusIoSample = CloseableDirectory.temp("quarkusio-sample-unzipped")) {
-            copyRootDir = CloseableDirectory.temp( filterDef.toString() );
+            copyRootDir = CloseableDirectory.temp(filterDef.toString());
             FileUtils.unzip(path, unzippedQuarkusIoSample.path());
             try (Git originalGit = Git.open(unzippedQuarkusIoSample.path().toFile())) {
                 GitTestUtils.cleanGitUserConfig();
                 Repository originalRepo = originalGit.getRepository();
-                copy( originalRepo, copyRootDir.path(), filterDef, branches, failOnMissing );
+                copy(originalRepo, copyRootDir.path(), filterDef, branches, failOnMissing);
             }
             return copyRootDir;
         } catch (RuntimeException | IOException e) {
@@ -248,9 +247,9 @@ public final class QuarkusIOSample {
     }
 
     @SuppressWarnings("unchecked") // since we are expecting a specific YAML structure and don't need to test each nested node for a correct type.
-    private static void yamlQuarkusEditor(Path fileToEdit, GuideRef[] refs) {
+    private static void yamlQuarkusEditor(String version, Path fileToEdit, GuideRef[] refs) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
-            Set<String> guideRefs = Arrays.stream(refs).map(GuideRef::name).collect(Collectors.toSet());
+            Set<String> guideRefs = Arrays.stream(refs).map(g -> g.name(version)).collect(Collectors.toSet());
 
             Map<String, Object> filtered = new HashMap<>();
             Map<String, List<Object>> guides = new HashMap<>();
@@ -270,9 +269,9 @@ public final class QuarkusIOSample {
     }
 
     @SuppressWarnings("unchecked") // since we are expecting a specific YAML structure and don't need to test each nested node for a correct type.
-    private static void yamlQuarkiverseEditor(Path fileToEdit) {
+    private static void yamlQuarkiverseEditor(String version, Path fileToEdit) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
-            Set<String> guideRefs = Arrays.stream(GuideRef.quarkiverse()).map(GuideRef::name).collect(Collectors.toSet());
+            Set<String> guideRefs = Arrays.stream(GuideRef.quarkiverse()).map(g -> g.name(version)).collect(Collectors.toSet());
 
             Map<String, Object> filtered = new HashMap<>();
             Map<String, List<Object>> guides = new HashMap<>();
@@ -358,7 +357,7 @@ public final class QuarkusIOSample {
     public static class SearchServiceSynonymsFilterDefinition extends AbstractGuideRefSetFilterDefinition {
         private static final GuideRef[] GUIDES = new GuideRef[] {
                 GuideRef.HIBERNATE_ORM,
-                GuideRef.RESTEASY_REACTIVE_REFERENCE,
+                GuideRef.REST,
                 GuideRef.VERTX_REFERENCE,
                 GuideRef.DEV_SERVICES_REFERENCE,
                 GuideRef.ALL_CONFIG
@@ -426,7 +425,7 @@ public final class QuarkusIOSample {
         }
 
         public FilterDefinitionCollector addGuide(GuideRef ref, String version) {
-            String htmlPath = QuarkusIO.htmlPath(Language.ENGLISH, version, ref.name());
+            String htmlPath = QuarkusIO.htmlPath(Language.ENGLISH, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
@@ -435,19 +434,19 @@ public final class QuarkusIOSample {
         public FilterDefinitionCollector addMetadata(String version, GuideRef[] guides) {
             String metadataPath = QuarkusIO.yamlMetadataPath(version).toString();
             addOnSourceBranch(metadataPath, metadataPath);
-            addMetadataToFilter(metadataPath, path -> yamlQuarkusEditor(path, guides));
+            addMetadataToFilter(metadataPath, path -> yamlQuarkusEditor(version, path, guides));
             return this;
         }
 
         public FilterDefinitionCollector addQuarkiverseMetadata(String version) {
             String metadataPath = QuarkusIO.yamlQuarkiverseMetadataPath(version).toString();
             addOnSourceBranch(metadataPath, metadataPath);
-            addMetadataToFilter(metadataPath, QuarkusIOSample::yamlQuarkiverseEditor);
+            addMetadataToFilter(metadataPath, path -> yamlQuarkiverseEditor(version, path));
             return this;
         }
 
         public FilterDefinitionCollector addLocalizedGuide(Language language, GuideRef ref, String version) {
-            String htmlPath = QuarkusIO.htmlPath(language, version, ref.name());
+            String htmlPath = QuarkusIO.htmlPath(language, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
