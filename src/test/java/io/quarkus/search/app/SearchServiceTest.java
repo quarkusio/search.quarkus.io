@@ -259,7 +259,7 @@ class SearchServiceTest {
     void version() {
         var result = given()
                 .queryParam("q", "orm")
-                .queryParam("version", QuarkusIOSample.SAMPLED_NON_LATEST_VERSION)
+                .queryParam("version", QuarkusVersions.MAIN)
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
@@ -270,7 +270,7 @@ class SearchServiceTest {
                         .asString()
                         .satisfiesAnyOf(
                                 uri -> assertThat(uri).startsWith("https://quarkus.io/version/"
-                                        + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"),
+                                        + QuarkusVersions.MAIN + "/guides/"),
                                 uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
         result = given()
                 .queryParam("q", "orm")
@@ -292,7 +292,7 @@ class SearchServiceTest {
     void quarkiverse() {
         var result = given()
                 .queryParam("q", "amazon")
-                .queryParam("version", QuarkusIOSample.SAMPLED_NON_LATEST_VERSION)
+                .queryParam("version", QuarkusVersions.MAIN)
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)

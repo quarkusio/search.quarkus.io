@@ -56,7 +56,8 @@ public final class QuarkusIOSample {
     private QuarkusIOSample() {
     }
 
-    public static final String SAMPLED_NON_LATEST_VERSION = QuarkusVersions.MAIN;
+    public static final List<String> SAMPLED_VERSIONS = List.of(QuarkusVersions.LATEST, QuarkusVersions.MAIN,
+            QuarkusVersions.V3_2);
 
     private static Path testResourcesSamplePath() {
         return Path.of(System.getProperty("maven.project.testResourceDirectory", "src/test/resources"))
@@ -382,12 +383,14 @@ public final class QuarkusIOSample {
 
         @Override
         public void define(FilterDefinitionCollector c) {
-            c.addMetadata(QuarkusVersions.LATEST, guides);
-            c.addMetadata(SAMPLED_NON_LATEST_VERSION, guides);
-            c.addQuarkiverseMetadata(SAMPLED_NON_LATEST_VERSION);
-            for (GuideRef guideRef : guides) {
-                c.addGuide(guideRef);
-                c.addGuide(guideRef, SAMPLED_NON_LATEST_VERSION);
+            for (String version : SAMPLED_VERSIONS) {
+                c.addMetadata(version, guides);
+                if (QuarkusVersions.MAIN.equals(version)) {
+                    c.addQuarkiverseMetadata(version);
+                }
+                for (GuideRef guideRef : guides) {
+                    c.addGuide(guideRef, version);
+                }
             }
         }
     }
@@ -402,12 +405,14 @@ public final class QuarkusIOSample {
 
         @Override
         public void define(FilterDefinitionCollector c) {
-            c.addLocalizedMetadata(language, QuarkusVersions.LATEST);
-            c.addLocalizedMetadata(language, SAMPLED_NON_LATEST_VERSION);
-            c.addLocalizedQuarkiverseMetadata(language, SAMPLED_NON_LATEST_VERSION);
-            for (GuideRef guideRef : GuideRef.local()) {
-                c.addLocalizedGuide(language, guideRef, QuarkusVersions.LATEST);
-                c.addLocalizedGuide(language, guideRef, SAMPLED_NON_LATEST_VERSION);
+            for (String version : SAMPLED_VERSIONS) {
+                c.addLocalizedMetadata(language, version);
+                if (QuarkusVersions.MAIN.equals(version)) {
+                    c.addLocalizedQuarkiverseMetadata(language, version);
+                }
+                for (GuideRef guideRef : GuideRef.local()) {
+                    c.addLocalizedGuide(language, guideRef, version);
+                }
             }
         }
     }
@@ -453,15 +458,16 @@ public final class QuarkusIOSample {
         }
 
         public FilterDefinitionCollector addLocalizedMetadata(Language language, String version) {
-            return addLocalizedMetadata(language, version, "quarkus.yaml.po");
+            String metadataPath = Path.of("l10n", "po", language.locale)
+                    .resolve(QuarkusIO.yamlMetadataPath(version) + ".po")
+                    .toString();
+            addOnSourceBranch(metadataPath, metadataPath);
+            return this;
         }
 
         public FilterDefinitionCollector addLocalizedQuarkiverseMetadata(Language language, String version) {
-            return addLocalizedMetadata(language, version, "quarkiverse.yaml.po");
-        }
-
-        private FilterDefinitionCollector addLocalizedMetadata(Language language, String version, String filename) {
-            String metadataPath = Path.of("l10n", "po", language.locale, "_data", "versioned", version, "index", filename)
+            String metadataPath = Path.of("l10n", "po", language.locale)
+                    .resolve(QuarkusIO.yamlQuarkiverseMetadataPath(version) + ".po")
                     .toString();
             addOnSourceBranch(metadataPath, metadataPath);
             return this;
