@@ -220,13 +220,15 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_ORM)),
                 Arguments.of("jpa", GuideRef.urls(
-                        // TODO this should be last, but other documents actually mention JPA way less frequently
-                        GuideRef.ALL_BUILDITEMS,
-                        // TODO we'd probably want ORM before Panache?
-                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
+                        GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_ORM)),
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN)),
+                Arguments.of("jakarta persistence", GuideRef.urls(
+                        GuideRef.HIBERNATE_ORM,
+                        GuideRef.HIBERNATE_ORM_PANACHE,
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN)),
                 Arguments.of("search", GuideRef.urls(
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH)),
                 Arguments.of("stork", GuideRef.urls(
