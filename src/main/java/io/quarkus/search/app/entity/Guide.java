@@ -28,7 +28,6 @@ import org.hibernate.search.engine.backend.types.Searchable;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.engine.backend.types.TermVector;
 import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
-import org.hibernate.search.mapper.pojo.bridge.builtin.annotation.AlternativeDiscriminator;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.RoutingBinderRef;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.ValueBridgeRef;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
@@ -42,10 +41,11 @@ public class Guide {
     @JavaType(URIType.class)
     public URI url;
 
-    @AlternativeDiscriminator
     @Enumerated(EnumType.STRING)
+    @KeywordField(searchable = Searchable.NO, aggregable = Aggregable.YES)
     public Language language;
 
+    @KeywordField(searchable = Searchable.NO, aggregable = Aggregable.YES)
     public String quarkusVersion;
 
     @KeywordField
@@ -76,7 +76,7 @@ public class Guide {
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.NO)
     public I18nData<InputProvider> htmlFullContentProvider = new I18nData<>();
 
-    @KeywordField(name = "categories")
+    @KeywordField(name = "categories", aggregable = Aggregable.YES)
     public Set<String> categories = Set.of();
 
     @I18nFullTextField(name = "topics", analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
