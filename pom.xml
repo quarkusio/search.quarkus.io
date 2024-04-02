@@ -1,6 +1,5 @@
-<?xml version="1.0"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.quarkus.search</groupId>
   <artifactId>search-quarkus-io</artifactId>
@@ -22,13 +21,13 @@
     <url>https://github.com/quarkusio/search.quarkus.io/issues</url>
   </issueManagement>
   <properties>
-    <compiler-plugin.version>3.12.1</compiler-plugin.version>
+    <compiler-plugin.version>3.13.0</compiler-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.8.2</quarkus.version>
+    <quarkus.version>3.9.1</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.5</surefire-plugin.version>
@@ -38,6 +37,7 @@
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
     <version.opensearch>2.12</version.opensearch>
+    <version.quarkus-web-bundler>1.4.0</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -58,17 +58,17 @@
       <dependency>
         <groupId>io.quarkiverse.jgit</groupId>
         <artifactId>quarkus-jgit</artifactId>
-        <version>3.0.7</version>
+        <version>3.1.0</version>
       </dependency>
       <dependency>
         <groupId>io.quarkiverse.githubapi</groupId>
         <artifactId>quarkus-github-api</artifactId>
-        <version>1.319.0</version>
+        <version>1.321.0</version>
       </dependency>
       <dependency>
         <groupId>org.commonmark</groupId>
         <artifactId>commonmark</artifactId>
-        <version>0.21.0</version>
+        <version>0.22.0</version>
       </dependency>
       <dependency>
         <groupId>org.jsoup</groupId>
@@ -79,6 +79,31 @@
         <groupId>org.fedorahosted.tennera</groupId>
         <artifactId>jgettext</artifactId>
         <version>0.15.1</version>
+      </dependency>
+      <dependency>
+        <groupId>io.quarkiverse.helm</groupId>
+        <artifactId>quarkus-helm</artifactId>
+        <version>1.2.3</version>
+      </dependency>
+      <dependency>
+        <groupId>io.quarkiverse.playwright</groupId>
+        <artifactId>quarkus-playwright</artifactId>
+        <version>0.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mvnpm</groupId>
+        <artifactId>lit</artifactId>
+        <version>3.1.2</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mvnpm</groupId>
+        <artifactId>lodash</artifactId>
+        <version>4.17.21</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mvnpm.at.types</groupId>
+        <artifactId>lodash</artifactId>
+        <version>4.17.0</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -105,7 +130,12 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-resteasy-reactive</artifactId>
+      <artifactId>quarkus-rest</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkiverse.web-bundler</groupId>
+      <artifactId>quarkus-web-bundler</artifactId>
+      <version>${version.quarkus-web-bundler}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -117,7 +147,7 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-resteasy-reactive-jackson</artifactId>
+      <artifactId>quarkus-rest-jackson</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -164,10 +194,36 @@
       <artifactId>quarkus-hibernate-validator</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-cache</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.quarkiverse.helm</groupId>
       <artifactId>quarkus-helm</artifactId>
-      <version>1.2.3</version>
     </dependency>
+
+    <!-- Web Dependencies -->
+    <dependency>
+      <groupId>org.mvnpm</groupId>
+      <artifactId>lit</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mvnpm</groupId>
+      <artifactId>lodash</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mvnpm.at.types</groupId>
+      <artifactId>lodash</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Test Dependencies -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
@@ -186,10 +242,13 @@
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.awaitility</groupId>
-      <artifactId>awaitility</artifactId>
+      <groupId>io.quarkiverse.playwright</groupId>
+      <artifactId>quarkus-playwright</artifactId>
+      <version>0.0.1</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
   <build>
@@ -335,4 +394,67 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <!-- Locked dependencies for mvnpm (Update with 'mvn io.mvnpm:locker-maven-plugin:LATEST:lock -Dunlocked') -->
+      <id>locker</id>
+      <activation>
+        <property>
+          <name>!unlocked</name>
+        </property>
+      </activation>
+      <dependencyManagement>
+        <dependencies>
+          <dependency>
+            <groupId>org.mvnpm.at.lit-labs</groupId>
+            <artifactId>ssr-dom-shim</artifactId>
+            <version>1.2.0</version>
+            <scope>runtime</scope>
+          </dependency>
+          <dependency>
+            <groupId>org.mvnpm.at.lit</groupId>
+            <artifactId>reactive-element</artifactId>
+            <version>2.0.4</version>
+            <scope>runtime</scope>
+          </dependency>
+          <dependency>
+            <groupId>org.mvnpm.at.types</groupId>
+            <artifactId>lodash</artifactId>
+            <version>4.17.0</version>
+            <scope>provided</scope>
+          </dependency>
+          <dependency>
+            <groupId>org.mvnpm.at.types</groupId>
+            <artifactId>trusted-types</artifactId>
+            <version>2.0.7</version>
+            <scope>runtime</scope>
+          </dependency>
+          <dependency>
+            <groupId>org.mvnpm</groupId>
+            <artifactId>lit-element</artifactId>
+            <version>4.0.4</version>
+            <scope>runtime</scope>
+          </dependency>
+          <dependency>
+            <groupId>org.mvnpm</groupId>
+            <artifactId>lit-html</artifactId>
+            <version>3.1.2</version>
+            <scope>runtime</scope>
+          </dependency>
+          <dependency>
+            <groupId>org.mvnpm</groupId>
+            <artifactId>lit</artifactId>
+            <version>3.1.2</version>
+            <scope>provided</scope>
+          </dependency>
+          <dependency>
+            <groupId>org.mvnpm</groupId>
+            <artifactId>lodash</artifactId>
+            <version>4.17.21</version>
+            <scope>provided</scope>
+          </dependency>
+        </dependencies>
+      </dependencyManagement>
+    </profile>
+  </profiles>
 </project>

@@ -1,7 +1,6 @@
 package io.quarkus.search.app;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -60,14 +59,16 @@ class SynonymSearchServiceTest {
                 Arguments.of("config",
                         "All <span class=\"highlighted\">configuration</span> options"),
                 Arguments.of("config option",
-                        "All <span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>"));
+                        "All <span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>"),
+                Arguments.of("jpa",
+                        "Using Hibernate ORM and <span class=\"highlighted\">Jakarta</span> <span class=\"highlighted\">Persistence</span>"));
     }
 
     @ParameterizedTest
     @MethodSource
     void synonymsContent(String query, Set<String> result) {
-        assertThat(searchHitSearchResult(query).hits()).extracting(GuideSearchHit::content)
-                .contains(result);
+        assertThat(searchHitSearchResult(query).hits()).flatExtracting(GuideSearchHit::content)
+                .containsAll(result);
     }
 
     private List<? extends Arguments> synonymsContent() {
@@ -82,7 +83,7 @@ class SynonymSearchServiceTest {
                         Set.of("Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>",
                                 "Reactive and <span class=\"highlighted\">REST</span> Client Reactive interactions In Quarkus, the <span class=\"highlighted\">RESTEasy</span> Reactive extension and the <span class=\"highlighted\">REST</span>")),
                 Arguments.of("vertx",
-                        Set.of("either the: <span class=\"highlighted\">io.vertx.core.Vertx</span> instance exposing the bare <span class=\"highlighted\">Vert.x</span> API <span class=\"highlighted\">io.vertx.mutiny.core.Vertx</span> instance",
+                        Set.of("}\n\n} You can inject either the: <span class=\"highlighted\">io.vertx.core.Vertx</span> instance exposing the bare <span class=\"highlighted\">Vert.x</span> API <span class=\"highlighted\">io.vertx.mutiny.core.Vertx</span>",
                                 "Access the <span class=\"highlighted\">Vert.x</span> instance To access the managed <span class=\"highlighted\">Vert.x</span> instance, add the quarkus-<span class=\"highlighted\">vertx</span> extension to")),
                 Arguments.of("rest api",
                         Set.of("Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>",

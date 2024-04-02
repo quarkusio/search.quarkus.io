@@ -1,0 +1,109 @@
+:root {
+    --background: white;
+    --text-color: black;
+    --input-border-color: #5996E5;
+    --top-nav-bg: black;
+}
+
+qs-form::slotted(*) {
+    display: none;
+}
+
+body {
+    font-family: 'Open Sans', Arial, sans-serif;
+    background-color: var(--background); /* Quarkus background color */
+    color: var(--text-color); /* Quarkus text color */
+    margin: 0;
+}
+
+nav.search {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    background-color: var(--top-nav-bg);
+    gap: 20px;
+    padding: 0 10px;
+    @media screen and (max-width: 768px) {
+        gap: 10px;
+    }
+
+}
+
+.search-query input{
+    padding: 10px;
+    border-radius: 5px;
+    outline: none;
+    border: 1px solid var(--input-border-color);
+    width: 100%;
+}
+
+.logo {
+    background-image: url('/static/quarkus-logo-h-w.svg');
+    background-position: left;
+    background-repeat: no-repeat;
+    height: 50px;
+    width: 200px;
+}
+
+qs-form {
+    flex-grow: 1;
+}
+
+body:not(.qs-has-results) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+
+
+    .logo {
+        background-image: url('/static/quarkus-logo-v.svg');
+        background-size: 200px;
+        background-position: center;
+        height: 200px;
+        width: 200px;
+    }
+
+    nav.search {
+        flex-direction: column;
+        background-color: white;
+        width: 500px;
+        gap: 0;
+
+        .search-query input {
+            width: 500px;
+            margin-bottom: 100px;
+
+        }
+
+        @media screen and (max-width: 768px) {
+            padding: 0 20px;
+
+            .search-query input {
+                width: 300px;
+            }
+        }
+    }
+
+
+}
+
+.title {
+    color: #007bff; /* Quarkus primary color */
+}
+
+.filters {
+    padding: 15px;
+    border-radius: 5px;
+}
+
+qs-target {
+    display: block;
+    padding: 30px;
+
+    @media screen and (max-width: 768px) {
+       padding: 10px;
+    }
+}
+

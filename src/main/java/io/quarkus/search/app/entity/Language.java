@@ -33,6 +33,6 @@ public enum Language {
                 return language;
             }
         }
-        return null;
+        throw new IllegalArgumentException(value + " is not a supported language.");
     }
 }

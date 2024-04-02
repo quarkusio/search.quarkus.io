@@ -99,11 +99,15 @@ To update the sample:
 
 * Add the references of the guides you want included in the sample to `GuidesRef`.
 * Run `QuarkusIOSample.main()` using your IDE,
-with the project root as the current working directory,
-and passing as first command-line argument the path to your clone of quarkus.io.
-* To update the localized site samples as well, pass pairs of language code and path to corresponding localized site
-as command line arguments, e.g.`ja path/to/ja.quarkus.io`. Add pairs for all `cn`, `es`, `ja`, `pt` language codes to
-update all samples at the same time.
+with the project root as the current working directory.
++
+If you set up your `.env` file as descripted in <<development-full>>,
+you don't need to pass any argument.
++
+Otherwise, pass as the path to your clone of quarkus.io,
+followed by pairs of language code and path to corresponding localized site,
+e.g.`path/to/quarkus.io ja path/to/ja.quarkus.io es path/to/es.quarkus.io [...]`.
+Add pairs for all `cn`, `es`, `ja`, `pt` language codes to update all samples at the same time.
 
 [[production]]
 == Production
@@ -256,3 +260,5 @@ you will need to set up a few things manually:
 == License
 
 This project is licensed under the Apache License Version 2.0.
+
+The web assets in `src/main/resources/web` are licensed under the Creative Commons Attribution 3.0 International License.

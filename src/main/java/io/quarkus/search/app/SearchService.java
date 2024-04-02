@@ -3,6 +3,7 @@ package io.quarkus.search.app;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
@@ -19,6 +20,8 @@ import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 
+import io.quarkus.runtime.LaunchMode;
+
 import org.hibernate.Length;
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.engine.search.common.ValueConvert;
@@ -27,6 +30,8 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestQuery;
+
+import io.vertx.ext.web.Router;
 
 @ApplicationScoped
 @Path("/")
@@ -38,6 +43,16 @@ public class SearchService {
 
     @Inject
     SearchSession session;
+
+    public void init(@Observes Router router) {
+        if (LaunchMode.current().isDevOrTest()) {
+            return;
+        }
+        // DISABLE the index.html route in production
+        router.getWithRegex("/(index\\.html)?").order(Integer.MIN_VALUE).handler(rc -> {
+            rc.response().setStatusCode(404).end();
+        });
+    }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)

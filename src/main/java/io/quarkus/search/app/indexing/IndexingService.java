@@ -16,6 +16,7 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
+import io.quarkus.search.app.ReferenceService;
 import io.quarkus.search.app.fetching.FetchingService;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.util.SimpleExecutor;
@@ -56,6 +57,9 @@ public class IndexingService {
 
     @Inject
     IndexingConfig indexingConfig;
+
+    @Inject
+    ReferenceService referenceService;
 
     private final AtomicBoolean reindexingInProgress = new AtomicBoolean();
 
@@ -237,6 +241,7 @@ public class IndexingService {
             searchMapping.scope(Object.class).workspace().refresh();
 
             rollover.commit();
+            referenceService.invalidateCaches();
             Log.info("Indexing success");
         } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);

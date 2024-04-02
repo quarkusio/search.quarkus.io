@@ -220,13 +220,15 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_ORM)),
                 Arguments.of("jpa", GuideRef.urls(
-                        // TODO this should be last, but other documents actually mention JPA way less frequently
-                        GuideRef.ALL_BUILDITEMS,
-                        // TODO we'd probably want ORM before Panache?
-                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
+                        GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_ORM)),
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN)),
+                Arguments.of("jakarta persistence", GuideRef.urls(
+                        GuideRef.HIBERNATE_ORM,
+                        GuideRef.HIBERNATE_ORM_PANACHE,
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN)),
                 Arguments.of("search", GuideRef.urls(
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH)),
                 Arguments.of("stork", GuideRef.urls(
@@ -257,7 +259,7 @@ class SearchServiceTest {
     void version() {
         var result = given()
                 .queryParam("q", "orm")
-                .queryParam("version", QuarkusIOSample.SAMPLED_NON_LATEST_VERSION)
+                .queryParam("version", QuarkusVersions.MAIN)
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
@@ -268,7 +270,7 @@ class SearchServiceTest {
                         .asString()
                         .satisfiesAnyOf(
                                 uri -> assertThat(uri).startsWith("https://quarkus.io/version/"
-                                        + QuarkusIOSample.SAMPLED_NON_LATEST_VERSION + "/guides/"),
+                                        + QuarkusVersions.MAIN + "/guides/"),
                                 uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
         result = given()
                 .queryParam("q", "orm")
@@ -290,15 +292,17 @@ class SearchServiceTest {
     void quarkiverse() {
         var result = given()
                 .queryParam("q", "amazon")
-                .queryParam("version", QuarkusIOSample.SAMPLED_NON_LATEST_VERSION)
+                .queryParam("version", QuarkusVersions.MAIN)
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .satisfiesOnlyOnce(uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.name()))
                 .satisfiesOnlyOnce(
-                        uri -> assertThat(uri).asString().contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.name()));
+                        uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.nameBeforeRestRenaming()))
+                .satisfiesOnlyOnce(
+                        uri -> assertThat(uri).asString()
+                                .contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.nameBeforeRestRenaming()));
     }
 
     @Test

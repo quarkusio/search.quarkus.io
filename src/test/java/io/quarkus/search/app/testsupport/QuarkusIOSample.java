@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -29,10 +28,12 @@ import java.util.stream.Collectors;
 import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
+import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.FileUtils;
 import io.quarkus.search.app.util.GitCloneDirectory;
 
+import io.quarkus.runtime.configuration.ConfigUtils;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
 
@@ -50,10 +51,13 @@ import org.yaml.snakeyaml.Yaml;
  */
 public final class QuarkusIOSample {
 
+    public static final List<String> REMOTES = Arrays.asList("upstream", "origin", null);
+
     private QuarkusIOSample() {
     }
 
-    public static final String SAMPLED_NON_LATEST_VERSION = "main";
+    public static final List<String> SAMPLED_VERSIONS = List.of(QuarkusVersions.LATEST, QuarkusVersions.MAIN,
+            QuarkusVersions.V3_2);
 
     private static Path testResourcesSamplePath() {
         return Path.of(System.getProperty("maven.project.testResourceDirectory", "src/test/resources"))
@@ -68,42 +72,58 @@ public final class QuarkusIOSample {
     }
 
     // Run this to update the bundle in src/test/resources.
+    // Remotes to try to copy the data from are "upstream", "origin" and the local branch.
     // Expects to be run with the project root as the current working directory.
-    // Expects at least one argument: the path to your local clone of quarkus.io,
-    // with the next arguments being interpreted as a pair of language code and localized site repository
-    // Remotes to try to copy the data from are
-    // "origin" and the local branch.
+    // Expects arguments to be either:
+    // * Empty: the path to local clones of quarkus.io will be retrieved from .env.
+    // * One or more: the path to your local clone of quarkus.io,
+    //   with the next arguments being interpreted as a pair of language code and localized site repository
     public static void main(String[] args) throws IOException {
-        if (args.length % 2 == 0) {
-            throw new IllegalArgumentException("Expected at least 1 argument, got none."
-                    + " Arguments must follow the pattern: main-repository [lang1 lang1-repository ... [langN langN-repository ]]."
-                    + " Where language-specific repositories are optional and if provided must provide a language and its repository.");
-        }
-        Path originalPath = Path.of(args[0]);
-        if (!Files.isDirectory(originalPath)) {
-            throw new IllegalArgumentException(originalPath + " is not a directory");
-        }
-        List<String> remotes = Arrays.asList("upstream", "origin", null);
-
-        try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-            copy(originalPath, remotes, copyRootDir.path(), new AllFilterDefinition(), QuarkusIO.MAIN_BRANCHES, true);
-            Path sampleAbsolutePath = testResourcesSamplePath();
-
-            Files.deleteIfExists(sampleAbsolutePath);
-            FileUtils.zip(copyRootDir.path(), sampleAbsolutePath);
-        }
-
-        for (int i = 1; i < args.length; i += 2) {
-            Language language = Language.fromString(args[i]);
-            if (language == null) {
-                throw new IllegalArgumentException(args[i] + " is not a supported language.");
+        Map<Language, Path> paths = new LinkedHashMap<>();
+        if (args.length == 0) {
+            // Default to using paths from .env
+            var config = ConfigUtils.emptyConfigBuilder()
+                    .withProfile("dev")
+                    .withMapping(QuarkusIOConfig.class)
+                    .build();
+            var quarkusIOConfig = config.getConfigMapping(QuarkusIOConfig.class);
+            paths.put(Language.ENGLISH, Path.of(quarkusIOConfig.gitUri()));
+            quarkusIOConfig.localized()
+                    .forEach((language, siteConfig) -> paths.put(Language.fromString(language), Path.of(siteConfig.gitUri())));
+        } else {
+            if (args.length % 2 == 0) {
+                throw new IllegalArgumentException("Expected an odd number of arguments, got " + args.length + "."
+                        + " Arguments must follow the pattern: main-repository [lang1 lang1-repository ... [langN langN-repository ]]."
+                        + " Where language-specific repositories are optional and if provided must provide a language and its repository.");
             }
-            Path originalLocalizedPath = Path.of(args[i + 1]);
+            paths.put(Language.ENGLISH, Path.of(args[0]));
 
-            try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building")) {
-                copy(originalLocalizedPath, remotes, copyRootDir.path(), new AllLocalizedFilterDefinition(language),
-                        QuarkusIO.LOCALIZED_BRANCHES, false);
-                Path sampleAbsolutePath = testResourcesSamplePath(language);
+            for (int i = 1; i < args.length; i += 2) {
+                paths.put(Language.fromString(args[i]), Path.of(args[i + 1]));
+            }
+        }
+        generate(paths);
+    }
+
+    public static void generate(Map<Language, Path> paths) throws IOException {
+        for (Map.Entry<Language, Path> entry : paths.entrySet()) {
+            var language = entry.getKey();
+            var path = entry.getValue();
+            if (!Files.isDirectory(path)) {
+                throw new IllegalArgumentException(path + " is not a directory");
+            }
+            boolean isMainLanguage = Language.ENGLISH == language;
+
+            try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building");
+                    GitCloneDirectory clone = GitCloneDirectory.openAndUpdate(path,
+                            isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES)) {
+                GitTestUtils.cleanGitUserConfig();
+                copy(clone.git().getRepository(), copyRootDir.path(),
+                        isMainLanguage ? new AllFilterDefinition() : new AllLocalizedFilterDefinition(language),
+                        isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES,
+                        isMainLanguage);
+                Path sampleAbsolutePath = isMainLanguage ? testResourcesSamplePath()
+                        : testResourcesSamplePath(language);
 
                 Files.deleteIfExists(sampleAbsolutePath);
                 FileUtils.zip(copyRootDir.path(), sampleAbsolutePath);
@@ -123,10 +143,13 @@ public final class QuarkusIOSample {
             GitCloneDirectory.Branches branches, boolean failOnMissing) {
         CloseableDirectory copyRootDir = null;
         try (CloseableDirectory unzippedQuarkusIoSample = CloseableDirectory.temp("quarkusio-sample-unzipped")) {
-            FileUtils.unzip(path, unzippedQuarkusIoSample.path());
             copyRootDir = CloseableDirectory.temp(filterDef.toString());
-            copy(unzippedQuarkusIoSample.path(), Collections.singletonList(null),
-                    copyRootDir.path(), filterDef, branches, failOnMissing);
+            FileUtils.unzip(path, unzippedQuarkusIoSample.path());
+            try (Git originalGit = Git.open(unzippedQuarkusIoSample.path().toFile())) {
+                GitTestUtils.cleanGitUserConfig();
+                Repository originalRepo = originalGit.getRepository();
+                copy(originalRepo, copyRootDir.path(), filterDef, branches, failOnMissing);
+            }
             return copyRootDir;
         } catch (RuntimeException | IOException e) {
             new SuppressingCloser(e).push(copyRootDir);
@@ -135,55 +158,48 @@ public final class QuarkusIOSample {
         }
     }
 
-    public static void copy(Path quarkusIoLocalPath, List<String> originalRemotes,
+    public static void copy(Repository originalRepo,
             Path copyRootPath, FilterDefinition filterDef, GitCloneDirectory.Branches branches, boolean failOnMissing) {
-        try (Git originalGit = Git.open(quarkusIoLocalPath.toFile())) {
+        var collector = new FilterDefinitionCollector();
+        filterDef.define(collector);
+        if (collector.sourceCopyPathToOriginalPath.isEmpty() && collector.pagesCopyPathToOriginalPath.isEmpty()) {
+            throw new IllegalStateException("No path to copy");
+        }
+
+        try (Git copyGit = Git.init().setInitialBranch(branches.pages())
+                .setDirectory(copyRootPath.toFile()).call()) {
             GitTestUtils.cleanGitUserConfig();
 
-            Repository originalRepo = originalGit.getRepository();
+            RevCommit initialCommit = copyGit.commit().setMessage("Initial commit")
+                    .setAllowEmpty(true)
+                    .call();
 
-            var collector = new FilterDefinitionCollector();
-            filterDef.define(collector);
-            if (collector.sourceCopyPathToOriginalPath.isEmpty() && collector.pagesCopyPathToOriginalPath.isEmpty()) {
-                throw new IllegalStateException("No path to copy");
-            }
+            copyIfNecessary(originalRepo, branches.pages(),
+                    copyRootPath, copyGit,
+                    collector.pagesCopyPathToOriginalPath, failOnMissing);
 
-            try (Git copyGit = Git.init().setInitialBranch(branches.pages())
-                    .setDirectory(copyRootPath.toFile()).call()) {
-                GitTestUtils.cleanGitUserConfig();
+            copyGit.checkout()
+                    .setName(branches.sources())
+                    .setCreateBranch(true)
+                    .setStartPoint(initialCommit)
+                    .call();
+            copyIfNecessary(originalRepo, branches.sources(),
+                    copyRootPath, copyGit,
+                    collector.sourceCopyPathToOriginalPath, failOnMissing);
 
-                RevCommit initialCommit = copyGit.commit().setMessage("Initial commit")
-                        .setAllowEmpty(true)
-                        .call();
-
-                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, branches.pages(),
-                        copyRootPath, copyGit,
-                        collector.pagesCopyPathToOriginalPath, failOnMissing);
-
-                copyGit.checkout()
-                        .setName(branches.sources())
-                        .setCreateBranch(true)
-                        .setStartPoint(initialCommit)
-                        .call();
-                copyIfNecessary(quarkusIoLocalPath, originalRepo, originalRemotes, branches.sources(),
-                        copyRootPath, copyGit,
-                        collector.sourceCopyPathToOriginalPath, failOnMissing);
-
-                editIfNecessary(quarkusIoLocalPath,
-                        copyRootPath, copyGit,
-                        collector.yamlQuarkusFilesToFilter);
-
-            }
+            editIfNecessary(originalRepo,
+                    copyRootPath, copyGit,
+                    collector.yamlQuarkusFilesToFilter);
         } catch (RuntimeException | IOException | GitAPIException e) {
             throw new IllegalStateException(
                     "Couldn't copy QuarkusIO from '%s' to '%s' with filter '%s': %s"
-                            .formatted(quarkusIoLocalPath, copyRootPath, filterDef, e.getMessage()),
+                            .formatted(originalRepo, copyRootPath, filterDef, e.getMessage()),
                     e);
         }
     }
 
-    private static void copyIfNecessary(Path quarkusIoLocalPath, Repository originalRepo,
-            List<String> originalRemotes, String originalBranch,
+    private static void copyIfNecessary(Repository originalRepo,
+            String originalBranch,
             Path copyRootPath, Git copyGit, Map<String, String> copyPathToOriginalPath, boolean failOnMissing)
             throws IOException, GitAPIException {
         if (copyPathToOriginalPath.isEmpty()) {
@@ -191,8 +207,8 @@ public final class QuarkusIOSample {
         }
         GitCopier copier = GitCopier.create(originalRepo,
                 failOnMissing,
-                // For convenience, we try multiple origins
-                originalRemotes.stream()
+                // For convenience, we try multiple remotes
+                REMOTES.stream()
                         .map(r -> r != null ? r + "/" + originalBranch : originalBranch)
                         .toArray(String[]::new));
         copier.copy(copyRootPath, copyPathToOriginalPath);
@@ -201,14 +217,14 @@ public final class QuarkusIOSample {
                 Copying from %s
 
                 Copies:%s"""
-                .formatted(quarkusIoLocalPath,
+                .formatted(originalRepo,
                         copyPathToOriginalPath.entrySet().stream()
                                 .map(e -> e.getValue() + " => " + e.getKey())
                                 .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
                 .call();
     }
 
-    private static void editIfNecessary(Path quarkusIoLocalPath, Path copyRootPath, Git copyGit,
+    private static void editIfNecessary(Repository originalRepo, Path copyRootPath, Git copyGit,
             Map<String, Consumer<Path>> yamlQuarkusFilesToFilter)
             throws IOException, GitAPIException {
         if (yamlQuarkusFilesToFilter.isEmpty()) {
@@ -224,7 +240,7 @@ public final class QuarkusIOSample {
 
                 Edited:%s"""
                 .formatted(
-                        quarkusIoLocalPath,
+                        originalRepo,
                         yamlQuarkusFilesToFilter.values().stream()
                                 .map(Object::toString)
                                 .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
@@ -232,9 +248,9 @@ public final class QuarkusIOSample {
     }
 
     @SuppressWarnings("unchecked") // since we are expecting a specific YAML structure and don't need to test each nested node for a correct type.
-    private static void yamlQuarkusEditor(Path fileToEdit, GuideRef[] refs) {
+    private static void yamlQuarkusEditor(String version, Path fileToEdit, GuideRef[] refs) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
-            Set<String> guideRefs = Arrays.stream(refs).map(GuideRef::name).collect(Collectors.toSet());
+            Set<String> guideRefs = Arrays.stream(refs).map(g -> g.name(version)).collect(Collectors.toSet());
 
             Map<String, Object> filtered = new HashMap<>();
             Map<String, List<Object>> guides = new HashMap<>();
@@ -254,9 +270,9 @@ public final class QuarkusIOSample {
     }
 
     @SuppressWarnings("unchecked") // since we are expecting a specific YAML structure and don't need to test each nested node for a correct type.
-    private static void yamlQuarkiverseEditor(Path fileToEdit) {
+    private static void yamlQuarkiverseEditor(String version, Path fileToEdit) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
-            Set<String> guideRefs = Arrays.stream(GuideRef.quarkiverse()).map(GuideRef::name).collect(Collectors.toSet());
+            Set<String> guideRefs = Arrays.stream(GuideRef.quarkiverse()).map(g -> g.name(version)).collect(Collectors.toSet());
 
             Map<String, Object> filtered = new HashMap<>();
             Map<String, List<Object>> guides = new HashMap<>();
@@ -341,7 +357,8 @@ public final class QuarkusIOSample {
 
     public static class SearchServiceSynonymsFilterDefinition extends AbstractGuideRefSetFilterDefinition {
         private static final GuideRef[] GUIDES = new GuideRef[] {
-                GuideRef.RESTEASY_REACTIVE_REFERENCE,
+                GuideRef.HIBERNATE_ORM,
+                GuideRef.REST,
                 GuideRef.VERTX_REFERENCE,
                 GuideRef.DEV_SERVICES_REFERENCE,
                 GuideRef.ALL_CONFIG
@@ -366,12 +383,14 @@ public final class QuarkusIOSample {
 
         @Override
         public void define(FilterDefinitionCollector c) {
-            c.addMetadata(QuarkusVersions.LATEST, guides);
-            c.addMetadata(SAMPLED_NON_LATEST_VERSION, guides);
-            c.addQuarkiverseMetadata(SAMPLED_NON_LATEST_VERSION);
-            for (GuideRef guideRef : guides) {
-                c.addGuide(guideRef);
-                c.addGuide(guideRef, SAMPLED_NON_LATEST_VERSION);
+            for (String version : SAMPLED_VERSIONS) {
+                c.addMetadata(version, guides);
+                if (QuarkusVersions.MAIN.equals(version)) {
+                    c.addQuarkiverseMetadata(version);
+                }
+                for (GuideRef guideRef : guides) {
+                    c.addGuide(guideRef, version);
+                }
             }
         }
     }
@@ -386,12 +405,14 @@ public final class QuarkusIOSample {
 
         @Override
         public void define(FilterDefinitionCollector c) {
-            c.addLocalizedMetadata(language, QuarkusVersions.LATEST);
-            c.addLocalizedMetadata(language, SAMPLED_NON_LATEST_VERSION);
-            c.addLocalizedQuarkiverseMetadata(language, SAMPLED_NON_LATEST_VERSION);
-            for (GuideRef guideRef : GuideRef.local()) {
-                c.addLocalizedGuide(language, guideRef, QuarkusVersions.LATEST);
-                c.addLocalizedGuide(language, guideRef, SAMPLED_NON_LATEST_VERSION);
+            for (String version : SAMPLED_VERSIONS) {
+                c.addLocalizedMetadata(language, version);
+                if (QuarkusVersions.MAIN.equals(version)) {
+                    c.addLocalizedQuarkiverseMetadata(language, version);
+                }
+                for (GuideRef guideRef : GuideRef.local()) {
+                    c.addLocalizedGuide(language, guideRef, version);
+                }
             }
         }
     }
@@ -409,7 +430,7 @@ public final class QuarkusIOSample {
         }
 
         public FilterDefinitionCollector addGuide(GuideRef ref, String version) {
-            String htmlPath = QuarkusIO.htmlPath(Language.ENGLISH, version, ref.name());
+            String htmlPath = QuarkusIO.htmlPath(Language.ENGLISH, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
@@ -418,33 +439,35 @@ public final class QuarkusIOSample {
         public FilterDefinitionCollector addMetadata(String version, GuideRef[] guides) {
             String metadataPath = QuarkusIO.yamlMetadataPath(version).toString();
             addOnSourceBranch(metadataPath, metadataPath);
-            addMetadataToFilter(metadataPath, path -> yamlQuarkusEditor(path, guides));
+            addMetadataToFilter(metadataPath, path -> yamlQuarkusEditor(version, path, guides));
             return this;
         }
 
         public FilterDefinitionCollector addQuarkiverseMetadata(String version) {
             String metadataPath = QuarkusIO.yamlQuarkiverseMetadataPath(version).toString();
             addOnSourceBranch(metadataPath, metadataPath);
-            addMetadataToFilter(metadataPath, QuarkusIOSample::yamlQuarkiverseEditor);
+            addMetadataToFilter(metadataPath, path -> yamlQuarkiverseEditor(version, path));
             return this;
         }
 
         public FilterDefinitionCollector addLocalizedGuide(Language language, GuideRef ref, String version) {
-            String htmlPath = QuarkusIO.htmlPath(language, version, ref.name());
+            String htmlPath = QuarkusIO.htmlPath(language, version, ref.name(version));
+            htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
         }
 
         public FilterDefinitionCollector addLocalizedMetadata(Language language, String version) {
-            return addLocalizedMetadata(language, version, "quarkus.yaml.po");
+            String metadataPath = Path.of("l10n", "po", language.locale)
+                    .resolve(QuarkusIO.yamlMetadataPath(version) + ".po")
+                    .toString();
+            addOnSourceBranch(metadataPath, metadataPath);
+            return this;
         }
 
         public FilterDefinitionCollector addLocalizedQuarkiverseMetadata(Language language, String version) {
-            return addLocalizedMetadata(language, version, "quarkiverse.yaml.po");
-        }
-
-        private FilterDefinitionCollector addLocalizedMetadata(Language language, String version, String filename) {
-            String metadataPath = Path.of("l10n", "po", language.locale, "_data", "versioned", version, "index", filename)
+            String metadataPath = Path.of("l10n", "po", language.locale)
+                    .resolve(QuarkusIO.yamlQuarkiverseMetadataPath(version) + ".po")
                     .toString();
             addOnSourceBranch(metadataPath, metadataPath);
             return this;
