@@ -260,3 +260,5 @@ you will need to set up a few things manually:
 == License
 
 This project is licensed under the Apache License Version 2.0.
+
+The web assets in `src/main/resources/web` are licensed under the Creative Commons Attribution 3.0 International License.
