@@ -111,7 +111,7 @@ export class QsForm extends LitElement {
         }
         const controller = new AbortController();
         this._abortController = controller;
-        this.dispatchEvent(new CustomEvent(QS_START_EVENT));
+        this.dispatchEvent(new CustomEvent(QS_START_EVENT, { detail: { page: this._page } }));
         const data = this._readQueryInputs();
         if (this.localSearch) {
             this._localSearch();
@@ -123,7 +123,6 @@ export class QsForm extends LitElement {
 
         this._jsonFetch(controller, 'GET', data, this._page > 0 ? this.initialTimeout : this.moreTimeout)
             .then((r: any) => {
-                let event = QS_RESULT_EVENT;
                 if (this._page > 0) {
                     this._currentHitCount += r.hits.length;
                 } else {
@@ -131,7 +130,7 @@ export class QsForm extends LitElement {
                 }
                 const total = r.total?.lowerBound;
                 const hasMoreHits = r.hits.length > 0 && total > this._currentHitCount;
-                this.dispatchEvent(new CustomEvent(event, {detail: {...r, page: this._page, hasMoreHits}}));
+                this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: data, page: this._page, hasMoreHits}}));
                 this.dispatchEvent(new CustomEvent(QS_END_EVENT));
             }).catch(e => {
                 console.error('Could not run search: ' + e);
@@ -211,13 +210,14 @@ export class QsForm extends LitElement {
     }
 
   private _localSearch(): any {
-      let hits = LocalSearch.search(this._readQueryInputs());
+      let search = this._readQueryInputs();
+      let hits = LocalSearch.search(search);
       if(!!hits) {
          const result = {
              hits,
              total: hits.length
          }
-         this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...result, page: 0, hasMoreHits: false}}));
+         this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...result, search, page: 0, hasMoreHits: false}}));
       }
       this.dispatchEvent(new CustomEvent(QS_END_EVENT));
   }

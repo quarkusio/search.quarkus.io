@@ -177,8 +177,11 @@ export class QsTarget extends LitElement {
     this._result.hasMoreHits = e.detail.hasMoreHits;
   }
 
-  private _loadingStart = () => {
+  private _loadingStart = (e:CustomEvent) => {
     this._loading = true;
+    if(e.detail.page === 0) {
+      this._result = undefined;
+    }
   }
 
   private _loadingEnd = () => {
