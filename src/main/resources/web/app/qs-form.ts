@@ -29,6 +29,11 @@ export interface QsHit {
 export class QsForm extends LitElement {
 
     static styles = css`
+
+        ::slotted(*) {
+            display: block !important;
+        }
+            
         .quarkus-search {
             display: block !important;
         }
