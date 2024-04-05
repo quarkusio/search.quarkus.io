@@ -5,10 +5,6 @@
     --top-nav-bg: black;
 }
 
-qs-form::slotted(*) {
-    display: none;
-}
-
 body {
     font-family: 'Open Sans', Arial, sans-serif;
     background-color: var(--background); /* Quarkus background color */
