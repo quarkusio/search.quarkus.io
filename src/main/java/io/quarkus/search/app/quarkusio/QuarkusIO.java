@@ -423,7 +423,7 @@ public class QuarkusIO implements Closeable {
 
         try (InputStream file = GitUtils.file(repository, sources, path)) {
             return new PoParser().parseCatalog(file, false);
-        } catch (IOException e) {
+        } catch (IOException | IllegalStateException e) {
             // it may be that not all localized sites are up-to-date, in that case we just assume that the translation is not there
             // and the non-translated english text will be used.
             failureCollector.warning(FailureCollector.Stage.TRANSLATION,
