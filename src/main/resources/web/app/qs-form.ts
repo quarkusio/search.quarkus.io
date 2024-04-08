@@ -4,7 +4,6 @@ import debounce from 'lodash/debounce';
 import {LocalSearch} from "./local-search";
 
 export const QS_START_EVENT = 'qs-start';
-export const QS_END_EVENT = 'qs-end';
 export const QS_RESULT_EVENT = 'qs-result';
 export const QS_NEXT_PAGE_EVENT = 'qs-next-page';
 
@@ -136,7 +135,6 @@ export class QsForm extends LitElement {
                 const total = r.total?.lowerBound;
                 const hasMoreHits = r.hits.length > 0 && total > this._currentHitCount;
                 this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: data, page: this._page, hasMoreHits}}));
-                this.dispatchEvent(new CustomEvent(QS_END_EVENT));
             }).catch(e => {
                 console.error('Could not run search: ' + e);
                 if (this._abortController != controller) {
@@ -144,7 +142,8 @@ export class QsForm extends LitElement {
                     // Ignore this search and let the concurrent one reset the data as it sees fit.
                     return;
                 }
-                this._clearSearch();
+                this._page = 0;
+                this._currentHitCount = 0;
                 // Fall back to Javascript in-page search
                 this._localSearch();
             }).finally(() => {
@@ -189,10 +188,6 @@ export class QsForm extends LitElement {
         const timeoutId = setTimeout(() => controller.abort(), timeout)
         const response = await fetch(this.server + '/api/guides/search?' + (new URLSearchParams(queryParams)).toString(), {
             method: method,
-            mode: 'cors',
-            headers: {
-                'Access-Control-Allow-Origin': '*'
-            },
             signal: controller.signal,
             body: null
         })
@@ -210,8 +205,9 @@ export class QsForm extends LitElement {
         if (this._abortController) {
             this._abortController.abort();
             this._abortController = null;
+
         }
-        this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {}}));
+        this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT));
     }
 
   private _localSearch(): any {
@@ -224,7 +220,7 @@ export class QsForm extends LitElement {
          }
          this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...result, search, page: 0, hasMoreHits: false}}));
       }
-      this.dispatchEvent(new CustomEvent(QS_END_EVENT));
+      this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT));
   }
 
 }
