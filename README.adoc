@@ -205,10 +205,13 @@ There are two namespaces containing two separate deployments at the moment:
 * Production (`production` branch):
 ** Console: https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/prod-search-quarkus-io
 ** Endpoint: https://search.quarkus.io/api/guides/search
+** Endpoint spec (OpenAPI): https://search.quarkus.io/api/openapi
 ** Indexing status reports: https://github.com/quarkusio/search.quarkus.io/issues/130
 * Staging (`main` branch):
 ** Console: https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/dev-search-quarkus-io
 ** Endpoint: https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/api/guides/search
+** Endpoint spec (OpenAPI): https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/api/openapi
+** SwaggerUI: https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/q/swaggerui
 ** Indexing status reports: https://github.com/quarkusio/search.quarkus.io/issues/131
 
 Deployment will happen automatically when pushing to the relevant branch.

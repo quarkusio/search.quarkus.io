@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      HELM_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
+      QUARKUS_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
 
     steps:
     - uses: actions/checkout@v2
@@ -98,4 +98,4 @@ jobs:
     - name: Deploy Helm charts
       run: |
         helm upgrade --install search-quarkus-io ./target/helm/openshift/search-quarkus-io \
-          -f ./src/main/helm/values.$HELM_PROFILE.yaml
+          -f ./src/main/helm/values.$QUARKUS_PROFILE.yaml
