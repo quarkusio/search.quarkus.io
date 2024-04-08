@@ -3,6 +3,8 @@ package io.quarkus.search.app.entity;
 import java.util.EnumSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 public enum Language {
     ENGLISH("en", "en_US"),
     SPANISH("es", "es_ES"),
@@ -24,6 +26,11 @@ public enum Language {
 
     public String addSuffix(String prefix) {
         return prefix == null || prefix.isEmpty() ? null : "%s_%s".formatted(prefix, code);
+    }
+
+    @JsonValue // Must be on a method for Smallrye-OpenAPI to handle it -- fields won't work.
+    public String code() {
+        return code;
     }
 
     @SuppressWarnings("unused")

@@ -1,6 +1,5 @@
 package io.quarkus.search.app;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +53,8 @@ public class ReferenceService {
     @Operation(summary = "List available languages")
     @Path("/languages")
     @CacheResult(cacheName = REFERENCE_CACHE, keyGenerator = MethodNameCacheKeyGenerator.class)
-    public List<String> languages() {
-        return Arrays.stream(Language.values()).map(lang -> lang.code).toList();
+    public Language[] languages() {
+        return Language.values();
     }
 
     @GET
