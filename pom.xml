@@ -36,7 +36,7 @@
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
-    <version.opensearch>2.12</version.opensearch>
+    <version.opensearch>2.13</version.opensearch>
     <version.quarkus-web-bundler>1.4.0</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
