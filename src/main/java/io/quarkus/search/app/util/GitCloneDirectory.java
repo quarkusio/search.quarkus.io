@@ -151,7 +151,7 @@ public class GitCloneDirectory implements Closeable {
         }
     }
 
-    public InputStream sourcesFile(String filename) {
+    public InputStream sourcesFile(String filename) throws IOException {
         GitCloneDirectory cloneDirectory = root == null ? this : root;
         return GitUtils.file(cloneDirectory.git().getRepository(), sourcesTree(), filename);
     }

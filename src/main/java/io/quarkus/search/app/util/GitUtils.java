@@ -53,21 +53,17 @@ public final class GitUtils {
         }
     }
 
-    public static InputStream file(Repository repo, RevTree tree, String path) {
-        try {
-            TreeWalk treeWalk = new TreeWalk(repo);
-            treeWalk.addTree(tree);
-            treeWalk.setRecursive(true);
-            treeWalk.setFilter(PathFilter.create(path));
-            if (!treeWalk.next()) {
-                throw new IllegalStateException("Missing file '%s' in '%s'".formatted(path, tree));
-            }
-            ObjectId objectId = treeWalk.getObjectId(0);
-            ObjectLoader loader = repo.open(objectId);
-            return loader.openStream();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    public static InputStream file(Repository repo, RevTree tree, String path) throws IOException {
+        TreeWalk treeWalk = new TreeWalk(repo);
+        treeWalk.addTree(tree);
+        treeWalk.setRecursive(true);
+        treeWalk.setFilter(PathFilter.create(path));
+        if (!treeWalk.next()) {
+            throw new IllegalStateException("Missing file '%s' in '%s'".formatted(path, tree));
         }
+        ObjectId objectId = treeWalk.getObjectId(0);
+        ObjectLoader loader = repo.open(objectId);
+        return loader.openStream();
     }
 
     public static boolean fileExists(Repository repo, RevTree tree, String path) {
