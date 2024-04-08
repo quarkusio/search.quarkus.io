@@ -13,7 +13,7 @@ public record GuideSearchHit(URI url, String type, String origin, String title, 
             List<String> title,
             List<String> summary,
             List<String> fullContent) {
-        this(url, type, origin, firstOrEmpty(title), firstOrEmpty(summary), new LinkedHashSet<>(fullContent));
+        this(url, type, origin, firstOrEmpty(title), firstOrEmpty(summary), wrap(fullContent));
     }
 
     @SuppressWarnings("unchecked")
@@ -26,4 +26,13 @@ public record GuideSearchHit(URI url, String type, String origin, String title, 
     private static String firstOrEmpty(List<String> strings) {
         return strings.isEmpty() ? "" : strings.get(0);
     }
+
+    private static Set<String> wrap(List<String> strings) {
+        Set<String> set = new LinkedHashSet<>();
+        for (String string : strings) {
+            set.add("…%s…".formatted(string));
+        }
+        return set;
+    }
+
 }

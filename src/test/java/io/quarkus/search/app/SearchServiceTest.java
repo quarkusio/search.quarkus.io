@@ -473,7 +473,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(
-                        Set.of("Environment variable: QUARKUS_VIRTUAL_THREADS_ENABLED Show more boolean true WebSockets Client Type Default <span class=\"highlighted\">quarkus.websocket.max</span>-<span class=\"highlighted\">frame</span>-<span class=\"highlighted\">size</span>"));
+                        Set.of("…Environment variable: QUARKUS_VIRTUAL_THREADS_ENABLED Show more boolean true WebSockets Client Type Default <span class=\"highlighted\">quarkus.websocket.max</span>-<span class=\"highlighted\">frame</span>-<span class=\"highlighted\">size</span>…"));
     }
 
     @Test
@@ -486,7 +486,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>"));
+                        "…io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>…"));
     }
 
     @Test
@@ -499,7 +499,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>"));
+                        "…io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>…"));
     }
 
     @Test
