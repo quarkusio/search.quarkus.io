@@ -84,7 +84,7 @@ export class QsForm extends LitElement {
     }
 
     private _getFormElements(): NodeListOf<HTMLFormElement> {
-        return this.querySelectorAll('input, select');
+        return this.querySelectorAll('input[name], select[name]');
     }
 
     private _readQueryInputs() {
