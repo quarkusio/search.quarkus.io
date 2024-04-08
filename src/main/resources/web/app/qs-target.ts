@@ -1,7 +1,7 @@
 import {LitElement, html, css, unsafeCSS} from 'lit';
 import {customElement, property, state, queryAll} from 'lit/decorators.js';
 import './qs-guide'
-import {QS_END_EVENT, QS_NEXT_PAGE_EVENT, QS_RESULT_EVENT, QS_START_EVENT, QsResult} from "./qs-form";
+import {QS_NEXT_PAGE_EVENT, QS_RESULT_EVENT, QS_START_EVENT, QsResult} from "./qs-form";
 import debounce from 'lodash/debounce';
 import icons from "./assets/icons";
 
@@ -75,14 +75,12 @@ export class QsTarget extends LitElement {
     this._form = document.querySelector("qs-form");
     this._form.addEventListener(QS_RESULT_EVENT, this._handleResult);
     this._form.addEventListener(QS_START_EVENT, this._loadingStart);
-    this._form.addEventListener(QS_END_EVENT, this._loadingEnd);
     document.addEventListener('scroll', this._handleScrollDebounced)
   }
 
   disconnectedCallback() {
     this._form.removeEventListener(QS_RESULT_EVENT, this._handleResult);
     this._form.removeEventListener(QS_START_EVENT, this._loadingStart);
-    this._form.removeEventListener(QS_END_EVENT, this._loadingEnd);
     document.removeEventListener('scroll', this._handleScrollDebounced);
     super.disconnectedCallback();
   }
@@ -163,8 +161,9 @@ export class QsTarget extends LitElement {
 
   private _handleResult = (e: CustomEvent) => {
     console.debug("Received results in qs-target: ", e.detail);
-    if (!this._result || !e.detail.hits || e.detail.page === 0) {
-      if(e.detail.hits) {
+    this._loadingEnd();
+    if (!this._result || !e.detail || !e.detail.hits || e.detail.page === 0) {
+      if(e.detail?.hits) {
         document.body.classList.add("qs-has-results");
       } else {
         document.body.classList.remove("qs-has-results");
