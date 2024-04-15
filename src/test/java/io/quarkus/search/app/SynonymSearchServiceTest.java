@@ -74,20 +74,20 @@ class SynonymSearchServiceTest {
     private List<? extends Arguments> synonymsContent() {
         return List.of(
                 Arguments.of("Development Service",
-                        Set.of("We refer to this capability as <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>.",
-                                "In this case, before starting a container, <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span> for AMQP looks for a container with the quarkus-<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp")),
+                        Set.of("…We refer to this capability as <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>.…",
+                                "…In this case, before starting a container, <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span> for AMQP looks for a container with the quarkus-<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp…")),
                 Arguments.of("dev Service",
-                        Set.of("We refer to this capability as <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>.",
-                                "In this case, before starting a container, <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span> for AMQP looks for a container with the quarkus-<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp")),
+                        Set.of("…We refer to this capability as <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>.…",
+                                "…In this case, before starting a container, <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span> for AMQP looks for a container with the quarkus-<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp…")),
                 Arguments.of("rest easy",
-                        Set.of("Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>",
-                                "Reactive and <span class=\"highlighted\">REST</span> Client Reactive interactions In Quarkus, the <span class=\"highlighted\">RESTEasy</span> Reactive extension and the <span class=\"highlighted\">REST</span>")),
+                        Set.of("…Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>…",
+                                "…Reactive and <span class=\"highlighted\">REST</span> Client Reactive interactions In Quarkus, the <span class=\"highlighted\">RESTEasy</span> Reactive extension and the <span class=\"highlighted\">REST</span>…")),
                 Arguments.of("vertx",
-                        Set.of("}\n\n} You can inject either the: <span class=\"highlighted\">io.vertx.core.Vertx</span> instance exposing the bare <span class=\"highlighted\">Vert.x</span> API <span class=\"highlighted\">io.vertx.mutiny.core.Vertx</span>",
-                                "Access the <span class=\"highlighted\">Vert.x</span> instance To access the managed <span class=\"highlighted\">Vert.x</span> instance, add the quarkus-<span class=\"highlighted\">vertx</span> extension to")),
+                        Set.of("…}\n\n} You can inject either the: <span class=\"highlighted\">io.vertx.core.Vertx</span> instance exposing the bare <span class=\"highlighted\">Vert.x</span> API <span class=\"highlighted\">io.vertx.mutiny.core.Vertx</span>…",
+                                "…Access the <span class=\"highlighted\">Vert.x</span> instance To access the managed <span class=\"highlighted\">Vert.x</span> instance, add the quarkus-<span class=\"highlighted\">vertx</span> extension to…")),
                 Arguments.of("rest api",
-                        Set.of("Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>",
-                                "Reactive and <span class=\"highlighted\">REST</span> Client Reactive interactions In Quarkus, the <span class=\"highlighted\">RESTEasy</span> Reactive extension and the <span class=\"highlighted\">REST</span>")));
+                        Set.of("…Writing <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span> Reactive This guide explains how to write <span class=\"highlighted\">REST</span> Services with <span class=\"highlighted\">RESTEasy</span>…",
+                                "…Reactive and <span class=\"highlighted\">REST</span> Client Reactive interactions In Quarkus, the <span class=\"highlighted\">RESTEasy</span> Reactive extension and the <span class=\"highlighted\">REST</span>…")));
     }
 
     private static SearchResult<GuideSearchHit> searchHitSearchResult(String q) {
