@@ -21,7 +21,7 @@ export class QsTarget extends LitElement {
       background-size: 45px;
       padding-top: 55px;
       text-align: center;
-      padding-bottom: 10px;
+      padding-bottom: 70px;
     }
     
     .qs-hits {
