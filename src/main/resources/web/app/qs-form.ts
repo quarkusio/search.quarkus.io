@@ -98,15 +98,20 @@ export class QsForm extends LitElement {
     if (this.quarkusversion) {
       formData['version'] = this.quarkusversion;
     }
-
+    var elements = 0;
     for (let el: HTMLFormElement of formElements) {
       if (this._isInput(el) && (el.value.length === 0 || el.value.length < this.minChars)) {
         // Let's ignore if the search is empty of not long enough
-        return null;
+        continue;
       }
       if (el.value && el.value.length > 0 && el.name.length > 0) {
         formData[el.name] = el.value;
+        elements++;
       }
+    }
+
+    if (elements == 0) {
+      return null;
     }
 
     return formData;
