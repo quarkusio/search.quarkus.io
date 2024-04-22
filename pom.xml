@@ -432,7 +432,7 @@
           <dependency>
             <groupId>org.mvnpm</groupId>
             <artifactId>lit-element</artifactId>
-            <version>4.0.4</version>
+            <version>4.0.5</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
