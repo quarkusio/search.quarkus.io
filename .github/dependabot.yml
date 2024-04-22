@@ -17,6 +17,10 @@ updates:
           - "io.quarkus.*:*"
           - "io.quarkiverse:*"
           - "io.quarkiverse.*:*"
+      # any WEB component dependencies:
+      mvnpm:
+        patterns:
+          - "org.mvnpm:*"
     ignore:
       # Releases too often, it's annoying
       - dependency-name: "org.assertj:*"
