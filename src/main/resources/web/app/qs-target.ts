@@ -34,7 +34,7 @@ export class QsTarget extends LitElement {
     
     .no-hits {
       padding: 10px;
-      margin: 10px;
+      margin: 6em 10px 6em 10px;
       font-size: 1.2rem;
       line-height: 1.5;
       font-weight: 400;
