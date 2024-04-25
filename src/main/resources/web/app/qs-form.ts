@@ -1,5 +1,5 @@
 import {css, html, LitElement} from 'lit-element';
-import {customElement, property} from 'lit/decorators.js';
+import {customElement, property, state} from 'lit/decorators.js';
 import debounce from 'lodash/debounce';
 import {LocalSearch} from "./local-search";
 
@@ -50,6 +50,13 @@ export class QsForm extends LitElement {
   @property({type: String, attribute: 'quarkus-version'}) quarkusversion?: string;
   @property({type: String, attribute: 'local-search'}) localSearch: boolean = false;
 
+  @state({
+    hasChanged(newVal: any, oldVal: any) {
+      return JSON.stringify(newVal) !== JSON.stringify(oldVal);
+    }
+  })
+  private _formData: any;
+
   private _page: number = 0;
   private _currentHitCount: number = 0;
   private _abortController?: AbortController = null;
@@ -60,6 +67,15 @@ export class QsForm extends LitElement {
         <slot></slot>
       </div>
     `;
+  }
+
+  update(changedProperties: Map<any, any>) {
+    if (!this._formData) {
+      this._clearSearch();
+    } else {
+      this._searchDebounced();
+    }
+    return super.update(changedProperties);
   }
 
   connectedCallback() {
@@ -87,7 +103,57 @@ export class QsForm extends LitElement {
     return this.querySelectorAll('input[name], select[name]');
   }
 
-  private _readQueryInputs() {
+  private _search = () => {
+    if (this._abortController) {
+      // If a search is already in progress, abort it
+      this._abortController.abort();
+    }
+    if (!this._formData) {
+      this._clearSearch();
+      return;
+    }
+    const controller = new AbortController();
+    this._abortController = controller;
+    this.dispatchEvent(new CustomEvent(QS_START_EVENT, {detail: {page: this._page}}));
+    if (this.localSearch) {
+      this._localSearch();
+      if (this._abortController == controller) {
+        this._abortController = null
+      }
+      return;
+    }
+
+    this._jsonFetch(controller, 'GET', this._formData, this._page > 0 ? this.initialTimeout : this.moreTimeout)
+      .then((r: any) => {
+        if (this._page > 0) {
+          this._currentHitCount += r.hits.length;
+        } else {
+          this._currentHitCount = r.hits.length;
+        }
+        const total = r.total?.lowerBound;
+        const hasMoreHits = r.hits.length > 0 && total > this._currentHitCount;
+        this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: this._formData, page: this._page, hasMoreHits}}));
+      }).catch(e => {
+      console.error('Could not run search: ' + e);
+      if (this._abortController != controller) {
+        // A concurrent search erased ours; most likely input changed while waiting for results.
+        // Ignore this search and let the concurrent one reset the data as it sees fit.
+        return;
+      }
+      this._page = 0;
+      this._currentHitCount = 0;
+      // Fall back to Javascript in-page search
+      this._localSearch();
+    }).finally(() => {
+      if (this._abortController == controller) {
+        this._abortController = null
+      }
+    });
+  }
+
+  private _searchDebounced = debounce(this._search, 300);
+
+  private _handleInputChange = (e: Event) => {
     const formElements = this._getFormElements();
     const formData = {
       language: this.language,
@@ -111,73 +177,10 @@ export class QsForm extends LitElement {
     }
 
     if (elements == 0) {
-      return null;
+      this._formData = null;
+    } else {
+      this._formData = formData;
     }
-
-    return formData;
-  }
-
-  private _search = () => {
-    if (this._abortController) {
-      // If a search is already in progress, abort it
-      this._abortController.abort();
-    }
-    const data = this._readQueryInputs();
-    if (!data) {
-      this._clearSearch();
-      return;
-    }
-    const controller = new AbortController();
-    this._abortController = controller;
-    this.dispatchEvent(new CustomEvent(QS_START_EVENT, {detail: {page: this._page}}));
-    if (this.localSearch) {
-      this._localSearch();
-      if (this._abortController == controller) {
-        this._abortController = null
-      }
-      return;
-    }
-
-    this._jsonFetch(controller, 'GET', data, this._page > 0 ? this.initialTimeout : this.moreTimeout)
-      .then((r: any) => {
-        if (this._page > 0) {
-          this._currentHitCount += r.hits.length;
-        } else {
-          this._currentHitCount = r.hits.length;
-        }
-        const total = r.total?.lowerBound;
-        const hasMoreHits = r.hits.length > 0 && total > this._currentHitCount;
-        this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: data, page: this._page, hasMoreHits}}));
-      }).catch(e => {
-      console.error('Could not run search: ' + e);
-      if (this._abortController != controller) {
-        // A concurrent search erased ours; most likely input changed while waiting for results.
-        // Ignore this search and let the concurrent one reset the data as it sees fit.
-        return;
-      }
-      this._page = 0;
-      this._currentHitCount = 0;
-      // Fall back to Javascript in-page search
-      this._localSearch();
-    }).finally(() => {
-      if (this._abortController == controller) {
-        this._abortController = null
-      }
-    });
-  }
-
-
-  private _searchDebounced = debounce(this._search, 300);
-
-  private _handleInputChange = (e: Event) => {
-    const target = e.target as HTMLFormElement;
-    if (this._isInput(target)) {
-      if (target.value.length === 0 || target.value.length < this.minChars) {
-        this._clearSearch();
-        return;
-      }
-    }
-    this._searchDebounced();
   }
 
   private _handleNextPage = (e: CustomEvent) => {
@@ -219,7 +222,7 @@ export class QsForm extends LitElement {
   }
 
   private _localSearch(): any {
-    let search = this._readQueryInputs();
+    const search = this._formData;
     let hits = LocalSearch.search(search);
     if (!!hits) {
       const result = {
