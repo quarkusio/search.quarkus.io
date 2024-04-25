@@ -29,6 +29,7 @@ export class QsTarget extends LitElement {
       grid-template-columns: repeat(12, 1fr);
       grid-gap: 1em;
       clear: both;
+      margin-bottom: 4em;
     }
     
     .no-hits {
