@@ -140,7 +140,7 @@ export class QsTarget extends LitElement {
     }
     if (!this._result.hasMoreHits) {
       // No more hits to fetch.
-      console.log("no more hits");
+      console.debug("no more hits");
       return
     }
     const lastHit = this._hits.length == 0 ? null : this._hits[this._hits.length - 1]

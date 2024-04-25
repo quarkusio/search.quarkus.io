@@ -27,7 +27,7 @@ export class LocalSearch {
     static enableLocalSearch(selector?: string) {
         LocalSearch.guides = LocalSearch.queryDocumentGuides(selector);
         if (LocalSearch.guides != null) {
-            console.log("LocalSearch is ready with " + LocalSearch.guides.length + " guides found.");
+            console.debug("LocalSearch is ready with " + LocalSearch.guides.length + " guides found.");
         }
     }
 
