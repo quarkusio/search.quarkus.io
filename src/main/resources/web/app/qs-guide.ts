@@ -142,7 +142,7 @@ export class QsGuide extends LitElement {
     `;
   }
 
-  private icon(): any {
+  private icon(): string {
     const icon = icons.docs[this.type];
     if (icon) {
       const match = icon.match(/.*(<svg.*<\/svg>)/);
