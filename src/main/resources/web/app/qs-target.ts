@@ -66,7 +66,7 @@ export class QsTarget extends LitElement {
 
   @property({type: String}) private type: string = "guide";
   @state() private _result: QsResult | undefined;
-  @state() private _loading = false;
+  @state() private _loading = true;
   @queryAll('.qs-hit') private _hits: NodeListOf<HTMLElement>;
 
   private _form: HTMLElement;

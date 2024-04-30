@@ -55,11 +55,27 @@ export class QsForm extends LitElement {
       return JSON.stringify(newVal) !== JSON.stringify(oldVal);
     }
   })
-  private _formData: any;
+  private _backendData: any;
+  private _browserData: any;
 
   private _page: number = 0;
   private _currentHitCount: number = 0;
   private _abortController?: AbortController = null;
+
+  constructor() {
+    super();
+    const searchParams = new URLSearchParams(window.location.hash.substring(1));
+    if (searchParams.size > 0) {
+      const formElements = this._getFormElements();
+      for (const formElement of formElements) {
+        const value = searchParams.get(formElement.name);
+        if (value) {
+          formElement.value = value;
+        }
+      }
+      this._handleInputChange(null);
+    }
+  }
 
   render() {
     return html`
@@ -70,7 +86,8 @@ export class QsForm extends LitElement {
   }
 
   update(changedProperties: Map<any, any>) {
-    if (!this._formData) {
+    window.location.hash = this._browserData ? (new URLSearchParams(this._browserData)).toString() : '';
+    if (!this._backendData) {
       this._clearSearch();
     } else {
       this._searchDebounced();
@@ -108,7 +125,7 @@ export class QsForm extends LitElement {
       // If a search is already in progress, abort it
       this._abortController.abort();
     }
-    if (!this._formData) {
+    if (!this._backendData) {
       this._clearSearch();
       return;
     }
@@ -123,7 +140,7 @@ export class QsForm extends LitElement {
       return;
     }
 
-    this._jsonFetch(controller, 'GET', this._formData, this._page > 0 ? this.initialTimeout : this.moreTimeout)
+    this._jsonFetch(controller, 'GET', this._backendData, this._page > 0 ? this.initialTimeout : this.moreTimeout)
       .then((r: any) => {
         if (this._page > 0) {
           this._currentHitCount += r.hits.length;
@@ -132,7 +149,7 @@ export class QsForm extends LitElement {
         }
         const total = r.total?.lowerBound;
         const hasMoreHits = r.hits.length > 0 && total > this._currentHitCount;
-        this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: this._formData, page: this._page, hasMoreHits}}));
+        this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: this._backendData, page: this._page, hasMoreHits}}));
       }).catch(e => {
       console.error('Could not run search: ' + e);
       if (this._abortController != controller) {
@@ -160,7 +177,7 @@ export class QsForm extends LitElement {
       contentSnippets: 2,
       contentSnippetsLength: 120,
     };
-
+    const queryData = {};
     if (this.quarkusversion) {
       formData['version'] = this.quarkusversion;
     }
@@ -172,14 +189,17 @@ export class QsForm extends LitElement {
       }
       if (el.value && el.value.length > 0 && el.name.length > 0) {
         formData[el.name] = el.value;
+        queryData[el.name] = el.value;
         elements++;
       }
     }
 
     if (elements == 0) {
-      this._formData = null;
+      this._backendData = null;
+      this._browserData = null;
     } else {
-      this._formData = formData;
+      this._backendData = formData;
+      this._browserData = queryData;
     }
   }
 
@@ -222,7 +242,7 @@ export class QsForm extends LitElement {
   }
 
   private _localSearch(): any {
-    const search = this._formData;
+    const search = this._backendData;
     let hits = LocalSearch.search(search);
     if (!!hits) {
       const result = {
