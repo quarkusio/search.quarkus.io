@@ -48,13 +48,13 @@ public class FetchingService {
         CompletableFuture<GitCloneDirectory> main = null;
         Map<Language, CompletableFuture<GitCloneDirectory>> localized = new LinkedHashMap<>();
         try (SimpleExecutor executor = new SimpleExecutor(fetchingConfig.parallelism())) {
-            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(), QuarkusIO.MAIN_BRANCHES));
+            main = executor.submit(() -> fetchQuarkusIoSite("quarkus.io", quarkusIOConfig.gitUri(), QuarkusIO.BRANCHES));
             for (Map.Entry<Language, QuarkusIOConfig.SiteConfig> entry : sortMap(quarkusIOConfig.localized()).entrySet()) {
                 var language = entry.getKey();
                 var config = entry.getValue();
                 localized.put(language,
-                        executor.submit(() -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(),
-                                QuarkusIO.LOCALIZED_BRANCHES)));
+                        executor.submit(
+                                () -> fetchQuarkusIoSite(language.code + ".quarkus.io", config.gitUri(), QuarkusIO.BRANCHES)));
             }
             executor.waitForSuccessOrThrow(fetchingConfig.timeout());
             // If we get here, all tasks succeeded.

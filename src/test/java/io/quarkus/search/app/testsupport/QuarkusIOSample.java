@@ -115,12 +115,11 @@ public final class QuarkusIOSample {
             boolean isMainLanguage = Language.ENGLISH == language;
 
             try (CloseableDirectory copyRootDir = CloseableDirectory.temp("quarkusio-sample-building");
-                    GitCloneDirectory clone = GitCloneDirectory.openAndUpdate(path,
-                            isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES)) {
+                    GitCloneDirectory clone = GitCloneDirectory.openAndUpdate(path, QuarkusIO.BRANCHES)) {
                 GitTestUtils.cleanGitUserConfig();
                 copy(clone.git().getRepository(), copyRootDir.path(),
                         isMainLanguage ? new AllFilterDefinition() : new AllLocalizedFilterDefinition(language),
-                        isMainLanguage ? QuarkusIO.MAIN_BRANCHES : QuarkusIO.LOCALIZED_BRANCHES,
+                        QuarkusIO.BRANCHES,
                         isMainLanguage);
                 Path sampleAbsolutePath = isMainLanguage ? testResourcesSamplePath()
                         : testResourcesSamplePath(language);
@@ -132,11 +131,11 @@ public final class QuarkusIOSample {
     }
 
     public static CloseableDirectory createFromTestResourcesSample(FilterDefinition filterDef) {
-        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(), QuarkusIO.MAIN_BRANCHES, true);
+        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(), QuarkusIO.BRANCHES, true);
     }
 
     public static CloseableDirectory createFromTestResourcesLocalizedSample(Language language, FilterDefinition filterDef) {
-        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(language), QuarkusIO.LOCALIZED_BRANCHES, false);
+        return createFromTestResourcesSample(filterDef, testResourcesSamplePath(language), QuarkusIO.BRANCHES, false);
     }
 
     private static CloseableDirectory createFromTestResourcesSample(FilterDefinition filterDef, Path path,
