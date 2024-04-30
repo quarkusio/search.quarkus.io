@@ -89,7 +89,7 @@ public record GuideRef(String nameAfterRestRenaming, String nameBeforeRestRenami
 
     public String name(String version) {
         return switch (version) {
-            case "2.7", "2.13", "2.16", "3.2", "3.8", QuarkusVersions.LATEST -> nameBeforeRestRenaming;
+            case "2.7", "2.13", "2.16", "3.2", "3.8" -> nameBeforeRestRenaming;
             default -> nameAfterRestRenaming;
         };
     }
