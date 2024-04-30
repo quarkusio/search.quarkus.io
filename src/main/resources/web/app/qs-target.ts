@@ -29,11 +29,12 @@ export class QsTarget extends LitElement {
       grid-template-columns: repeat(12, 1fr);
       grid-gap: 1em;
       clear: both;
+      margin-bottom: 4em;
     }
     
     .no-hits {
       padding: 10px;
-      margin: 10px;
+      margin: 6em 10px 6em 10px;
       font-size: 1.2rem;
       line-height: 1.5;
       font-weight: 400;
@@ -140,7 +141,7 @@ export class QsTarget extends LitElement {
     }
     if (!this._result.hasMoreHits) {
       // No more hits to fetch.
-      console.log("no more hits");
+      console.debug("no more hits");
       return
     }
     const lastHit = this._hits.length == 0 ? null : this._hits[this._hits.length - 1]

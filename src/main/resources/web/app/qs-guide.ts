@@ -27,33 +27,8 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide {
-          background-size: 70px 70px;
-          background-repeat: no-repeat;
-          background-image: url('${unsafeCSS(icons.docs.guides)}');
-
-          &.type-tutorial {
-              background-image: url('${unsafeCSS(icons.docs.tutorials)}');
-          }
-
-          &.type-guide {
-              background-image: url('${unsafeCSS(icons.docs.guides)}');
-          }
-
-          &.type-howto {
-              background-image: url('${unsafeCSS(icons.docs.howto)}');
-          }
-
-          &.type-reference {
-              background-image: url('${unsafeCSS(icons.docs.reference)}');
-          }
-
-          &.type-pdf {
-              background-image: url('${unsafeCSS(icons.docs.pdf)}');
-          }
-
-          &.type-concepts {
-              background-image: url('${unsafeCSS(icons.docs.concepts)}');
-          }
+          display: flex;
+          column-gap: 20px;
       }
 
       .qs-guide a {
@@ -69,11 +44,11 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide h4 {
-          margin: 1rem 0 0 90px;
+          margin: 1rem 0 0 0;
       }
 
       .qs-guide div {
-          margin: 1rem 0 0 90px;
+          margin: 1rem 0 0 0;
           font-size: 1rem;
           line-height: 1.5rem;
           font-weight: 400;
@@ -106,6 +81,12 @@ export class QsGuide extends LitElement {
 
       .qs-guide .origin.quarkiverse-hub {
           background-image: url('${unsafeCSS(icons.origins.quarkiverse)}');
+      }
+    
+      .qs-guide-icon svg {
+        width: 70px;
+        margin: 1rem 0 0 0;
+        fill: var(--main-text-color);
       }
 
       .summary {
@@ -140,21 +121,36 @@ export class QsGuide extends LitElement {
 
   render() {
     return html`
-      <div class="qs-hit qs-guide type-${this.type}" aria-label="Guide Hit">
-        <h4>
-          <a href="${this.url}" target="${this.url.startsWith('http') ? '_blank' : ''}">${this._renderHTML(this.title)}</a>
-          ${(this.origin && this.origin.toLowerCase() !== 'quarkus') ? html`<span class="origin ${this.origin}" title="${this.origin}"></span>` : ''}
-        </h4>
-        <div class="summary">
-          <p>${this._renderHTML(this.summary)}</p>
+      <div class="qs-hit qs-guide" aria-label="Guide Hit">
+        <div class="qs-guide-icon">
+          ${unsafeHTML(this.icon())}
         </div>
-        <div class="keywords">${this._renderHTML(this.keywords)}</div>
-        <div class="content-highlights">
-          ${this._renderHTML(this.content)}
+        <div>
+          <h4>
+            <a href="${this.url}" target="${this.url.startsWith('http') ? '_blank' : ''}">${this._renderHTML(this.title)}</a>
+            ${(this.origin && this.origin.toLowerCase() !== 'quarkus') ? html`<span class="origin ${this.origin}" title="${this.origin}"></span>` : ''}
+          </h4>
+          <div class="summary">
+            <p>${this._renderHTML(this.summary)}</p>
+          </div>
+          <div class="keywords">${this._renderHTML(this.keywords)}</div>
+          <div class="content-highlights">
+            ${this._renderHTML(this.content)}
+          </div>
         </div>
-        
       </div>
     `;
+  }
+
+  private icon(): string {
+    const icon = icons.docs[this.type];
+    if (icon) {
+      const match = icon.match(/.*(<svg.*<\/svg>)/);
+      if (match) {
+        return match[1];
+      }
+    }
+    return '';
   }
 
   private _renderHTML(content?: string | [string]) {
