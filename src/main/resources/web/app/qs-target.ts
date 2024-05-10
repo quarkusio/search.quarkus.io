@@ -43,6 +43,10 @@ export class QsTarget extends LitElement {
       background: var(--empty-background-color, #F0CA4D);
     }
 
+    .search-result-title {
+      margin-top: 2.5rem;
+      font-weight: var(--heading-font-weight);
+    }
 
     qs-guide {
       grid-column: span 4;
@@ -64,6 +68,7 @@ export class QsTarget extends LitElement {
    
   `;
 
+  @property({type: String, attribute: 'search-results-title'}) searchResultsTitle: string = '';
   @property({type: String}) private type: string = "guide";
   @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
   @state() private _result: QsResult | undefined;
@@ -98,6 +103,7 @@ export class QsTarget extends LitElement {
       }
       const result = this._result.hits.map(i => this._renderHit(i));
       return html`
+        ${this.searchResultsTitle === '' ? '' : html`<h1 class="search-result-title">${this.searchResultsTitle}</h1>`}
         <div id="qs-target" class="qs-hits" aria-label="Search Hits">
           ${result}
         </div>

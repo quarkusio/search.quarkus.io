@@ -270,10 +270,9 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .satisfiesAnyOf(
+                        .satisfies(
                                 uri -> assertThat(uri).startsWith("https://quarkus.io/version/"
-                                        + QuarkusVersions.MAIN + "/guides/"),
-                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
+                                        + QuarkusVersions.MAIN + "/guides/")));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
@@ -285,26 +284,7 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .satisfiesAnyOf(
-                                uri -> assertThat(uri).startsWith("https://quarkus.io/version/main/guides/"),
-                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
-    }
-
-    @Test
-    void quarkiverse() {
-        var result = given()
-                .queryParam("q", "amazon")
-                .queryParam("version", QuarkusVersions.MAIN)
-                .when().get(GUIDES_SEARCH)
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .satisfiesOnlyOnce(
-                        uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.nameBeforeRestRenaming()))
-                .satisfiesOnlyOnce(
-                        uri -> assertThat(uri).asString()
-                                .contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.nameBeforeRestRenaming()));
+                        .satisfies(uri -> assertThat(uri).startsWith("https://quarkus.io/version/main/guides/")));
     }
 
     @Test
@@ -407,20 +387,6 @@ class SearchServiceTest {
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains("Stork リファレンス<span class=\"highlighted\">ガイド</span>",
                         "Hibernate ORMとElasticsearch/OpenSearchでHibernate Searchを使用");
-    }
-
-    @Test
-    void language_quarkiverse() {
-        var result = given()
-                .queryParam("q", "クラウドストレージ") // means "Cloud storage"
-                .queryParam("language", "ja")
-                .queryParam("version", "main")
-                .when().get(GUIDES_SEARCH)
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::url).satisfiesExactlyInAnyOrder(
-                uri -> assertThat(uri.toString()).startsWith(GuideRef.QUARKIVERSE_AMAZON_S3.name()));
     }
 
     @Test

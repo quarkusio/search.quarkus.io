@@ -31,12 +31,12 @@ import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.entity.Language;
+import io.quarkus.search.app.indexing.IndexableGuides;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
 import io.quarkus.search.app.util.GitInputProvider;
 import io.quarkus.search.app.util.GitUtils;
-import io.quarkus.search.app.util.UrlInputProvider;
 
 import org.hibernate.search.util.common.impl.Closer;
 
@@ -48,10 +48,9 @@ import org.fedorahosted.tennera.jgettext.Message;
 import org.fedorahosted.tennera.jgettext.PoParser;
 import org.yaml.snakeyaml.Yaml;
 
-public class QuarkusIO implements Closeable {
+public class QuarkusIO implements IndexableGuides, Closeable {
 
     public static final String QUARKUS_ORIGIN = "quarkus";
-    private static final String QUARKIVERSE_ORIGIN = "quarkiverse";
     public static final GitCloneDirectory.Branches MAIN_BRANCHES = new GitCloneDirectory.Branches(
             "main", "gh-pages");
     public static final GitCloneDirectory.Branches LOCALIZED_BRANCHES = new GitCloneDirectory.Branches(
@@ -163,9 +162,7 @@ public class QuarkusIO implements Closeable {
     }
 
     public Stream<Guide> guides() throws IOException {
-        return Stream.concat(
-                Stream.concat(versionedGuides(), legacyGuides()),
-                Stream.concat(quarkiverseGuides(), legacyQuarkiverseGuides()));
+        return Stream.concat(versionedGuides(), legacyGuides());
     }
 
     // guides based on the info from the _data/versioned/[version]/index/
@@ -233,74 +230,8 @@ public class QuarkusIO implements Closeable {
                 });
     }
 
-    private Stream<Guide> quarkiverseGuides() {
-        Language language = Language.ENGLISH;
-        QuarkusIOCloneDirectory quarkusIOCloneDirectory = allSites.get(language);
-        GitCloneDirectory cloneDirectory = quarkusIOCloneDirectory.cloneDirectory();
-        VersionFilter versionFilter = quarkusIOCloneDirectory.versionFilter();
-
-        return cloneDirectory.sourcesFileStream("_data/versioned", path -> path.endsWith("quarkiverse.yaml"))
-                .map(QuarkusIO::extractQuarkiverseVersion)
-                .filter(versionFilter)
-                .flatMap(quarkusVersion -> {
-                    String quarkus = quarkusVersion.path();
-
-                    Map<Language, Catalog> translations = createTranslations(
-                            lang -> resolveTranslationPath(quarkusVersion.versionDirectory(), "quarkiverse.yaml", lang));
-
-                    try (InputStream file = cloneDirectory.sourcesFile(quarkus)) {
-                        return parseYamlQuarkiverseMetadata(file, quarkusVersion.version(), translations);
-                    } catch (IOException e) {
-                        throw new IllegalStateException(
-                                "Unable to load %s: %s".formatted(quarkusVersion.path(), e.getMessage()),
-                                e);
-                    }
-                });
-    }
-
-    private Stream<Guide> legacyQuarkiverseGuides() {
-        Language language = Language.ENGLISH;
-        QuarkusIOCloneDirectory quarkusIOCloneDirectory = allSites.get(language);
-        GitCloneDirectory cloneDirectory = quarkusIOCloneDirectory.cloneDirectory();
-        VersionFilter versionFilter = quarkusIOCloneDirectory.versionFilter();
-
-        return cloneDirectory.sourcesFileStream("_data", path -> path.matches("_data/guides-\\d+-\\d+\\.yaml"))
-                .map(QuarkusIO::extractLegacyVersion)
-                .filter(versionFilter)
-                .flatMap(quarkusVersion -> {
-                    String quarkus = quarkusVersion.path();
-
-                    Map<Language, Catalog> translations = createTranslations(
-                            lang -> resolveLegacyTranslationPath(quarkusVersion.versionDirectory(), lang));
-
-                    try (InputStream file = cloneDirectory.sourcesFile(quarkus)) {
-                        return parseQuarkiverseYamlLegacyMetadata(cloneDirectory, file, quarkusVersion.version(), translations);
-                    } catch (IOException e) {
-                        throw new IllegalStateException(
-                                "Unable to load %s: %s".formatted(quarkusVersion.path(), e.getMessage()),
-                                e);
-                    }
-                });
-    }
-
-    private Map<Language, Catalog> createTranslations(Function<Language, String> pathCreator) {
-        Map<Language, Catalog> translations = new HashMap<>();
-        for (Map.Entry<Language, QuarkusIOCloneDirectory> entry : allSites.entrySet()) {
-            Language lang = entry.getKey();
-            GitCloneDirectory cloneDirectory = entry.getValue().cloneDirectory();
-            translations.put(lang, translations(
-                    cloneDirectory.git().getRepository(), cloneDirectory.sourcesTranslationTree(),
-                    pathCreator.apply(lang)));
-        }
-        return translations;
-    }
-
     private static VersionAndPaths extractVersion(String relativePath) {
         return extractVersion(relativePath, "quarkus.yaml");
-    }
-
-    private static VersionAndPaths extractQuarkiverseVersion(String relativePath) {
-        return extractVersion(relativePath, "quarkiverse.yaml");
     }
 
     private static VersionAndPaths extractVersion(String relativePath, String filename) {
@@ -354,48 +285,6 @@ public class QuarkusIO implements Closeable {
 
             return parsed.stream();
         });
-    }
-
-    @SuppressWarnings("unchecked")
-    private Stream<Guide> parseYamlQuarkiverseMetadata(InputStream quarkusYamlPath, String quarkusVersion,
-            Map<Language, Catalog> translations) {
-        return parse(quarkusYamlPath, quarkusYaml -> {
-            Set<Guide> parsed = new HashSet<>();
-            for (Map.Entry<String, List<Map<String, Object>>> type : ((Map<String, List<Map<String, Object>>>) quarkusYaml
-                    .get("types")).entrySet()) {
-                for (Map<String, Object> parsedGuide : type.getValue()) {
-                    Guide guide = createQuarkiverseGuide(quarkusVersion, type.getKey(), parsedGuide, "summary");
-                    guide.categories = toSet(parsedGuide.get("categories"));
-
-                    // Quarkiverse guides have a single URL, because content is not translated,
-                    // so there is a single Guide instance with translated maps for some of its metadata.
-                    translateAllForSameGuide(guide.title, translations);
-                    translateAllForSameGuide(guide.summary, translations);
-                    translateAllForSameGuide(guide.keywords, translations);
-
-                    parsed.add(guide);
-                }
-            }
-
-            return parsed.stream();
-        });
-    }
-
-    private Stream<Guide> parseQuarkiverseYamlLegacyMetadata(GitCloneDirectory cloneDirectory, InputStream quarkusYamlPath,
-            String version,
-            Map<Language, Catalog> translations) {
-        return parseYamlLegacyMetadata(
-                cloneDirectory, quarkusYamlPath, version, Language.ENGLISH, translations.get(Language.ENGLISH),
-                (guide, guides) -> {
-                    if (guide.language == null) {
-                        translateAllForSameGuide(guide.title, translations);
-                        translateAllForSameGuide(guide.summary, translations);
-                        translateAllForSameGuide(guide.keywords, translations);
-                        guide.topics.forEach(topics -> translateAllForSameGuide(topics, translations));
-                        return guides.put(guide.url, guide);
-                    }
-                    return guide;
-                });
     }
 
     private Stream<Guide> parseYamlLegacyMetadata(GitCloneDirectory cloneDirectory, InputStream quarkusYamlPath, String version,
@@ -463,17 +352,6 @@ public class QuarkusIO implements Closeable {
         }
     }
 
-    private static void translateAllForSameGuide(I18nData<String> data, Map<Language, Catalog> translations) {
-        String key = data.get(Language.ENGLISH);
-        if (key == null) {
-            // No translation
-            return;
-        }
-        for (Map.Entry<Language, Catalog> entry : translations.entrySet()) {
-            data.set(entry.getKey(), translate(entry.getValue(), key));
-        }
-    }
-
     private static String translate(Catalog messages, String key) {
         if (key == null || key.isBlank()) {
             return key;
@@ -485,13 +363,6 @@ public class QuarkusIO implements Closeable {
                 ? key
                 // sometimes message might be an empty string. In that case we will return the original text
                 : message.getMsgstr() == null || message.getMsgstr().isBlank() ? key : message.getMsgstr();
-    }
-
-    private static void putIfNotNull(Map<Language, String> map, Language language, String value) {
-        if (value == null) {
-            return;
-        }
-        map.put(language, value);
     }
 
     private static Set<String> combine(Set<String> a, Set<String> b) {
@@ -532,7 +403,7 @@ public class QuarkusIO implements Closeable {
         String parsedUrl = toString(parsedGuide.get("url"));
         if (parsedUrl.startsWith("http")) {
             // we are looking at a quarkiverse guide:
-            return createQuarkiverseGuide(quarkusVersion, type, parsedGuide, summaryKey);
+            return null;
         } else {
             return createCoreGuide(cloneDirectory, quarkusVersion, type, parsedGuide, summaryKey, language, messages);
         }
@@ -569,26 +440,6 @@ public class QuarkusIO implements Closeable {
             return null;
         }
 
-        return guide;
-    }
-
-    private Guide createQuarkiverseGuide(String quarkusVersion, String type, Map<String, Object> parsedGuide,
-            String summaryKey) {
-        Guide guide = new Guide();
-        guide.quarkusVersion = quarkusVersion;
-        // This is on purpose and will lead to the same guide instance being used for all languages
-        guide.language = null;
-        guide.origin = toString(parsedGuide.get("origin"));
-        if (guide.origin == null) {
-            guide.origin = QUARKIVERSE_ORIGIN;
-        }
-        guide.type = type;
-        guide.title.set(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get("title"))));
-        guide.summary.set(Language.ENGLISH, renderMarkdown(toString(parsedGuide.get(summaryKey))));
-        String parsedUrl = toString(parsedGuide.get("url"));
-        guide.url = httpUrl(quarkusVersion, parsedUrl);
-        guide.htmlFullContentProvider.set(Language.ENGLISH,
-                new UrlInputProvider(prefetchedGuides, guide.url, failureCollector));
         return guide;
     }
 

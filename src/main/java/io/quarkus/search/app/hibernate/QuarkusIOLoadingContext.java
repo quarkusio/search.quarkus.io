@@ -7,14 +7,15 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 
 public class QuarkusIOLoadingContext {
 
     private final Iterator<Guide> guides;
 
-    public static QuarkusIOLoadingContext of(QuarkusIO quarkusIO) throws IOException {
-        return new QuarkusIOLoadingContext(quarkusIO.guides());
+    public static QuarkusIOLoadingContext of(QuarkusIO quarkusIO, QuarkiverseIO quarkiverseIO) throws IOException {
+        return new QuarkusIOLoadingContext(Stream.concat(quarkusIO.guides(), quarkiverseIO.guides()));
     }
 
     QuarkusIOLoadingContext(Stream<Guide> guides) {
