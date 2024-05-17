@@ -91,7 +91,7 @@ export class QsTarget extends LitElement {
       if (this._result.hits.length === 0) {
         return html`
           <div id="qs-target" class="no-hits">
-            <p>Sorry, no ${this.type} matched your search. Please try again.</p>
+            <p>Sorry, no ${this.type}s matched your search. Please try again.</p>
           </div>
         `;
       }
