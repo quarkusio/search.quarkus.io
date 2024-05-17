@@ -222,13 +222,15 @@ class SearchServiceTest {
                 Arguments.of("jpa", GuideRef.urls(
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN)),
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE // contains a reference to jpa-modelgen
+                )),
                 Arguments.of("jakarta persistence", GuideRef.urls(
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_REACTIVE_PANACHE, // contains a reference to jpa-modelgen
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN)),
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
+                        GuideRef.HIBERNATE_REACTIVE_PANACHE // contains a reference to jpa-modelgen
+                )),
                 Arguments.of("search", GuideRef.urls(
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH)),
                 Arguments.of("stork", GuideRef.urls(
@@ -345,7 +347,7 @@ class SearchServiceTest {
         AtomicInteger matches = new AtomicInteger(0);
         assertThat(result.hits()).extracting(GuideSearchHit::summary)
                 .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-summary"));
-        assertThat(matches.get()).isEqualTo(7);
+        assertThat(matches.get()).isEqualTo(8);
     }
 
     @Test
@@ -402,7 +404,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains("Stork リファレンス<span class=\"highlighted\">ガイド</span>",
-                        "Hibernate Search <span class=\"highlighted\">ガイド</span>");
+                        "Use Hibernate Search with Hibernate ORM and Elasticsearch/OpenSearch");
     }
 
     @Test
