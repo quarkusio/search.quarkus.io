@@ -73,7 +73,6 @@ export class QsForm extends LitElement {
           formElement.value = value;
         }
       }
-      this._handleInputChange(null);
     }
   }
 
@@ -104,6 +103,9 @@ export class QsForm extends LitElement {
       const eventName = this._isInput(el) ? 'input' : 'change';
       el.addEventListener(eventName, this._handleInputChange);
     });
+    // Read the initial form data.
+    // Should only be done once the form is fully initialized and all attributes are already set.
+    this._handleInputChange(null);
   }
 
   disconnectedCallback() {
