@@ -12,8 +12,7 @@ app:
       cpu: 400m
       memory: 500Mi
 opensearch:
-  envs:
-    OPENSEARCH_JAVA_OPTS: ' -Xms700m -Xmx700m '
+  opensearchJavaOpts: ' -Xms700m -Xmx700m '
   resources:
     limits:
       cpu: 1000m

@@ -36,7 +36,11 @@
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
-    <version.opensearch>2.14</version.opensearch>
+    <version.opensearch>2.14.0</version.opensearch>
+    <!-- This version is DIFFERENT from the OpenSearch version;
+         it must be the version of the chart whose appVersion is ${version.opensearch} (see above).
+         See https://github.com/opensearch-project/helm-charts/blob/0c910008bbdaa66f200307864d3b9466c2864319/charts/opensearch/Chart.yaml#L24 -->
+    <version.opensearch.helm-chart>2.20.0</version.opensearch.helm-chart>
     <version.quarkus-web-bundler>1.4.0</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
@@ -273,6 +277,7 @@
             <maven.revision>${revision}</maven.revision>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
             <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
+            <maven.version.opensearch.helm-chart>${version.opensearch.helm-chart}</maven.version.opensearch.helm-chart>
           </systemProperties>
         </configuration>
       </plugin>

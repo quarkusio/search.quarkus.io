@@ -95,6 +95,10 @@ jobs:
         docker image tag "opensearch-custom:latest" "$REMOTE_IMAGE_REF"
         docker push "$REMOTE_IMAGE_REF"
 
+    - name: Download Helm dependencies
+      run: |
+        helm dependency update ./target/helm/openshift/search-quarkus-io
+
     - name: Deploy Helm charts
       run: |
         helm upgrade --install search-quarkus-io ./target/helm/openshift/search-quarkus-io \

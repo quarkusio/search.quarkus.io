@@ -1,0 +1,64 @@
+opensearch:
+  # See https://github.com/opensearch-project/helm-charts/blob/main/charts/opensearch/values.yaml
+  # Openshift naming, labels and annotations
+  nameOverride: search-backend
+  podAnnotations:
+    alpha.image.policy.openshift.io/resolve-names: '*'
+#  labels:
+#  - app.kubernetes.io/part-of: 'part-of'
+  # Openshift security overrides
+  # We can't use UID 1000 on OpenShift, so we clear this preset.
+  # We also remove a chown further down.
+  fsGroup: null
+  podSecurityContext:
+    runAsUser: null
+  securityContext:
+    runAsUser: null
+    fsGroup: null
+  # We use a custom image to fix permission problems on OpenShift and install custom plugins.
+  # See src/docker.
+  image:
+    repository: opensearch-custom
+    #version: "SET_IN_QUARKUS_APPLICATION_PROPERTIES"
+  # OpenSearch configuration
+  config: null
+  #clusterName: "SET_IN_QUARKUS_APPLICATION_PROPERTIES"
+  singleNode: true
+  extraEnvs:
+  - name: bootstrap.memory_lock
+    value: 'false'
+  # This is necessary to avoid OpenSearch trying to install various things on startup,
+  # which leads to filesystem operations (chmod/chown) that won't work
+  # because only user 1000 has the relevant permissions,
+  # and we can't run with user 1000 on OpenShift.
+  # See also:
+  # - https://github.com/opensearch-project/opensearch-devops/issues/97
+  # - src/main/docker/opensearch-custom.Dockerfile
+  - name: DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI
+    value: 'true'
+  - name: DISABLE_INSTALL_DEMO_CONFIG
+    value: 'true'
+  # Not exposed to the internet, no sensitive data
+  # => We don't bother with HTTPS and pesky self-signed certificates
+  # Setting this env variable is better than setting plugins.security.disabled
+  # because this skips installing the plugin altogether (see above)
+  - name: DISABLE_SECURITY_PLUGIN
+    value: 'true'
+  envFrom:
+  - configMapRef:
+      name: search-backend-config
+  - secretRef:
+      name: search-backend-secrets
+  # Resource requirements (overridden for staging, see values.staging.yaml)
+  opensearchJavaOpts: ' -Xms1g -Xmx1g '
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1.9Gi
+  persistence:
+    size: 5Gi
+    # Disable chown: we can't do that, see security overrides further up.
+    enableInitChown: 'false'
