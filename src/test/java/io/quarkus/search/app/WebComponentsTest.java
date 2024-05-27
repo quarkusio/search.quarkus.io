@@ -55,7 +55,7 @@ public class WebComponentsTest {
         Assertions.assertEquals("Quarkus Search", title);
 
         ElementHandle searchInput = page.waitForSelector(LABEL_SEARCH_QUERY);
-        searchInput.type("rest");
+        searchInput.fill("rest");
         page.waitForSelector(LABEL_SEARCH_HITs);
         List<ElementHandle> hits = page.querySelectorAll(LABEL_GUIDE_HIT);
         assertThat(hits).isNotEmpty();
