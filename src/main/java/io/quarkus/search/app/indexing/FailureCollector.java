@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.Date;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -69,14 +70,14 @@ public class FailureCollector implements Closeable {
     private final Consumer<EnumMap<Level, List<Failure>>> reporter;
 
     public FailureCollector() {
-        this(IndexingConfig.GitErrorReporting.Type.LOG, Optional.empty());
+        this(IndexingConfig.GitErrorReporting.Type.LOG, Clock.systemUTC(), Optional.empty());
     }
 
     public FailureCollector(IndexingConfig.GitErrorReporting config) {
-        this(config.type(), config.github());
+        this(config.type(), Clock.systemUTC(), config.github());
     }
 
-    public FailureCollector(IndexingConfig.GitErrorReporting.Type type,
+    private FailureCollector(IndexingConfig.GitErrorReporting.Type type, Clock clock,
             Optional<IndexingConfig.GitErrorReporting.GithubReporter> githubOptional) {
         for (Level value : Level.values()) {
             failures.put(value, Collections.synchronizedList(new ArrayList<>()));
@@ -87,7 +88,7 @@ public class FailureCollector implements Closeable {
                 IndexingConfig.GitErrorReporting.GithubReporter github = githubOptional.orElseThrow(
                         () -> new IllegalArgumentException(
                                 "GitHub error reporting requires both GitHub repository and issue id to be specified in the properties."));
-                reporter = new GithubFailureReporter(github)::report;
+                reporter = new GithubFailureReporter(clock, github)::report;
             }
             default -> throw new AssertionError("Unknown reporter type: " + type);
         }
@@ -122,20 +123,24 @@ public class FailureCollector implements Closeable {
         Log.warn(sb);
     }
 
-    private static class GithubFailureReporter {
+    static class GithubFailureReporter {
 
         private static final String STATUS_CRITICAL = "Critical";
         private static final String STATUS_WARNING = "Warning";
         private static final String STATUS_SUCCESS = "Success";
         private static final String STATUS_REPORT_HEADER = "## search.quarkus.io indexing status: ";
-        private static final String UPDATED_FORMAT = "(updated %s)";
-        private static final Pattern UPDATED_PATTERN = Pattern.compile("\\(updated [^)]+\\)");
+        private static final String TITLE_UPDATED_AND_STATUS_FORMAT = ": %s (updated %s)";
+        private static final Pattern TITLE_UPDATED_AND_STATUS_PATTERN = Pattern
+                .compile("(:\s*([^() ]+) )?\s*\\(updated [^)]+\\)");
         private static final DateTimeFormatter UPDATED_DATE_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ssZZZZZ",
                 Locale.ROOT);
         private static final int GITHUB_MAX_COMMENT_LENGTH = 65536;
+
+        private final Clock clock;
         private final IndexingConfig.GitErrorReporting.GithubReporter config;
 
-        GithubFailureReporter(IndexingConfig.GitErrorReporting.GithubReporter config) {
+        private GithubFailureReporter(Clock clock, IndexingConfig.GitErrorReporting.GithubReporter config) {
+            this.clock = clock;
             this.config = config;
         }
 
@@ -162,7 +167,7 @@ public class FailureCollector implements Closeable {
 
                     if (STATUS_WARNING.equals(status)) {
                         var lastRecentCommentByMe = getStatusCommentsSince(issue,
-                                Instant.now().minus(config.warningRepeatDelay()))
+                                clock.instant().minus(config.warningRepeatDelay()))
                                 .reduce(Streams.last());
                         // For warnings, only comment if we didn't comment the same thing recently.
                         if (lastRecentCommentByMe.isPresent()
@@ -178,7 +183,7 @@ public class FailureCollector implements Closeable {
                 }
 
                 // Update last indexing date:
-                issue.setTitle(insertUpdateDate(issue.getTitle()));
+                issue.setTitle(insertStatusAndUpdateDate(clock, issue.getTitle(), status));
 
                 // handle issue state (open/close):
                 //   Only reopen/keep opened an issue if we have critical things to report.
@@ -196,12 +201,13 @@ public class FailureCollector implements Closeable {
             }
         }
 
-        private String insertUpdateDate(String title) {
-            String toInsert = UPDATED_FORMAT.formatted(UPDATED_DATE_FORMAT.format(Instant.now().atOffset(ZoneOffset.UTC)));
-            String result = UPDATED_PATTERN.matcher(title).replaceAll(toInsert);
+        static String insertStatusAndUpdateDate(Clock clock, String title, String status) {
+            String toInsert = TITLE_UPDATED_AND_STATUS_FORMAT.formatted(status,
+                    UPDATED_DATE_FORMAT.format(clock.instant().atOffset(ZoneOffset.UTC)));
+            String result = TITLE_UPDATED_AND_STATUS_PATTERN.matcher(title).replaceAll(toInsert);
             if (result.equals(title)) {
-                // The title didn't contain any mention of the last update; add it.
-                result = result + " " + toInsert;
+                // The title didn't contain any mention of the status and last update; add it.
+                result = result + toInsert;
             }
             return result;
         }
