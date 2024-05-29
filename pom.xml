@@ -27,7 +27,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.10.0</quarkus.version>
+    <quarkus.version>3.11.0</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.5</surefire-plugin.version>
@@ -36,7 +36,7 @@
     <version.formatter.plugin>2.23.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
-    <version.opensearch>2.13</version.opensearch>
+    <version.opensearch>2.14</version.opensearch>
     <version.quarkus-web-bundler>1.4.0</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
@@ -51,7 +51,7 @@
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-bom</artifactId>
-        <version>3.25.3</version>
+        <version>3.26.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -88,7 +88,7 @@
       <dependency>
         <groupId>io.quarkiverse.playwright</groupId>
         <artifactId>quarkus-playwright</artifactId>
-        <version>0.0.1</version>
+        <version>1.0.0</version>
       </dependency>
       <dependency>
         <groupId>org.mvnpm</groupId>
@@ -247,7 +247,7 @@
     <dependency>
       <groupId>io.quarkiverse.playwright</groupId>
       <artifactId>quarkus-playwright</artifactId>
-      <version>0.0.1</version>
+      <version>1.0.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
