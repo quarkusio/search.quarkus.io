@@ -37,7 +37,7 @@
     <version.impsort-maven-plugin>1.9.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
     <version.opensearch>2.14</version.opensearch>
-    <version.quarkus-web-bundler>1.4.0</version.quarkus-web-bundler>
+    <version.quarkus-web-bundler>1.5.2</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
     <dependencies>
