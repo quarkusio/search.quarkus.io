@@ -65,6 +65,7 @@ export class QsTarget extends LitElement {
   `;
 
   @property({type: String}) private type: string = "guide";
+  @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
   @state() private _result: QsResult | undefined;
   @state() private _loading = true;
   @queryAll('.qs-hit') private _hits: NodeListOf<HTMLElement>;
@@ -125,7 +126,7 @@ export class QsTarget extends LitElement {
     switch (this.type) {
       case 'guide':
         return html`
-          <qs-guide class="qs-hit" .data=${i} origins-with-relative-urls="quarkus"></qs-guide>`
+          <qs-guide class="qs-hit" .data=${i} origins-with-relative-urls=${this.originsWithRelativeUrls}></qs-guide>`
     }
     return ''
   }
