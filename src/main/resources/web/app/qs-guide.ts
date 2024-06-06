@@ -102,6 +102,7 @@ export class QsGuide extends LitElement {
   @property({type: String}) keywords: string;
   @property({type: String}) content: string | [string]
   @property({type: String}) origin: string = "quarkus";
+  @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
 
 
   connectedCallback() {
@@ -127,7 +128,7 @@ export class QsGuide extends LitElement {
         </div>
         <div>
           <h4>
-            <a href="${this.url}" target="${this.url.startsWith('http') ? '_blank' : ''}">${this._renderHTML(this.title)}</a>
+            <a href="${this.relativizeUrl()}" target="_blank">${this._renderHTML(this.title)}</a>
             ${(this.origin && this.origin.toLowerCase() !== 'quarkus') ? html`<span class="origin ${this.origin}" title="${this.origin}"></span>` : ''}
           </h4>
           <div class="summary">
@@ -140,6 +141,14 @@ export class QsGuide extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private relativizeUrl(): string {
+    if (this.originsWithRelativeUrls.includes(this.origin)) {
+      return this.url.substring(new URL(this.url).origin.length);
+    } else {
+      return this.url;
+    }
   }
 
   private icon(): string {
