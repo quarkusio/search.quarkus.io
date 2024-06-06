@@ -125,7 +125,7 @@ export class QsTarget extends LitElement {
     switch (this.type) {
       case 'guide':
         return html`
-          <qs-guide class="qs-hit" .data=${i}></qs-guide>`
+          <qs-guide class="qs-hit" .data=${i} origins-with-relative-urls="quarkus"></qs-guide>`
     }
     return ''
   }
