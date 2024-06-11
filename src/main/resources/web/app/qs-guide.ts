@@ -10,12 +10,6 @@ import icons from './assets/icons';
 export class QsGuide extends LitElement {
 
   static styles = css`
-      :host {
-          --link-color: #1259A5;
-          --link-hover-color: #c00;
-          --content-highlight-color: #777;
-      }
-
       @media screen and (max-width: 1300px) {
           .qs-hit {
               grid-column: span 6;
@@ -40,7 +34,7 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide a:hover {
-          color: var(--link-hover-color);
+          color: var(--link-color-hover);
       }
 
       .qs-guide h4 {
