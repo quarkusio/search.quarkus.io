@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 
 import io.quarkus.search.app.entity.Language;
 
-import io.quarkus.hibernate.search.orm.elasticsearch.SearchExtension;
+import io.quarkus.hibernate.search.standalone.elasticsearch.SearchExtension;
 
 import org.hibernate.search.backend.elasticsearch.analysis.ElasticsearchAnalysisConfigurationContext;
 import org.hibernate.search.backend.elasticsearch.analysis.ElasticsearchAnalysisConfigurer;
