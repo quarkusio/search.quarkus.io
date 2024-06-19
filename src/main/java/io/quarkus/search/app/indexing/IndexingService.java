@@ -225,8 +225,6 @@ public class IndexingService {
                         .batchSizeToLoadObjects(indexingConfig.batchSize())
                         .threadsToLoadObjects(indexingConfig.parallelism().orElse(6))
                         .context(QuarkusIOLoadingContext.class, QuarkusIOLoadingContext.of(quarkusIO))
-                        // this could lead to a BlockedThreadChecker complaining if called through /reindex
-                        //  [i.ve.co.im.BlockedThreadChecker] Thread Thread[vert.x-worker-thread-1,5,main] has been blocked for 61076 ms, time limit is 60000 ms:
                         .startAndWait();
             }
 
