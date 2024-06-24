@@ -14,7 +14,6 @@ import jakarta.inject.Inject;
 
 import io.quarkus.search.app.entity.Guide;
 
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -22,9 +21,8 @@ import io.quarkus.test.junit.TestProfile;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.backend.elasticsearch.index.ElasticsearchIndexManager;
 import org.hibernate.search.backend.elasticsearch.metamodel.ElasticsearchIndexDescriptor;
-import org.hibernate.search.mapper.orm.entity.SearchIndexedEntity;
-import org.hibernate.search.mapper.orm.mapping.SearchMapping;
-import org.hibernate.search.mapper.orm.session.SearchSession;
+import org.hibernate.search.mapper.pojo.standalone.entity.SearchIndexedEntity;
+import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,8 +50,6 @@ class RolloverTest {
 
     @Inject
     SearchMapping searchMapping;
-    @Inject
-    SearchSession searchSession;
     RestClient client;
 
     @PostConstruct
@@ -83,10 +79,11 @@ class RolloverTest {
     }
 
     private void assertSearchWorksAndTargetsIndex(int readIndex) {
-        // Search must work
-        assertThatCode(() -> QuarkusTransaction.requiringNew().call(
-                () -> searchSession.search(Guide.class).where(f -> f.matchAll()).fetchTotalHitCount()))
-                .doesNotThrowAnyException();
+        try (var session = searchMapping.createSession()) {
+            // Search must work
+            assertThatCode(() -> session.search(Guide.class).where(f -> f.matchAll()).fetchTotalHitCount())
+                    .doesNotThrowAnyException();
+        }
 
         // Search targets the read index, and the read index must be the one we expect
         var aliased = aliased(searchMapping.indexedEntity(Guide.class));

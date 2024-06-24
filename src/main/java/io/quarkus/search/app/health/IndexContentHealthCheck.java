@@ -4,7 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import org.hibernate.search.mapper.orm.session.SearchSession;
+import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
@@ -21,13 +21,13 @@ public class IndexContentHealthCheck implements HealthCheck {
     private static final String NAME = "Index content";
 
     @Inject
-    SearchSession session;
+    SearchMapping searchMapping;
 
     @Override
     @Transactional
     public HealthCheckResponse call() {
         long totalHitCount;
-        try {
+        try (var session = searchMapping.createSession()) {
             totalHitCount = session.search(Object.class)
                     .where(f -> f.matchAll())
                     .fetchTotalHitCount();

@@ -21,7 +21,7 @@ import io.quarkus.cache.CacheName;
 import io.quarkus.cache.CacheResult;
 
 import org.hibernate.search.engine.search.aggregation.AggregationKey;
-import org.hibernate.search.mapper.orm.session.SearchSession;
+import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 
@@ -37,7 +37,7 @@ public class ReferenceService {
     Cache cache;
 
     @Inject
-    SearchSession session;
+    SearchMapping searchMapping;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -71,11 +71,13 @@ public class ReferenceService {
     }
 
     private List<String> listAllValues(String fieldName, Comparator<String> comparator) {
-        var aggKey = AggregationKey.<Map<String, Long>> of("versions");
-        var result = session.search(Guide.class)
-                .where(f -> f.matchAll())
-                .aggregation(aggKey, f -> f.terms().field(fieldName, String.class))
-                .fetch(0);
-        return result.aggregation(aggKey).keySet().stream().sorted(comparator).toList();
+        try (var session = searchMapping.createSession()) {
+            var aggKey = AggregationKey.<Map<String, Long>> of("versions");
+            var result = session.search(Guide.class)
+                    .where(f -> f.matchAll())
+                    .aggregation(aggKey, f -> f.terms().field(fieldName, String.class))
+                    .fetch(0);
+            return result.aggregation(aggKey).keySet().stream().sorted(comparator).toList();
+        }
     }
 }
