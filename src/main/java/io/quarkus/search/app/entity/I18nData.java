@@ -43,6 +43,14 @@ public class I18nData<T> {
         }
     }
 
+    public void set(T value) {
+        en = value;
+        es = value;
+        pt = value;
+        cn = value;
+        ja = value;
+    }
+
     public T get(Language language) {
         return switch (language) {
             case ENGLISH -> en;

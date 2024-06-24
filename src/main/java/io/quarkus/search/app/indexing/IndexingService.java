@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Stream;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -18,6 +19,7 @@ import jakarta.inject.Inject;
 
 import io.quarkus.search.app.ReferenceService;
 import io.quarkus.search.app.fetching.FetchingService;
+import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.util.SimpleExecutor;
 
@@ -230,8 +232,9 @@ public class IndexingService {
     private void indexAll(FailureCollector failureCollector) {
         Log.info("Indexing...");
         try (Rollover rollover = Rollover.start(searchMapping)) {
-            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector)) {
-                indexQuarkusIo(quarkusIO);
+            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector);
+                    QuarkiverseIO quarkiverseIO = fetchingService.fetchQuarkiverseIo(failureCollector)) {
+                indexQuarkusIo(quarkusIO, quarkiverseIO);
             }
 
             // Refresh BEFORE committing the rollover,
@@ -248,9 +251,9 @@ public class IndexingService {
         }
     }
 
-    private void indexQuarkusIo(QuarkusIO quarkusIO) throws IOException {
-        Log.info("Indexing quarkus.io...");
-        try (var guideStream = quarkusIO.guides();
+    private void indexQuarkusIo(IndexableGuides quarkus, IndexableGuides quarkiverse) throws IOException {
+        Log.info("Indexing quarkus.io/quarkiverse.io...");
+        try (var guideStream = Stream.concat(quarkus.guides(), quarkiverse.guides());
                 var executor = new SimpleExecutor(indexingConfig.parallelism())) {
             indexAll(executor, guideStream.iterator());
         }

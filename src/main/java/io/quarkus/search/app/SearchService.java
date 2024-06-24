@@ -19,6 +19,7 @@ import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
 
 import io.quarkus.runtime.LaunchMode;
 
@@ -62,6 +63,7 @@ public class SearchService {
     public SearchResult<GuideSearchHit> search(@RestQuery @DefaultValue(QuarkusVersions.LATEST) String version,
             @RestQuery List<String> categories,
             @RestQuery String q,
+            @RestQuery String origin,
             @RestQuery @DefaultValue("en") Language language,
             @RestQuery @DefaultValue("highlighted") String highlightCssClass,
             @RestQuery @DefaultValue("0") @Min(0) int page,
@@ -83,6 +85,9 @@ public class SearchService {
                     if (categories != null && !categories.isEmpty()) {
                         root.add(f.terms().field("categories").matchingAny(categories));
                     }
+                    if (origin != null && !origin.isEmpty()) {
+                        root.add(f.match().field("origin").matching(origin));
+                    }
 
                     if (q != null && !q.isBlank()) {
                         root.add(f.bool().must(f.simpleQueryString()
@@ -101,7 +106,8 @@ public class SearchService {
                                 // we also add phrase flag so that entire phrases could be searched as well, e.g.: "hibernate search"
                                 .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR, SimpleQueryFlag.PHRASE)
                                 .defaultOperator(BooleanOperator.AND))
-                                .should(f.match().field("origin").matching("quarkus").boost(50.0f))
+                                .should(f.match().field("origin").matching(QuarkusIO.QUARKUS_ORIGIN).constantScore()
+                                        .boost(1000.0f))
                                 .should(f.not(f.match().field(language.addSuffix("topics"))
                                         .matching("compatibility", ValueConvert.NO))
                                         .boost(50.0f)));

@@ -49,6 +49,7 @@ export class QsForm extends LitElement {
   @property({type: String}) language: String = "en";
   @property({type: String, attribute: 'quarkus-version'}) quarkusversion?: string;
   @property({type: String, attribute: 'local-search'}) localSearch: boolean = false;
+  @property({type: String, attribute: 'origin-filter'}) originFilter: string = '';
 
   @state({
     hasChanged(newVal: any, oldVal: any) {
@@ -61,11 +62,13 @@ export class QsForm extends LitElement {
   private _page: number = 0;
   private _currentHitCount: number = 0;
   private _abortController?: AbortController = null;
+  private _initialQueryStringPresent: boolean;
 
   constructor() {
     super();
     const searchParams = new URLSearchParams(window.location.hash.substring(1));
     if (searchParams.size > 0) {
+      this._initialQueryStringPresent = true;
       const formElements = this._getFormElements();
       for (const formElement of formElements) {
         const value = searchParams.get(formElement.name);
@@ -85,6 +88,10 @@ export class QsForm extends LitElement {
   }
 
   update(changedProperties: Map<any, any>) {
+    if (this._initialQueryStringPresent) {
+      this._initialQueryStringPresent = false;
+      this._handleInputChange(null);
+    }
     window.location.hash = this._browserData ? (new URLSearchParams(this._browserData)).toString() : '';
     if (!this._backendData) {
       this._clearSearch();
@@ -182,6 +189,9 @@ export class QsForm extends LitElement {
     const queryData = {};
     if (this.quarkusversion) {
       formData['version'] = this.quarkusversion;
+    }
+    if (this.originFilter) {
+      formData['origin'] = this.originFilter;
     }
     var elements = 0;
     for (let el: HTMLFormElement of formElements) {

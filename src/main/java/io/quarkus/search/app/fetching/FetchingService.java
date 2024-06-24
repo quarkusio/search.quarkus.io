@@ -18,6 +18,8 @@ import jakarta.inject.Inject;
 
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.indexing.FailureCollector;
+import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
+import io.quarkus.search.app.quarkiverseio.QuarkiverseIOConfig;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import io.quarkus.search.app.util.CloseableDirectory;
@@ -41,8 +43,15 @@ public class FetchingService {
     @Inject
     QuarkusIOConfig quarkusIOConfig;
 
+    @Inject
+    QuarkiverseIOConfig quarkiverseIOConfig;
+
     private final Map<URI, GitCloneDirectory.Details> detailsCache = new ConcurrentHashMap<>();
     private final Set<CloseableDirectory> tempDirectories = new ConcurrentHashSet<>();
+
+    public QuarkiverseIO fetchQuarkiverseIo(FailureCollector failureCollector) {
+        return new QuarkiverseIO(quarkiverseIOConfig, failureCollector);
+    }
 
     public QuarkusIO fetchQuarkusIo(FailureCollector failureCollector) {
         CompletableFuture<GitCloneDirectory> main = null;
