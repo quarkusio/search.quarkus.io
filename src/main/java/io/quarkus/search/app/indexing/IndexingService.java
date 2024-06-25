@@ -4,11 +4,7 @@ import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.LongAdder;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -18,19 +14,18 @@ import jakarta.inject.Inject;
 
 import io.quarkus.search.app.ReferenceService;
 import io.quarkus.search.app.fetching.FetchingService;
+import io.quarkus.search.app.hibernate.QuarkusIOLoadingContext;
+import io.quarkus.search.app.hibernate.StreamMassIndexingLoggingMonitor;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
-import io.quarkus.search.app.util.SimpleExecutor;
+import io.quarkus.search.app.util.ExceptionUtils;
 
 import io.quarkus.logging.Log;
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.scheduler.Scheduled;
 import io.quarkus.vertx.http.ManagementInterface;
 
-import org.hibernate.Session;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
-import org.hibernate.search.mapper.orm.mapping.SearchMapping;
-import org.hibernate.search.mapper.orm.session.SearchSession;
+import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
@@ -45,12 +40,6 @@ public class IndexingService {
 
     @Inject
     SearchMapping searchMapping;
-
-    @Inject
-    Session session;
-
-    @Inject
-    SearchSession searchSession;
 
     @Inject
     FetchingService fetchingService;
@@ -90,11 +79,10 @@ public class IndexingService {
                 .chain(() -> Uni.createFrom()
                         .item(() -> {
                             if (IndexingConfig.OnStartup.When.INDEXES_EMPTY.equals(indexingConfig.onStartup().when())) {
-                                try {
-                                    long documentCount = QuarkusTransaction.requiringNew().call(
-                                            () -> searchSession.search(Object.class)
-                                                    .where(f -> f.matchAll())
-                                                    .fetchTotalHitCount());
+                                try (var session = searchMapping.createSession()) {
+                                    long documentCount = session.search(Object.class)
+                                            .where(f -> f.matchAll())
+                                            .fetchTotalHitCount();
                                     if (documentCount > 0L) {
                                         Log.infof("Not reindexing on startup:"
                                                 + " index are present, reachable, and contain %s documents."
@@ -231,65 +219,25 @@ public class IndexingService {
         Log.info("Indexing...");
         try (Rollover rollover = Rollover.start(searchMapping)) {
             try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector)) {
-                indexQuarkusIo(quarkusIO);
+                Log.info("Indexing quarkus.io...");
+                searchMapping.scope(Object.class).massIndexer()
+                        // no point in cleaning the data because of the rollover ^
+                        .purgeAllOnStart(false)
+                        .batchSizeToLoadObjects(indexingConfig.batchSize())
+                        .threadsToLoadObjects(indexingConfig.parallelism().orElse(6))
+                        .context(QuarkusIOLoadingContext.class, QuarkusIOLoadingContext.of(quarkusIO))
+                        .monitor(new StreamMassIndexingLoggingMonitor())
+                        .startAndWait();
             }
-
-            // Refresh BEFORE committing the rollover,
-            // so that the new indexes are fully refreshed
-            // as soon as we switch the aliases.
-            Log.info("Refreshing indexes...");
-            searchMapping.scope(Object.class).workspace().refresh();
 
             rollover.commit();
             referenceService.invalidateCaches();
             Log.info("Indexing success");
         } catch (RuntimeException | IOException e) {
             throw new IllegalStateException("Failed to index data: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw ExceptionUtils.toRuntimeException(e);
         }
     }
-
-    private void indexQuarkusIo(QuarkusIO quarkusIO) throws IOException {
-        Log.info("Indexing quarkus.io...");
-        try (var guideStream = quarkusIO.guides();
-                var executor = new SimpleExecutor(indexingConfig.parallelism())) {
-            indexAll(executor, guideStream.iterator());
-        }
-    }
-
-    private <T> void indexAll(SimpleExecutor executor, Iterator<T> docIterator) {
-        LongAdder indexedCount = new LongAdder();
-        while (docIterator.hasNext()) {
-            List<T> docs = new ArrayList<>();
-            for (int i = 0; docIterator.hasNext() && i < indexingConfig.batchSize(); i++) {
-                docs.add(docIterator.next());
-            }
-            executor.submit(() -> {
-                indexBatch(docs);
-                indexedCount.add(docs.size());
-                // This might lead to duplicate logs, but we don't care.
-                Log.infof("Indexed %d documents...", indexedCount.longValue());
-            });
-        }
-        executor.waitForSuccessOrThrow(indexingConfig.timeout());
-        Log.infof("Indexed %d documents.", indexedCount.longValue());
-    }
-
-    @ActivateRequestContext
-    <T> void indexBatch(List<T> docs) {
-        QuarkusTransaction.requiringNew()
-                .timeout((int) indexingConfig.timeout().toSeconds())
-                .run(() -> {
-                    var indexingPlan = searchSession.indexingPlan();
-                    for (T doc : docs) {
-                        try {
-                            Log.tracef("About to index: %s", doc);
-                            // Not using session.persist because 1. we don't need it and 2. it takes time and memory
-                            indexingPlan.addOrUpdate(doc);
-                        } catch (RuntimeException e) {
-                            throw new IllegalStateException("Failed to persist '%s': %s".formatted(doc, e.getMessage()), e);
-                        }
-                    }
-                });
-    }
-
 }

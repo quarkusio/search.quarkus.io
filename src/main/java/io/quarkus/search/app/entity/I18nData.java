@@ -3,22 +3,11 @@ package io.quarkus.search.app.entity;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
-
-import org.hibernate.Length;
-
-@Embeddable
 public class I18nData<T> {
-    @Column(length = Length.LONG32)
     private T en;
-    @Column(length = Length.LONG32)
     private T es;
-    @Column(length = Length.LONG32)
     private T pt;
-    @Column(length = Length.LONG32)
     private T cn;
-    @Column(length = Length.LONG32)
     private T ja;
 
     public I18nData() {

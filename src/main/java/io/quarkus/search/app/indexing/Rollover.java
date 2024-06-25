@@ -22,8 +22,8 @@ import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchExtension;
 import org.hibernate.search.backend.elasticsearch.index.ElasticsearchIndexManager;
 import org.hibernate.search.backend.elasticsearch.metamodel.ElasticsearchIndexDescriptor;
-import org.hibernate.search.mapper.orm.entity.SearchIndexedEntity;
-import org.hibernate.search.mapper.orm.mapping.SearchMapping;
+import org.hibernate.search.mapper.pojo.standalone.entity.SearchIndexedEntity;
+import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
