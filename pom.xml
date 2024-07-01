@@ -34,7 +34,7 @@
     <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
     <version.docker.plugin>0.44.0</version.docker.plugin>
     <version.formatter.plugin>2.24.1</version.formatter.plugin>
-    <version.impsort-maven-plugin>1.10.0</version.impsort-maven-plugin>
+    <version.impsort-maven-plugin>1.11.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
     <version.opensearch>2.15</version.opensearch>
     <version.quarkus-web-bundler>1.6.0</version.quarkus-web-bundler>
