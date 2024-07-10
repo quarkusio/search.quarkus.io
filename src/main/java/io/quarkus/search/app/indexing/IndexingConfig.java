@@ -1,8 +1,9 @@
 package io.quarkus.search.app.indexing;
 
 import java.time.Duration;
-import java.util.Optional;
 import java.util.OptionalInt;
+
+import io.quarkus.search.app.indexing.reporting.ReportingConfig;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
@@ -20,7 +21,7 @@ public interface IndexingConfig {
     @WithDefault("30s")
     Duration timeout();
 
-    GitErrorReporting errorReporting();
+    ReportingConfig reporting();
 
     interface OnStartup {
         @WithDefault("always")
@@ -40,32 +41,4 @@ public interface IndexingConfig {
         String cron();
     }
 
-    interface GitErrorReporting {
-        @WithDefault("log")
-        Type type();
-
-        Optional<GithubReporter> github();
-
-        interface GithubReporter {
-            Issue issue();
-
-            String token();
-
-            /**
-             * @return How often to report status on GitHub when the last report was identical and contained only warnings.
-             */
-            Duration warningRepeatDelay();
-
-            interface Issue {
-                String repository();
-
-                int id();
-            }
-        }
-
-        enum Type {
-            LOG,
-            GITHUB_ISSUE;
-        }
-    }
 }

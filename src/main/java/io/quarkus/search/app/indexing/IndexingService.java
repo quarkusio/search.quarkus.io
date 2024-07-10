@@ -1,11 +1,13 @@
 package io.quarkus.search.app.indexing;
 
+import static io.quarkus.search.app.util.MutinyUtils.runOnWorkerPool;
 import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
@@ -16,6 +18,10 @@ import io.quarkus.search.app.ReferenceService;
 import io.quarkus.search.app.fetching.FetchingService;
 import io.quarkus.search.app.hibernate.QuarkusIOLoadingContext;
 import io.quarkus.search.app.hibernate.StreamMassIndexingLoggingMonitor;
+import io.quarkus.search.app.indexing.reporting.FailureCollector;
+import io.quarkus.search.app.indexing.reporting.StatusReporter;
+import io.quarkus.search.app.indexing.state.IndexingAlreadyInProgressException;
+import io.quarkus.search.app.indexing.state.IndexingState;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.util.ExceptionUtils;
 
@@ -29,9 +35,6 @@ import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
-
-import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
 
 @ApplicationScoped
 public class IndexingService {
@@ -50,7 +53,12 @@ public class IndexingService {
     @Inject
     ReferenceService referenceService;
 
-    private final AtomicBoolean reindexingInProgress = new AtomicBoolean();
+    private IndexingState state;
+
+    @PostConstruct
+    void init() {
+        state = new IndexingState(StatusReporter.create(indexingConfig.reporting(), Clock.systemUTC()));
+    }
 
     void registerManagementRoutes(@Observes ManagementInterface mi) {
         mi.router().get(REINDEX_ENDPOINT_PATH)
@@ -76,30 +84,28 @@ public class IndexingService {
                 () -> Log.infof("Reindexing on startup: search backend is not reachable yet, waiting..."))
                 .chain(() -> waitForeverFor(this::isSearchBackendReady, waitInterval,
                         () -> Log.infof("Reindexing on startup: search backend is not ready yet, waiting...")))
-                .chain(() -> Uni.createFrom()
-                        .item(() -> {
-                            if (IndexingConfig.OnStartup.When.INDEXES_EMPTY.equals(indexingConfig.onStartup().when())) {
-                                try (var session = searchMapping.createSession()) {
-                                    long documentCount = session.search(Object.class)
-                                            .where(f -> f.matchAll())
-                                            .fetchTotalHitCount();
-                                    if (documentCount > 0L) {
-                                        Log.infof("Not reindexing on startup:"
-                                                + " index are present, reachable, and contain %s documents."
-                                                + " Call endpoint '%s' to reindex explicitly.",
-                                                documentCount, REINDEX_ENDPOINT_PATH);
-                                        return null;
-                                    }
-                                    Log.infof("Reindexing on startup: indexes are empty.");
-                                } catch (RuntimeException e) {
-                                    Log.infof(
-                                            e, "Reindexing on startup: could not determine the content of indexes");
-                                }
+                .chain(() -> runOnWorkerPool(() -> {
+                    if (IndexingConfig.OnStartup.When.INDEXES_EMPTY.equals(indexingConfig.onStartup().when())) {
+                        try (var session = searchMapping.createSession()) {
+                            long documentCount = session.search(Object.class)
+                                    .where(f -> f.matchAll())
+                                    .fetchTotalHitCount();
+                            if (documentCount > 0L) {
+                                Log.infof("Not reindexing on startup:"
+                                        + " index are present, reachable, and contain %s documents."
+                                        + " Call endpoint '%s' to reindex explicitly.",
+                                        documentCount, REINDEX_ENDPOINT_PATH);
+                                return null;
                             }
-                            reindex();
-                            return null;
-                        })
-                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()))
+                            Log.infof("Reindexing on startup: indexes are empty.");
+                        } catch (RuntimeException e) {
+                            Log.infof(
+                                    e, "Reindexing on startup: could not determine the content of indexes");
+                        }
+                    }
+                    reindex();
+                    return null;
+                }))
                 .subscribe().with(
                         // We don't care about the items, we just want this to run.
                         ignored -> {
@@ -113,7 +119,7 @@ public class IndexingService {
             Log.infof("Scheduled reindexing starting...");
             reindex();
             Log.infof("Scheduled reindexing finished.");
-        } catch (ReindexingAlreadyInProgressException e) {
+        } catch (IndexingAlreadyInProgressException e) {
             Log.infof("Indexing was already started by some other process.");
         } catch (RuntimeException e) {
             Log.errorf(e, "Failed to start scheduled reindexing: %s", e.getMessage());
@@ -145,7 +151,7 @@ public class IndexingService {
     @SuppressWarnings("BusyWait")
     @PreDestroy
     protected void waitForReindexingToFinish() throws InterruptedException {
-        if (!reindexingInProgress.get()) {
+        if (!state.isInProgress()) {
             return;
         }
 
@@ -154,39 +160,27 @@ public class IndexingService {
         do {
             Log.info("Shutdown requested, but indexing is in progress, waiting...");
             Thread.sleep(5000);
-        } while (reindexingInProgress.get() && Instant.now().isBefore(until));
-        if (reindexingInProgress.get()) {
+        } while (state.isInProgress() && Instant.now().isBefore(until));
+        if (state.isInProgress()) {
             throw new IllegalStateException("Shutdown requested, aborting indexing which took more than " + timeout);
         }
     }
 
     @ActivateRequestContext
     protected void reindex() {
-        // Reindexing requires exclusive access to the DB/indexes
-        if (!reindexingInProgress.compareAndSet(false, true)) {
-            throw new ReindexingAlreadyInProgressException();
-        }
-        try (FailureCollector failureCollector = new FailureCollector(indexingConfig.errorReporting())) {
+        try (IndexingState.Attempt attempt = state.tryStart()) {
             try {
-                createIndexes();
-                indexAll(failureCollector);
+                createIndexesIfMissing();
+                indexAll(attempt);
             } catch (RuntimeException e) {
-                failureCollector.critical(FailureCollector.Stage.INDEXING, "Indexing failed: " + e.getMessage(), e);
+                attempt.critical(FailureCollector.Stage.INDEXING, "Indexing failed: " + e.getMessage(), e);
                 // Re-throw even though we've reported the failure, for the benefit of callers/logs
                 throw e;
             }
-        } finally {
-            reindexingInProgress.set(false);
         }
     }
 
-    private static class ReindexingAlreadyInProgressException extends RuntimeException {
-        ReindexingAlreadyInProgressException() {
-            super("Reindexing is already in progress and cannot be started at this moment");
-        }
-    }
-
-    private void createIndexes() {
+    private void createIndexesIfMissing() {
         try {
             Log.info("Creating missing indexes");
             searchMapping.scope(Object.class).schemaManager().createIfMissing();
