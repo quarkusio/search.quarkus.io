@@ -11,7 +11,7 @@ public interface StatusReporter {
     static StatusReporter create(ReportingConfig reportingConfig, Clock clock) {
         var type = reportingConfig.type();
         return switch (type) {
-            case LOG -> new LogStatusReporter();
+            case LOG -> new LogStatusReporter(clock);
             case GITHUB_ISSUE -> {
                 ReportingConfig.GithubReporter github = reportingConfig.github().orElseThrow(
                         () -> new IllegalArgumentException(
