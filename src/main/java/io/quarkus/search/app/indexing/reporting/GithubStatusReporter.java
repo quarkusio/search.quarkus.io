@@ -45,6 +45,9 @@ class GithubStatusReporter implements StatusReporter {
             GHRepository repository = github.getRepository(config.issue().repository());
             GHIssue issue = repository.getIssue(config.issue().id());
 
+            // Update last indexing date:
+            issue.setTitle(toStatusSummary(clock, status, issue.getTitle()));
+
             // add comments if needed:
             if (!Status.SUCCESS.equals(status)) {
                 StringBuilder newMessageBuilder = new StringBuilder(STATUS_REPORT_HEADER)
@@ -80,9 +83,6 @@ class GithubStatusReporter implements StatusReporter {
                         issue.comment(newMessage);
                 }
             }
-
-            // Update last indexing date:
-            issue.setTitle(toStatusSummary(clock, status, issue.getTitle()));
 
             // handle issue state (open/close):
             switch (status) {
