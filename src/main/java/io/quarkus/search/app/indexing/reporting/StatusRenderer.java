@@ -22,6 +22,10 @@ public abstract class StatusRenderer {
             "uuuu-MM-dd'T'HH:mm:ssZZZZZ",
             Locale.ROOT);
 
+    private static final int GITHUB_MAX_COMMENT_LENGTH = 65536;
+    private static final String INSERT_START_MARKER = "<!-- Automatic message start -->";
+    private static final String INSERT_END_MARKER = "<!-- Automatic message end -->";
+
     public static String toStatusSummary(Clock clock, Status status, String previousSummary) {
         String toInsert = TITLE_UPDATED_AND_STATUS_FORMAT.formatted(
                 formatStatus(status),
@@ -95,5 +99,42 @@ public abstract class StatusRenderer {
         }
 
         sb.append("\n    ```\n    </details>\n\n");
+    }
+
+    static String insertMessageInIssueDescription(String originalIssueDescription, String newMessage) {
+        StringBuilder result = new StringBuilder(originalIssueDescription != null ? originalIssueDescription : "");
+        int startMarkerIndex = result.indexOf(INSERT_START_MARKER);
+        int endMarkerIndex = startMarkerIndex < 0 ? -1 : result.indexOf(INSERT_END_MARKER);
+        if (startMarkerIndex >= 0 && endMarkerIndex >= 0) {
+            result.replace(startMarkerIndex + INSERT_START_MARKER.length(), endMarkerIndex, "\n");
+        } else {
+            result.append('\n');
+            startMarkerIndex = result.length();
+            result.append(INSERT_START_MARKER).append('\n').append(INSERT_END_MARKER);
+        }
+        int currentIndex = startMarkerIndex + INSERT_START_MARKER.length();
+
+        String quoteIntroMessage = "\n## Last update\n";
+        result.insert(currentIndex, quoteIntroMessage);
+        currentIndex += quoteIntroMessage.length();
+
+        String truncatedMessage = truncateForGitHubMaxLength(asMarkdownQuote(newMessage), result.length());
+        result.insert(currentIndex, truncatedMessage);
+
+        return result.toString();
+    }
+
+    static String truncateForGitHubMaxLength(String message, int reservedLength) {
+        int maxLength = GITHUB_MAX_COMMENT_LENGTH - reservedLength;
+        if (message.length() > maxLength) {
+            return ("### Message truncated as it was too long\n" + message)
+                    .substring(0, maxLength);
+        } else {
+            return message;
+        }
+    }
+
+    private static String asMarkdownQuote(String string) {
+        return string.lines().map(s -> "> " + s).collect(Collectors.joining("\n"));
     }
 }

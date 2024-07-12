@@ -27,7 +27,6 @@ import org.kohsuke.github.GitHubBuilder;
 class GithubStatusReporter implements StatusReporter {
 
     private static final String STATUS_REPORT_HEADER = "## search.quarkus.io indexing status: ";
-    private static final int GITHUB_MAX_COMMENT_LENGTH = 65536;
 
     private final Clock clock;
     private final ReportingConfig.GithubReporter config;
@@ -48,19 +47,21 @@ class GithubStatusReporter implements StatusReporter {
             // Update last indexing date:
             issue.setTitle(toStatusSummary(clock, status, issue.getTitle()));
 
+            // Build a status report
+            StringBuilder newReportBuilder = new StringBuilder(STATUS_REPORT_HEADER)
+                    .append(status).append('\n');
+            toStatusDetailsMarkdown(newReportBuilder, failures, true);
+            String newReport = newReportBuilder.toString();
+
+            // Update the issue description with the content of the latest comment,
+            // for convenience, and to have information available even when indexing is unstable (no issue comment).
+            // This must be done before the comment, so that notifications triggered by the comment are only sent
+            // when the issue is fully updated.
+            issue.setBody(StatusRenderer.insertMessageInIssueDescription(issue.getBody(), newReport));
+
             // add comments if needed:
             if (!Status.SUCCESS.equals(status)) {
-                StringBuilder newMessageBuilder = new StringBuilder(STATUS_REPORT_HEADER)
-                        .append(status).append('\n');
-
-                toStatusDetailsMarkdown(newMessageBuilder, failures, true);
-                String newMessage = newMessageBuilder.toString();
-                if (newMessage.length() > GITHUB_MAX_COMMENT_LENGTH) {
-                    newMessage = ("### Message truncated as it was too long\n" + newMessage).substring(
-                            0,
-                            GITHUB_MAX_COMMENT_LENGTH);
-                }
-
+                String reportComment = StatusRenderer.truncateForGitHubMaxLength(newReport, 0);
                 switch (status) {
                     case WARNING -> {
                         // When warning, only comment if we didn't comment the same thing recently.
@@ -69,10 +70,10 @@ class GithubStatusReporter implements StatusReporter {
                                 clock.instant().minus(config.warningRepeatDelay()))
                                 .reduce(Streams.last());
                         if (lastRecentCommentByMe.isPresent()
-                                && lastRecentCommentByMe.get().getBody().contentEquals(newMessage)) {
+                                && lastRecentCommentByMe.get().getBody().contentEquals(reportComment)) {
                             Log.infof("Skipping the issue comment because the same message was sent recently.");
                         } else {
-                            issue.comment(newMessage);
+                            issue.comment(reportComment);
                         }
                     }
                     case UNSTABLE -> {
@@ -80,7 +81,7 @@ class GithubStatusReporter implements StatusReporter {
                     }
                     case CRITICAL ->
                         // When critical, always comment.
-                        issue.comment(newMessage);
+                        issue.comment(reportComment);
                 }
             }
 

@@ -51,4 +51,33 @@ class StatusRendererTest {
                 .isEqualTo(expected);
     }
 
+    @ParameterizedTest
+    @CsvSource(textBlock = """
+            'Original description
+            <!-- Automatic message start -->
+            ## Last update
+            > Automatic message
+            > and some more
+            <!-- Automatic message end -->',\
+            'Original description',\
+            'Automatic message
+            and some more'
+            'Original description
+            <!-- Automatic message start -->
+            ## Last update
+            > New automatic message
+            > and some more
+            <!-- Automatic message end -->',\
+            'Original description
+            <!-- Automatic message start -->
+            Random garbage
+            <!-- Automatic message end -->',\
+            'New automatic message
+            and some more'
+            """)
+    void insertMessageInIssueDescription(String expected, String originalIssueDescription, String newMessage) {
+        assertThat(StatusRenderer.insertMessageInIssueDescription(originalIssueDescription, newMessage))
+                .isEqualTo(expected);
+    }
+
 }
