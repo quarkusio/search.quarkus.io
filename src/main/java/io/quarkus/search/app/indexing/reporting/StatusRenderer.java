@@ -39,6 +39,7 @@ public abstract class StatusRenderer {
             case SUCCESS -> "Success";
             case WARNING -> "Warning";
             case CRITICAL -> "Critical";
+            case UNSTABLE -> "Unstable";
         };
     }
 

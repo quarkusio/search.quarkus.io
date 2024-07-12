@@ -1,10 +1,12 @@
 package io.quarkus.search.app.indexing;
 
 import static io.quarkus.search.app.util.MutinyUtils.runOnWorkerPool;
+import static io.quarkus.search.app.util.MutinyUtils.schedule;
 import static io.quarkus.search.app.util.MutinyUtils.waitForeverFor;
 
 import java.io.IOException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 
 import jakarta.annotation.PostConstruct;
@@ -36,6 +38,8 @@ import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 
+import io.smallrye.mutiny.subscription.Cancellable;
+
 @ApplicationScoped
 public class IndexingService {
 
@@ -57,13 +61,14 @@ public class IndexingService {
 
     @PostConstruct
     void init() {
-        state = new IndexingState(StatusReporter.create(indexingConfig.reporting(), Clock.systemUTC()));
+        state = new IndexingState(StatusReporter.create(indexingConfig.reporting(), Clock.systemUTC()),
+                indexingConfig.retry(), this::scheduleIndexing);
     }
 
     void registerManagementRoutes(@Observes ManagementInterface mi) {
         mi.router().get(REINDEX_ENDPOINT_PATH)
                 .blockingHandler(rc -> {
-                    reindex();
+                    reindex(false);
                     rc.end("Success");
                 });
     }
@@ -103,7 +108,7 @@ public class IndexingService {
                                     e, "Reindexing on startup: could not determine the content of indexes");
                         }
                     }
-                    reindex();
+                    reindex(true);
                     return null;
                 }))
                 .subscribe().with(
@@ -117,7 +122,7 @@ public class IndexingService {
     void indexOnTime() {
         try {
             Log.infof("Scheduled reindexing starting...");
-            reindex();
+            reindex(true);
             Log.infof("Scheduled reindexing finished.");
         } catch (IndexingAlreadyInProgressException e) {
             Log.infof("Indexing was already started by some other process.");
@@ -166,9 +171,21 @@ public class IndexingService {
         }
     }
 
+    private Cancellable scheduleIndexing(Duration delay) {
+        return schedule(delay, () -> runOnWorkerPool(() -> {
+            reindex(true);
+            return null;
+        }))
+                .subscribe().with(
+                        // We don't care about the items, we just want this to run.
+                        ignored -> {
+                        },
+                        t -> Log.errorf(t, "Reindexing on startup failed: %s", t.getMessage()));
+    }
+
     @ActivateRequestContext
-    protected void reindex() {
-        try (IndexingState.Attempt attempt = state.tryStart()) {
+    protected void reindex(boolean allowRetry) {
+        try (IndexingState.Attempt attempt = state.tryStart(allowRetry)) {
             try {
                 createIndexesIfMissing();
                 indexAll(attempt);

@@ -23,7 +23,7 @@ public class LogStatusReporter implements StatusReporter {
             case SUCCESS -> {
                 Log.info(sb);
             }
-            case WARNING -> {
+            case WARNING, UNSTABLE -> {
                 toStatusDetailsMarkdown(sb, failures, false);
                 Log.warn(sb);
             }

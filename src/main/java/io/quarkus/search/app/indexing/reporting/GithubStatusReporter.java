@@ -72,6 +72,9 @@ class GithubStatusReporter implements StatusReporter {
                             issue.comment(newMessage);
                         }
                     }
+                    case UNSTABLE -> {
+                        // When unstable, never comment: there'll be a retry, and we want to avoid unnecessary noise.
+                    }
                     case CRITICAL ->
                         // When critical, always comment.
                         issue.comment(newMessage);
@@ -88,6 +91,9 @@ class GithubStatusReporter implements StatusReporter {
                         Log.infof("Closing GitHub issue as indexing succeeded.");
                         issue.close();
                     }
+                }
+                case UNSTABLE -> {
+                    Log.infof("Leaving GitHub issue in its current open/close state pending retry.");
                 }
                 case CRITICAL -> {
                     if (GHIssueState.CLOSED.equals(issue.getState())) {

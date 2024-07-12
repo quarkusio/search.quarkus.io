@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.OptionalInt;
 
 import io.quarkus.search.app.indexing.reporting.ReportingConfig;
+import io.quarkus.search.app.indexing.state.RetryConfig;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
@@ -22,6 +23,8 @@ public interface IndexingConfig {
     Duration timeout();
 
     ReportingConfig reporting();
+
+    RetryConfig retry();
 
     interface OnStartup {
         @WithDefault("always")
