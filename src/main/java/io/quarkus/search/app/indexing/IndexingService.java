@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -231,14 +234,25 @@ public class IndexingService {
         try (Rollover rollover = Rollover.start(searchMapping)) {
             try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector)) {
                 Log.info("Indexing quarkus.io...");
-                searchMapping.scope(Object.class).massIndexer()
+                var failFastFailureHandler = new FailFastMassIndexingFailureHandler();
+                var future = searchMapping.scope(Object.class).massIndexer()
                         // no point in cleaning the data because of the rollover ^
                         .purgeAllOnStart(false)
                         .batchSizeToLoadObjects(indexingConfig.batchSize())
                         .threadsToLoadObjects(indexingConfig.parallelism().orElse(6))
                         .context(QuarkusIOLoadingContext.class, QuarkusIOLoadingContext.of(quarkusIO))
                         .monitor(new StreamMassIndexingLoggingMonitor())
-                        .startAndWait();
+                        .failureHandler(failFastFailureHandler)
+                        .start()
+                        .toCompletableFuture();
+                failFastFailureHandler.init(future);
+                try {
+                    future.get(indexingConfig.timeout().toMillis(), TimeUnit.MILLISECONDS);
+                } catch (TimeoutException e) {
+                    future.cancel(true);
+                } catch (ExecutionException e) {
+                    e.getCause();
+                }
             }
 
             rollover.commit();
@@ -251,4 +265,5 @@ public class IndexingService {
             throw ExceptionUtils.toRuntimeException(e);
         }
     }
+
 }
