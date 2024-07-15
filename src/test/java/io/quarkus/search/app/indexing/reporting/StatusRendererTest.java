@@ -45,6 +45,8 @@ class StatusRendererTest {
             WARNING,[PROD] search.quarkus.io indexing status: Success (updated 2024-05-28T00:03:23Z)
             [PROD] search.quarkus.io indexing status: Success (updated 1970-01-01T00:00:00Z),\
             SUCCESS,[PROD] search.quarkus.io indexing status: Success (updated 2024-05-28T00:03:23Z)
+            [PROD] search.quarkus.io indexing status: Success (updated 1970-01-01T00:00:00Z),\
+            SUCCESS,[PROD] search.quarkus.io indexing status: In progress (updated 2024-05-28T00:03:23Z)
             """)
     void toStatusSummary(String expected, Status status, String currentTitle) {
         assertThat(StatusRenderer.toStatusSummary(clock, status, currentTitle))
@@ -55,7 +57,7 @@ class StatusRendererTest {
     @CsvSource(textBlock = """
             'Original description
             <!-- Automatic message start -->
-            ## Last update
+            ## Latest indexing report
             > Automatic message
             > and some more
             <!-- Automatic message end -->',\
@@ -64,7 +66,7 @@ class StatusRendererTest {
             and some more'
             'Original description
             <!-- Automatic message start -->
-            ## Last update
+            ## Latest indexing report
             > New automatic message
             > and some more
             <!-- Automatic message end -->',\

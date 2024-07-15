@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public abstract class StatusRenderer {
     private static final String TITLE_UPDATED_AND_STATUS_FORMAT = ": %s (updated %s)";
     private static final Pattern TITLE_UPDATED_AND_STATUS_PATTERN = Pattern
-            .compile("(:\s*([^() ]+) )?\s*\\(updated [^)]+\\)");
+            .compile("(:\\s*([^(): ][^():]+) )?\\s*\\(updated [^)]+\\)");
     private static final DateTimeFormatter UPDATED_DATE_FORMAT = DateTimeFormatter.ofPattern(
             "uuuu-MM-dd'T'HH:mm:ssZZZZZ",
             Locale.ROOT);
@@ -40,6 +40,7 @@ public abstract class StatusRenderer {
 
     private static Object formatStatus(Status status) {
         return switch (status) {
+            case IN_PROGRESS -> "In progress";
             case SUCCESS -> "Success";
             case WARNING -> "Warning";
             case CRITICAL -> "Critical";
@@ -114,7 +115,7 @@ public abstract class StatusRenderer {
         }
         int currentIndex = startMarkerIndex + INSERT_START_MARKER.length();
 
-        String quoteIntroMessage = "\n## Last update\n";
+        String quoteIntroMessage = "\n## Latest indexing report\n";
         result.insert(currentIndex, quoteIntroMessage);
         currentIndex += quoteIntroMessage.length();
 

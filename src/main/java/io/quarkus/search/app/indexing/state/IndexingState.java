@@ -50,6 +50,7 @@ public class IndexingState {
             scheduledRetry.cancel();
             scheduledRetry = null;
         }
+        reporter.report(Status.IN_PROGRESS, Map.of());
         return new Attempt(allowRetry);
     }
 
