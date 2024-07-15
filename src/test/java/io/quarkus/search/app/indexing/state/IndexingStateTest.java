@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.function.Function;
 
 import io.quarkus.search.app.indexing.reporting.FailureCollector.Stage;
@@ -42,6 +43,7 @@ public class IndexingStateTest {
 
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             // No warning/critical: success
         }
@@ -57,6 +59,7 @@ public class IndexingStateTest {
 
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             // Try concurrent indexing...
             assertThatThrownBy(() -> state.tryStart(true))
@@ -74,6 +77,7 @@ public class IndexingStateTest {
 
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.warning(Stage.INDEXING, "Some warning");
         }
@@ -89,6 +93,7 @@ public class IndexingStateTest {
 
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
@@ -104,6 +109,7 @@ public class IndexingStateTest {
 
         try (IndexingState.Attempt attempt = state.tryStart(false)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
@@ -123,6 +129,7 @@ public class IndexingStateTest {
 
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
@@ -135,6 +142,7 @@ public class IndexingStateTest {
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             verify(cancellableMock).cancel();
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
@@ -147,6 +155,7 @@ public class IndexingStateTest {
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             verify(cancellableMock).cancel();
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             // No warning/critical: success
         }
@@ -166,6 +175,7 @@ public class IndexingStateTest {
 
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
@@ -178,6 +188,7 @@ public class IndexingStateTest {
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             verify(cancellableMock).cancel();
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
@@ -190,6 +201,7 @@ public class IndexingStateTest {
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             verify(cancellableMock).cancel();
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
@@ -203,20 +215,20 @@ public class IndexingStateTest {
                 new ExplicitRetryConfig(3, Duration.ofMinutes(2)), retrySchedulerMock);
         assertThat(state.isInProgress()).isFalse();
 
-        var cancellableMock = mock(Cancellable.class);
-        when(retrySchedulerMock.apply(any())).thenReturn(cancellableMock);
-
         try (IndexingState.Attempt attempt = state.tryStart(true)) {
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }
         verify(statusReporterMock).report(eq(Status.UNSTABLE), anyMap());
         assertThat(state.isInProgress()).isFalse();
 
+        reset(statusReporterMock);
+
         try (IndexingState.Attempt attempt = state.tryStart(false)) {
-            verify(cancellableMock).cancel();
             assertThat(state.isInProgress()).isTrue();
+            verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
         }

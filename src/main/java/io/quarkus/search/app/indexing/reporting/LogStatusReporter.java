@@ -20,7 +20,7 @@ public class LogStatusReporter implements StatusReporter {
     public void report(Status status, Map<FailureCollector.Level, List<Failure>> failures) {
         StringBuilder sb = new StringBuilder(StatusRenderer.toStatusSummary(clock, status, "Indexing status"));
         switch (status) {
-            case SUCCESS -> {
+            case IN_PROGRESS, SUCCESS -> {
                 Log.info(sb);
             }
             case WARNING, UNSTABLE -> {

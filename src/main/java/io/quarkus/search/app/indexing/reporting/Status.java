@@ -1,6 +1,7 @@
 package io.quarkus.search.app.indexing.reporting;
 
 public enum Status {
+    IN_PROGRESS,
     SUCCESS,
     WARNING,
     /**
