@@ -18,7 +18,7 @@ import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.hibernate.InputProvider;
-import io.quarkus.search.app.indexing.FailureCollector;
+import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.testsupport.GitTestUtils;
 import io.quarkus.search.app.util.CloseableDirectory;
@@ -31,6 +31,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import org.apache.commons.io.file.PathUtils;
@@ -39,7 +40,10 @@ import org.assertj.core.api.SoftAssertions;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class FetchingServiceTest {
 
     // Unfortunately we can't use @TempDir here,
@@ -57,6 +61,9 @@ class FetchingServiceTest {
             throw new RuntimeException("Could not init temp directory: " + e.getMessage(), e);
         }
     }
+
+    @Mock
+    FailureCollector failureCollectorMock;
 
     @BeforeAll
     static void initOrigin() throws IOException, GitAPIException {
@@ -194,7 +201,7 @@ class FetchingServiceTest {
 
     @Test
     void fetchQuarkusIo() throws Exception {
-        try (QuarkusIO quarkusIO = service.fetchQuarkusIo(new FailureCollector())) {
+        try (QuarkusIO quarkusIO = service.fetchQuarkusIo(failureCollectorMock)) {
             try (var guides = quarkusIO.guides()) {
                 assertThat(guides)
                         .hasSize(10)
@@ -295,15 +302,15 @@ class FetchingServiceTest {
                         }));
             }
         }
+
         // now let's update some guides and make sure that the content is fetched correctly:
         updateMainRepository();
-
         // NOTE that after an update we'll have non-translated titles and summaries,
         //   since in this test we've only updated them in the "main" repository,
         //   and as a result there's no translation for them in localized sites.
         //   Content file though is still the one from the localized site!
         //
-        try (QuarkusIO quarkusIO = service.fetchQuarkusIo(new FailureCollector())) {
+        try (QuarkusIO quarkusIO = service.fetchQuarkusIo(failureCollectorMock)) {
             try (var guides = quarkusIO.guides()) {
                 assertThat(guides)
                         .hasSize(10)

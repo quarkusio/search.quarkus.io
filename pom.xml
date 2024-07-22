@@ -27,17 +27,17 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.12.0</quarkus.version>
+    <quarkus.version>3.12.3</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
-    <surefire-plugin.version>3.3.0</surefire-plugin.version>
+    <surefire-plugin.version>3.3.1</surefire-plugin.version>
     <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
     <version.docker.plugin>0.44.0</version.docker.plugin>
     <version.formatter.plugin>2.24.1</version.formatter.plugin>
-    <version.impsort-maven-plugin>1.10.0</version.impsort-maven-plugin>
+    <version.impsort-maven-plugin>1.11.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
-    <version.opensearch>2.14</version.opensearch>
-    <version.quarkus-web-bundler>1.6.0</version.quarkus-web-bundler>
+    <version.opensearch>2.15</version.opensearch>
+    <version.quarkus-web-bundler>1.7.0</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -63,7 +63,7 @@
       <dependency>
         <groupId>io.quarkiverse.githubapi</groupId>
         <artifactId>quarkus-github-api</artifactId>
-        <version>1.321.0</version>
+        <version>1.322.0</version>
       </dependency>
       <dependency>
         <groupId>org.commonmark</groupId>
@@ -73,7 +73,7 @@
       <dependency>
         <groupId>org.jsoup</groupId>
         <artifactId>jsoup</artifactId>
-        <version>1.17.2</version>
+        <version>1.18.1</version>
       </dependency>
       <dependency>
         <groupId>org.fedorahosted.tennera</groupId>
@@ -241,6 +241,11 @@
       <artifactId>quarkus-playwright</artifactId>
       <version>1.0.0</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <scope>test</scope>
     </dependency>
   </dependencies>
   <build>

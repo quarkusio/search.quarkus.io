@@ -27,7 +27,7 @@ import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.entity.Language;
-import io.quarkus.search.app.indexing.FailureCollector;
+import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
 import io.quarkus.search.app.util.GitInputProvider;

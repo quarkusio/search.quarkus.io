@@ -17,7 +17,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import io.quarkus.search.app.entity.Language;
-import io.quarkus.search.app.indexing.FailureCollector;
+import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import io.quarkus.search.app.util.CloseableDirectory;

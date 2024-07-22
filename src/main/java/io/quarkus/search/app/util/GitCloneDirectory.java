@@ -25,7 +25,6 @@ import org.hibernate.search.util.common.impl.SuppressingCloser;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.submodule.SubmoduleStatus;
 import org.jboss.logging.Logger;
@@ -141,12 +140,12 @@ public class GitCloneDirectory implements Closeable {
             if (cloneDirectory.remoteName == null) {
                 ref = branch;
             } else {
-                Map<String, Ref> stringRefMap = cloneDirectory.git.lsRemote().setRemote(cloneDirectory.remoteName)
-                        .callAsMap();
-                ref = stringRefMap.get("refs/heads/" + branch).getObjectId().name();
+                ref = cloneDirectory.git.getRepository().getRefDatabase()
+                        .findRef("refs/remotes/%s/%s".formatted(cloneDirectory.remoteName, branch))
+                        .getObjectId().name();
             }
             return GitUtils.firstExistingRevTree(cloneDirectory.git.getRepository(), ref);
-        } catch (IOException | GitAPIException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Unable to locate branch: " + cloneDirectory.details.branches.pages(), e);
         }
     }

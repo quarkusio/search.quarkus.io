@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import io.quarkus.search.app.hibernate.InputProvider;
-import io.quarkus.search.app.indexing.FailureCollector;
+import io.quarkus.search.app.indexing.reporting.FailureCollector;
 
 public class UrlInputProvider implements InputProvider {
 

@@ -25,4 +25,16 @@ public final class MutinyUtils {
                 .skip().where(ignored -> true)
                 .toUni().replaceWithVoid();
     }
+
+    public static <T> Uni<T> runOnWorkerPool(Supplier<T> action) {
+        return Uni.createFrom()
+                .item(action)
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
+    public static <T> Uni<T> schedule(Duration delay, Supplier<Uni<T>> action) {
+        return Uni.createFrom().nullItem()
+                .onItem().delayIt().by(delay)
+                .onItem().transformToUni(ignored -> action.get());
+    }
 }
