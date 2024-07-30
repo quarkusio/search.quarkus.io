@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.quarkus.search.app.hibernate.AnalysisConfigurer;
+import io.quarkus.search.app.hibernate.GuideLoadingBinder;
 import io.quarkus.search.app.hibernate.I18nFullTextField;
 import io.quarkus.search.app.hibernate.I18nKeywordField;
 import io.quarkus.search.app.hibernate.InputProvider;
@@ -27,7 +28,7 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexingDe
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.SearchEntity;
 
-@SearchEntity(loadingBinder = @EntityLoadingBinderRef(name = "guideLoadingBinder"))
+@SearchEntity(loadingBinder = @EntityLoadingBinderRef(type = GuideLoadingBinder.class))
 @Indexed(routingBinder = @RoutingBinderRef(type = QuarkusVersionAndLanguageRoutingBinder.class))
 public class Guide {
     @DocumentId
