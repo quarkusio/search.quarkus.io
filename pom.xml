@@ -32,7 +32,7 @@
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.3.1</surefire-plugin.version>
     <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
-    <version.docker.plugin>0.44.0</version.docker.plugin>
+    <version.docker.plugin>0.45.0</version.docker.plugin>
     <version.formatter.plugin>2.24.1</version.formatter.plugin>
     <version.impsort-maven-plugin>1.11.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->

@@ -9,7 +9,6 @@ updates:
         patterns:
           - "*maven*plugin*"
           - "org.apache.maven*:*"
-          - "io.fabric8:docker-maven-plugin"
         exclude-patterns:
           - "io.quarkus*"
       quarkus:
