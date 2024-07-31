@@ -26,7 +26,7 @@ public class QuarkusIOLoadingContext {
         return -1;
     }
 
-    public synchronized List<Guide> nextBatch(int batchSize) {
+    public List<Guide> nextBatch(int batchSize) {
         List<Guide> list = new ArrayList<>();
         for (int i = 0; guides.hasNext() && i < batchSize; i++) {
             list.add(guides.next());

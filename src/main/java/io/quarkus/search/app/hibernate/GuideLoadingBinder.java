@@ -2,9 +2,6 @@ package io.quarkus.search.app.hibernate;
 
 import java.util.List;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Named;
-
 import io.quarkus.search.app.entity.Guide;
 
 import org.hibernate.search.mapper.pojo.standalone.loading.LoadingTypeGroup;
@@ -17,8 +14,6 @@ import org.hibernate.search.mapper.pojo.standalone.loading.MassLoadingStrategy;
 import org.hibernate.search.mapper.pojo.standalone.loading.binding.EntityLoadingBinder;
 import org.hibernate.search.mapper.pojo.standalone.loading.binding.EntityLoadingBindingContext;
 
-@ApplicationScoped
-@Named("guideLoadingBinder")
 public class GuideLoadingBinder implements EntityLoadingBinder {
 
     @Override
