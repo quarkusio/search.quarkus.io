@@ -27,16 +27,16 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.12.3</quarkus.version>
+    <quarkus.version>3.13.2</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
-    <surefire-plugin.version>3.3.1</surefire-plugin.version>
+    <surefire-plugin.version>3.4.0</surefire-plugin.version>
     <test.jvm.args>-Xms2g -Xmx2g</test.jvm.args>
-    <version.docker.plugin>0.44.0</version.docker.plugin>
+    <version.docker.plugin>0.45.0</version.docker.plugin>
     <version.formatter.plugin>2.24.1</version.formatter.plugin>
     <version.impsort-maven-plugin>1.11.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
-    <version.opensearch>2.15</version.opensearch>
+    <version.opensearch>2.16</version.opensearch>
     <version.quarkus-web-bundler>1.7.0</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
@@ -93,7 +93,7 @@
       <dependency>
         <groupId>org.mvnpm</groupId>
         <artifactId>lit</artifactId>
-        <version>3.1.4</version>
+        <version>3.2.0</version>
       </dependency>
       <dependency>
         <groupId>org.mvnpm</groupId>
@@ -405,7 +405,7 @@
           <dependency>
             <groupId>org.mvnpm.at.lit-labs</groupId>
             <artifactId>ssr-dom-shim</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.1</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
@@ -429,19 +429,19 @@
           <dependency>
             <groupId>org.mvnpm</groupId>
             <artifactId>lit-element</artifactId>
-            <version>4.0.6</version>
+            <version>4.1.0</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
             <groupId>org.mvnpm</groupId>
             <artifactId>lit-html</artifactId>
-            <version>3.1.4</version>
+            <version>3.2.0</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
             <groupId>org.mvnpm</groupId>
             <artifactId>lit</artifactId>
-            <version>3.1.4</version>
+            <version>3.2.0</version>
             <scope>provided</scope>
           </dependency>
           <dependency>

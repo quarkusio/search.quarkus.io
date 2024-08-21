@@ -20,7 +20,7 @@ updates:
       # any WEB component dependencies:
       mvnpm:
         patterns:
-          - "org.mvnpm:*"
+          - "org.mvnpm*:*"
     ignore:
       # Releases too often, it's annoying
       - dependency-name: "org.assertj:*"
