@@ -138,8 +138,16 @@ export class QsGuide extends LitElement {
   }
 
   private relativizeUrl(): string {
-    if (this.originsWithRelativeUrls.includes(this.origin)) {
-      return this.url.substring(new URL(this.url).origin.length);
+    // When we are running local search the urls may already be relative so let's check if
+    // it starts with a `/` and if so assume it is not an absolute url:
+    if (this.originsWithRelativeUrls.includes(this.origin) && !this.url.startsWith("/")) {
+      try {
+        return this.url.substring(new URL(this.url).origin.length);
+      } catch (e) {
+        // and just in case something goes wrong even after the simple startsWith('/') check let's
+        // catch the exception and return the original URL:
+        return this.url;
+      }
     } else {
       return this.url;
     }
