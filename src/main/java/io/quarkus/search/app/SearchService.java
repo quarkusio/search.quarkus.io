@@ -23,7 +23,7 @@ import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 import io.quarkus.runtime.LaunchMode;
 
 import org.hibernate.search.engine.search.common.BooleanOperator;
-import org.hibernate.search.engine.search.common.ValueConvert;
+import org.hibernate.search.engine.search.common.ValueModel;
 import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
@@ -104,7 +104,7 @@ public class SearchService {
                                     .defaultOperator(BooleanOperator.AND))
                                     .should(f.match().field("origin").matching("quarkus").boost(50.0f))
                                     .should(f.not(f.match().field(language.addSuffix("topics"))
-                                            .matching("compatibility", ValueConvert.NO))
+                                            .matching("compatibility", ValueModel.INDEX))
                                             .boost(50.0f)));
                         }
                     })
