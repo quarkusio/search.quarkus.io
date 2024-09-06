@@ -238,6 +238,8 @@ public class IndexingService {
                 var future = searchMapping.scope(Object.class).massIndexer()
                         // no point in cleaning the data because of the rollover ^
                         .purgeAllOnStart(false)
+                        // data is read-only after indexing -- we may as well have a single segment
+                        .mergeSegmentsOnFinish(true)
                         .batchSizeToLoadObjects(indexingConfig.batchSize())
                         .threadsToLoadObjects(indexingConfig.parallelism().orElse(6))
                         .context(QuarkusIOLoadingContext.class, QuarkusIOLoadingContext.of(quarkusIO))
