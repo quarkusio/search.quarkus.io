@@ -203,8 +203,8 @@ class SearchServiceTest {
                         // TODO Shouldn't the ORM guide be before Panache?
                         GuideRef.HIBERNATE_ORM_PANACHE,
                         GuideRef.HIBERNATE_ORM,
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_REACTIVE)),
                 Arguments.of("reactive", GuideRef.urls(
@@ -217,8 +217,8 @@ class SearchServiceTest {
                         GuideRef.HIBERNATE_REACTIVE,
                         GuideRef.HIBERNATE_REACTIVE_PANACHE,
                         GuideRef.HIBERNATE_ORM_PANACHE,
-                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
-                        GuideRef.HIBERNATE_ORM)),
+                        GuideRef.HIBERNATE_ORM,
+                        GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN)),
                 Arguments.of("jpa", GuideRef.urls(
                         GuideRef.HIBERNATE_ORM,
                         GuideRef.HIBERNATE_ORM_PANACHE,
@@ -433,7 +433,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains(
-                        "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
+                        "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> <span class=\"highlighted\">and</span> <span class=\"highlighted\">propagation</span>");
     }
 
     @Test
@@ -447,7 +447,7 @@ class SearchServiceTest {
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains(
                         // unified highlighter will still "highlight" the phrase word by word:
-                        "Duplicated context, context locals, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
+                        "Duplicated context, context locals, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> <span class=\"highlighted\">and</span> <span class=\"highlighted\">propagation</span>");
     }
 
     @Test
@@ -514,7 +514,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains(
-                        "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> and <span class=\"highlighted\">propagation</span>");
+                        "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> <span class=\"highlighted\">and</span> <span class=\"highlighted\">propagation</span>");
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
