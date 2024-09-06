@@ -108,16 +108,16 @@ public class SearchService {
                                             .boost(50.0f)));
                         }
                     })
-                    .highlighter(f -> f.unified()
+                    .highlighter(f -> f.fastVector()
                             // Highlighters are going to use spans-with-classes so that we will have more control over styling the visual on the search results screen.
                             .tag("<span class=\"" + highlightCssClass + "\">", "</span>"))
-                    .highlighter("highlighter_title_or_summary", f -> f.unified()
+                    .highlighter("highlighter_title_or_summary", f -> f.fastVector()
                             // We want the whole text of the field, regardless of whether it has a match or not.
                             .noMatchSize(TITLE_OR_SUMMARY_MAX_SIZE)
                             .fragmentSize(TITLE_OR_SUMMARY_MAX_SIZE)
                             // We want the whole text as a single fragment
                             .numberOfFragments(1))
-                    .highlighter("highlighter_content", f -> f.unified()
+                    .highlighter("highlighter_content", f -> f.fastVector()
                             // If there's no match in the full content we don't want to return anything.
                             .noMatchSize(0)
                             // Content is really huge, so we want to only get small parts of the sentences.
@@ -126,7 +126,8 @@ public class SearchService {
                             .fragmentSize(contentSnippetsLength)
                             // The rest of fragment configuration is static
                             .orderByScore(true)
-                            .boundaryScanner().sentence().end())
+                            // We don't use sentence boundaries because those can result in huge fragments
+                            .boundaryScanner().chars().boundaryMaxScan(10).end())
                     .sort(f -> f.score().then().field(language.addSuffix("title_sort")))
                     .routing(QuarkusVersionAndLanguageRoutingBinder.searchKeys(version, language))
                     .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)

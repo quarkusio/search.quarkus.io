@@ -54,7 +54,7 @@ class SynonymSearchServiceTest {
     private List<? extends Arguments> synonymsTitle() {
         return List.of(
                 Arguments.of("REST Development Service",
-                        Set.of("<span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>")),
+                        Set.of("<span class=\"highlighted\">Dev Services</span>")),
                 Arguments.of("rest easy",
                         Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")),
                 Arguments.of("vertx",
@@ -64,9 +64,9 @@ class SynonymSearchServiceTest {
                 Arguments.of("config",
                         Set.of("<span class=\"highlighted\">configuration</span>")),
                 Arguments.of("config option",
-                        Set.of("<span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>")),
+                        Set.of("<span class=\"highlighted\">configuration options</span>")),
                 Arguments.of("jpa",
-                        Set.of("<span class=\"highlighted\">Jakarta</span> <span class=\"highlighted\">Persistence</span>")));
+                        Set.of("<span class=\"highlighted\">Jakarta Persistence</span>")));
     }
 
     @ParameterizedTest
@@ -84,11 +84,11 @@ class SynonymSearchServiceTest {
     private List<? extends Arguments> synonymsContent() {
         return List.of(
                 Arguments.of("Development Service",
-                        Set.of("<span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>",
-                                "<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp")),
+                        Set.of("<span class=\"highlighted\">Dev Services</span>",
+                                "<span class=\"highlighted\">dev-service</span>-amqp")),
                 Arguments.of("dev Service",
-                        Set.of("<span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>",
-                                "<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp")),
+                        Set.of("<span class=\"highlighted\">Dev Services</span>",
+                                "<span class=\"highlighted\">dev-service</span>-amqp")),
                 Arguments.of("rest easy",
                         Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")),
                 Arguments.of("vertx",
@@ -101,7 +101,10 @@ class SynonymSearchServiceTest {
     private static SearchResult<GuideSearchHit> searchHitSearchResult(String q) {
         return given()
                 .queryParam("q", q)
-                .queryParam("contentSnippets", 2)
+                // Bumping the number of snippets to give low-score matching terms more chance to appear in highlights.
+                // This is fine because these tests are not about relevance,
+                // just about checking that synonyms are detected correctly.
+                .queryParam("contentSnippets", 10)
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)

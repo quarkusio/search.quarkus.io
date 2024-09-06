@@ -368,7 +368,7 @@ class SearchServiceTest {
                         .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
         assertThat(matches.get())
                 .as("Number of occurrences of 'orm' in " + result.hits().stream().map(GuideSearchHit::content).toList())
-                .isEqualTo(10);
+                .isEqualTo(14);
     }
 
     @Test
@@ -448,8 +448,8 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains(
-                        // unified highlighter will still "highlight" the phrase word by word:
-                        "Duplicated context, context locals, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> <span class=\"highlighted\">and</span> <span class=\"highlighted\">propagation</span>");
+                        // fast-vector highlighter will highlight the phrase:
+                        "Duplicated context, context locals, <span class=\"highlighted\">asynchronous processing and propagation</span>");
     }
 
     @Test
@@ -477,7 +477,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(
-                        Set.of("…Environment variable: QUARKUS_VIRTUAL_THREADS_ENABLED Show more boolean true WebSockets Client Type Default <span class=\"highlighted\">quarkus.websocket.max</span>-<span class=\"highlighted\">frame</span>-<span class=\"highlighted\">size</span>…"));
+                        Set.of("…Default <span class=\"highlighted\">quarkus.websocket.max</span>-<span class=\"highlighted\">frame</span>-<span class=\"highlighted\">size</span> The maximum amount of data that can be sent in a single <span class=\"highlighted\">frame</span>. Messages…"));
     }
 
     @Test
@@ -490,7 +490,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "…io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>…"));
+                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Path…"));
     }
 
     @Test
@@ -503,7 +503,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "…io.quarkus.deployment.builditem.nativeimage.NativeImageAllowIncompleteClasspathAggregateBuildItem Do not use directly: use instead. boolean allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span>…"));
+                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Path…"));
     }
 
     @Test
