@@ -27,7 +27,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.14.1</quarkus.version>
+    <quarkus.version>3.14.2</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.5.0</surefire-plugin.version>
@@ -37,7 +37,7 @@
     <version.impsort-maven-plugin>1.11.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
     <version.opensearch>2.16</version.opensearch>
-    <version.quarkus-web-bundler>1.7.0</version.quarkus-web-bundler>
+    <version.quarkus-web-bundler>1.7.1</version.quarkus-web-bundler>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -58,7 +58,7 @@
       <dependency>
         <groupId>io.quarkiverse.jgit</groupId>
         <artifactId>quarkus-jgit</artifactId>
-        <version>3.1.2</version>
+        <version>3.1.3</version>
       </dependency>
       <dependency>
         <groupId>io.quarkiverse.githubapi</groupId>
