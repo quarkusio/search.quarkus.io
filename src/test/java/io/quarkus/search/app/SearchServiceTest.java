@@ -366,7 +366,9 @@ class SearchServiceTest {
         assertThat(result.hits()).extracting(GuideSearchHit::content).hasSize(9)
                 .allSatisfy(content -> assertThat(content).hasSize(1)
                         .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
-        assertThat(matches.get()).isEqualTo(10);
+        assertThat(matches.get())
+                .as("Number of occurrences of 'orm' in " + result.hits().stream().map(GuideSearchHit::content).toList())
+                .isEqualTo(10);
     }
 
     @Test

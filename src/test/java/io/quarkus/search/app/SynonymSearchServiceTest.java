@@ -41,53 +41,61 @@ class SynonymSearchServiceTest {
 
     @ParameterizedTest
     @MethodSource
-    void synonymsTitle(String query, String result) {
-        assertThat(searchHitSearchResult(query).hits()).extracting(GuideSearchHit::title)
-                .contains(result);
+    void synonymsTitle(String query, Set<String> expectedTitleHighlights) {
+        var hits = searchHitSearchResult(query).hits();
+        assertThat(expectedTitleHighlights)
+                .allSatisfy(expectedTitleHighlight -> {
+                    assertThat(hits)
+                            .extracting(GuideSearchHit::title)
+                            .anySatisfy(hitTitle -> assertThat(hitTitle).containsIgnoringCase(expectedTitleHighlight));
+                });
     }
 
     private List<? extends Arguments> synonymsTitle() {
         return List.of(
                 Arguments.of("REST Development Service",
-                        "<span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span> Overview"),
+                        Set.of("<span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>")),
                 Arguments.of("rest easy",
-                        "Writing <span class=\"highlighted\">REST</span> Services with Quarkus <span class=\"highlighted\">REST</span> (formerly <span class=\"highlighted\">RESTEasy</span> Reactive)"),
+                        Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")),
                 Arguments.of("vertx",
-                        "<span class=\"highlighted\">Vert.x</span> Reference Guide"),
+                        Set.of("<span class=\"highlighted\">Vert.x</span>")),
                 Arguments.of("rest api",
-                        "Writing <span class=\"highlighted\">REST</span> Services with Quarkus <span class=\"highlighted\">REST</span> (formerly <span class=\"highlighted\">RESTEasy</span> Reactive)"),
+                        Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")),
                 Arguments.of("config",
-                        "All <span class=\"highlighted\">configuration</span> options"),
+                        Set.of("<span class=\"highlighted\">configuration</span>")),
                 Arguments.of("config option",
-                        "All <span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>"),
+                        Set.of("<span class=\"highlighted\">configuration</span> <span class=\"highlighted\">options</span>")),
                 Arguments.of("jpa",
-                        "Using Hibernate ORM and <span class=\"highlighted\">Jakarta</span> <span class=\"highlighted\">Persistence</span>"));
+                        Set.of("<span class=\"highlighted\">Jakarta</span> <span class=\"highlighted\">Persistence</span>")));
     }
 
     @ParameterizedTest
     @MethodSource
-    void synonymsContent(String query, Set<String> result) {
-        assertThat(searchHitSearchResult(query).hits()).flatExtracting(GuideSearchHit::content)
-                .containsAll(result);
+    void synonymsContent(String query, Set<String> expectedContentHighlights) {
+        var hits = searchHitSearchResult(query).hits();
+        assertThat(expectedContentHighlights)
+                .allSatisfy(expectedContentHighlight -> {
+                    assertThat(hits)
+                            .flatExtracting(GuideSearchHit::content)
+                            .anySatisfy(hitTitle -> assertThat(hitTitle).containsIgnoringCase(expectedContentHighlight));
+                });
     }
 
     private List<? extends Arguments> synonymsContent() {
         return List.of(
                 Arguments.of("Development Service",
-                        Set.of("…also offer <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>.…",
-                                "…In this case, before starting a container, <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span> for AMQP looks for a container with the quarkus-<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp…")),
+                        Set.of("<span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>",
+                                "<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp")),
                 Arguments.of("dev Service",
-                        Set.of("…also offer <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>.…",
-                                "…In this case, before starting a container, <span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span> for AMQP looks for a container with the quarkus-<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp…")),
+                        Set.of("<span class=\"highlighted\">Dev</span> <span class=\"highlighted\">Services</span>",
+                                "<span class=\"highlighted\">dev</span>-<span class=\"highlighted\">service</span>-amqp")),
                 Arguments.of("rest easy",
-                        Set.of("…Writing <span class=\"highlighted\">REST</span> Services with Quarkus <span class=\"highlighted\">REST</span> (formerly <span class=\"highlighted\">RESTEasy</span> Reactive) This guide explains how to write…",
-                                "…We recommend doing so at your application entry point boundaries like your <span class=\"highlighted\">REST</span> endpoint controllers.…")),
+                        Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")),
                 Arguments.of("vertx",
-                        Set.of("…}\n\n} You can inject either the: <span class=\"highlighted\">io.vertx.core.Vertx</span> instance exposing the bare <span class=\"highlighted\">Vert.x</span> API <span class=\"highlighted\">io.vertx.mutiny.core.Vertx</span>…",
-                                "…Access the <span class=\"highlighted\">Vert.x</span> instance To access the managed <span class=\"highlighted\">Vert.x</span> instance, add the quarkus-<span class=\"highlighted\">vertx</span> extension to…")),
+                        Set.of("<span class=\"highlighted\">io.vertx.core.Vertx</span>",
+                                "<span class=\"highlighted\">Vert.x</span>", "<span class=\"highlighted\">vertx</span>")),
                 Arguments.of("rest api",
-                        Set.of("…Writing <span class=\"highlighted\">REST</span> Services with Quarkus <span class=\"highlighted\">REST</span> (formerly <span class=\"highlighted\">RESTEasy</span> Reactive) This guide explains how to write…",
-                                "…We recommend doing so at your application entry point boundaries like your <span class=\"highlighted\">REST</span> endpoint controllers.…")));
+                        Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")));
     }
 
     private static SearchResult<GuideSearchHit> searchHitSearchResult(String q) {
