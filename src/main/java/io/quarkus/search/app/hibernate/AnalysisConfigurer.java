@@ -44,10 +44,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
         return language.addSuffix(AUTOCOMPLETE);
     }
 
-    private static String stopFilter(Language language) {
-        return "stop_%s".formatted(language.code);
-    }
-
     private static String regularStemmerFilter(Language language) {
         return "stemmer_%s".formatted(language.code);
     }
@@ -99,8 +95,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase",
                         // To remove possessives (trailing 's) from words.
                         possessiveStemmerFilter(language),
-                        // To remove frequently used words that do not bring much meaning, e.g. a, that, and, are, as, at, with...
-                        stopFilter(language),
                         // To remove suffixes like -s/-es/-ed etc
                         regularStemmerFilter(language),
                         // To convert characters into ascii ones, e.g. à to a or ę to e etc.
@@ -113,7 +107,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                 .tokenFilters(
                         "lowercase",
                         possessiveStemmerFilter(language),
-                        stopFilter(language),
                         regularStemmerFilter(language),
                         "asciifolding",
                         // > In general, synonym filters rewrite their inputs to the tokenizer and filters used in the preceding analysis chain
@@ -133,7 +126,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         compoundTechnicalNameFilter(language),
                         "lowercase",
                         possessiveStemmerFilter(language),
-                        stopFilter(language),
                         regularStemmerFilter(language),
                         "asciifolding",
                         autocompleteEdgeNgramFilter(language))
@@ -156,7 +148,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "kuromoji_part_of_speech",
                         possessiveStemmerFilter(language),
                         "ja_stop",
-                        stopFilter(language),
                         "kuromoji_stemmer",
                         regularStemmerFilter(language),
                         "asciifolding")
@@ -175,7 +166,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "kuromoji_part_of_speech",
                         possessiveStemmerFilter(language),
                         "ja_stop",
-                        stopFilter(language),
                         "kuromoji_stemmer",
                         regularStemmerFilter(language),
                         "asciifolding",
@@ -193,7 +183,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "kuromoji_part_of_speech",
                         possessiveStemmerFilter(language),
                         "ja_stop",
-                        stopFilter(language),
                         "kuromoji_stemmer",
                         regularStemmerFilter(language),
                         "asciifolding",
@@ -218,7 +207,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase",
                         possessiveStemmerFilter(language),
                         "smartcn_stop",
-                        stopFilter(language),
                         regularStemmerFilter(language),
                         "asciifolding")
                 .charFilters("html_strip");
@@ -229,7 +217,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                 .tokenFilters(
                         "lowercase",
                         possessiveStemmerFilter(language),
-                        stopFilter(language),
                         regularStemmerFilter(language),
                         "asciifolding",
                         synonymsGraphFilter(language),
@@ -244,7 +231,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "lowercase",
                         possessiveStemmerFilter(language),
                         "smartcn_stop",
-                        stopFilter(language),
                         regularStemmerFilter(language),
                         "asciifolding",
                         autocompleteEdgeNgramFilter(language))
@@ -256,10 +242,6 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
     }
 
     private static void configureSharedFilters(ElasticsearchAnalysisConfigurationContext context, Language language) {
-        context.tokenFilter(stopFilter(language))
-                .type("stop")
-                .param("stopwords", "_english_")
-                .param("ignore_case", "true");
         context.tokenFilter(regularStemmerFilter(language))
                 .type("stemmer")
                 .param("language", "english");
