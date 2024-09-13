@@ -23,7 +23,7 @@ import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 import io.quarkus.runtime.LaunchMode;
 
 import org.hibernate.search.engine.search.common.BooleanOperator;
-import org.hibernate.search.engine.search.common.ValueConvert;
+import org.hibernate.search.engine.search.common.ValueModel;
 import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
@@ -36,7 +36,7 @@ import io.vertx.ext.web.Router;
 @Path("/")
 public class SearchService {
 
-    private static final int NO_MATCH_SIZE = 32_600;
+    private static final int TITLE_OR_SUMMARY_MAX_SIZE = 32_600;
     private static final int PAGE_SIZE = 50;
     private static final long TOTAL_HIT_COUNT_THRESHOLD = 100;
     private static final String MAX_FOR_PERF_MESSAGE = "{jakarta.validation.constraints.Max.message} for performance reasons";
@@ -73,8 +73,8 @@ public class SearchService {
                             f.id(),
                             f.field("type"),
                             f.field("origin"),
-                            f.highlight(language.addSuffix("title")),
-                            f.highlight(language.addSuffix("summary")),
+                            f.highlight(language.addSuffix("title")).highlighter("highlighter_title_or_summary").single(),
+                            f.highlight(language.addSuffix("summary")).highlighter("highlighter_title_or_summary").single(),
                             f.highlight(language.addSuffix("fullContent")).highlighter("highlighter_content"))
                             .asList(GuideSearchHit::new))
                     .where((f, root) -> {
@@ -104,25 +104,30 @@ public class SearchService {
                                     .defaultOperator(BooleanOperator.AND))
                                     .should(f.match().field("origin").matching("quarkus").boost(50.0f))
                                     .should(f.not(f.match().field(language.addSuffix("topics"))
-                                            .matching("compatibility", ValueConvert.NO))
+                                            .matching("compatibility", ValueModel.INDEX))
                                             .boost(50.0f)));
                         }
                     })
-                    // * Highlighters are going to use spans-with-classes so that we will have more control over styling the visual on the search results screen.
-                    // * We give control to the caller on the content snippet length and the number of these fragments
-                    // * No match size is there to make sure that we are still going to get the text even if the field didn't have a match in it.
-                    // * The title in the Guide entity is `Length.LONG` long, so we use that as a max value for no-match size, but hopefully nobody writes a title that long...
-                    .highlighter(
-                            f -> f.unified().noMatchSize(NO_MATCH_SIZE).fragmentSize(0)
-                                    .orderByScore(true)
-                                    .numberOfFragments(1)
-                                    .tag("<span class=\"" + highlightCssClass + "\">", "</span>")
-                                    .boundaryScanner().sentence().end())
-                    // * If there's no match in the full content we don't want to return anything.
-                    // * Also content is really huge, so we want to only get small parts of the sentences. We are allowing caller to pick the number of sentences and their length:
-                    .highlighter("highlighter_content",
-                            f -> f.unified().noMatchSize(0).numberOfFragments(contentSnippets)
-                                    .fragmentSize(contentSnippetsLength))
+                    .highlighter(f -> f.fastVector()
+                            // Highlighters are going to use spans-with-classes so that we will have more control over styling the visual on the search results screen.
+                            .tag("<span class=\"" + highlightCssClass + "\">", "</span>"))
+                    .highlighter("highlighter_title_or_summary", f -> f.fastVector()
+                            // We want the whole text of the field, regardless of whether it has a match or not.
+                            .noMatchSize(TITLE_OR_SUMMARY_MAX_SIZE)
+                            .fragmentSize(TITLE_OR_SUMMARY_MAX_SIZE)
+                            // We want the whole text as a single fragment
+                            .numberOfFragments(1))
+                    .highlighter("highlighter_content", f -> f.fastVector()
+                            // If there's no match in the full content we don't want to return anything.
+                            .noMatchSize(0)
+                            // Content is really huge, so we want to only get small parts of the sentences.
+                            // We give control to the caller on the content snippet length and the number of these fragments
+                            .numberOfFragments(contentSnippets)
+                            .fragmentSize(contentSnippetsLength)
+                            // The rest of fragment configuration is static
+                            .orderByScore(true)
+                            // We don't use sentence boundaries because those can result in huge fragments
+                            .boundaryScanner().chars().boundaryMaxScan(10).end())
                     .sort(f -> f.score().then().field(language.addSuffix("title_sort")))
                     .routing(QuarkusVersionAndLanguageRoutingBinder.searchKeys(version, language))
                     .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)

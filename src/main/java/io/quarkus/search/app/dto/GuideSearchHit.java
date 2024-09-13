@@ -10,21 +10,18 @@ public record GuideSearchHit(URI url, String type, String origin, String title, 
     public GuideSearchHit(URI url,
             String type,
             String origin,
-            List<String> title,
-            List<String> summary,
-            List<String> fullContent) {
-        this(url, type, origin, firstOrEmpty(title), firstOrEmpty(summary), wrap(fullContent));
+            String title,
+            String summary,
+            List<String> content) {
+        this(url, type, origin, title != null ? title : "", summary != null ? summary : "", wrap(content));
     }
 
     @SuppressWarnings("unchecked")
     public GuideSearchHit(List<?> values) {
         this(
                 (URI) values.get(0), (String) values.get(1), (String) values.get(2),
-                (List<String>) values.get(3), (List<String>) values.get(4), (List<String>) values.get(5));
-    }
-
-    private static String firstOrEmpty(List<String> strings) {
-        return strings.isEmpty() ? "" : strings.get(0);
+                (String) values.get(3), (String) values.get(4),
+                (List<String>) values.get(5));
     }
 
     private static Set<String> wrap(List<String> strings) {
