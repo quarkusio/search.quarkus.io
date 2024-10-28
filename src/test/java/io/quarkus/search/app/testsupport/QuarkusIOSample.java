@@ -35,6 +35,7 @@ import io.quarkus.search.app.util.GitCloneDirectory;
 
 import io.quarkus.runtime.configuration.ConfigUtils;
 import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
+import io.quarkus.test.common.TestResourceScope;
 import io.quarkus.test.common.WithTestResource;
 
 import org.hibernate.search.util.common.impl.Closer;
@@ -500,7 +501,7 @@ public final class QuarkusIOSample {
 
     @Target(ElementType.TYPE)
     @Retention(RetentionPolicy.RUNTIME)
-    @WithTestResource(Resource.class)
+    @WithTestResource(value = Resource.class, scope = TestResourceScope.RESTRICTED_TO_CLASS)
     public @interface Setup {
         Class<? extends FilterDefinition> filter() default AllFilterDefinition.class;
 
