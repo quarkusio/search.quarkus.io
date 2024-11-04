@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -291,6 +292,19 @@ public final class QuarkusIOSample {
         });
     }
 
+    private static void yamlVersionEditor(Path fileToEdit, Collection<String> versions) {
+        yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
+            Map<String, Object> filtered = new HashMap<>();
+            filtered.put("quarkus", quarkusYaml.get("quarkus"));
+            filtered.put("graalvm", quarkusYaml.get("graalvm"));
+            filtered.put("jdk", quarkusYaml.get("jdk"));
+            filtered.put("maven", quarkusYaml.get("maven"));
+
+            filtered.put("documentation", versions);
+            return filtered;
+        });
+    }
+
     private static void yamlQuarkusEditor(Path fileToEdit, Function<Map<String, Object>, Map<String, Object>> editor) {
         Map<String, Object> filtered;
         try (InputStream inputStream = Files.newInputStream(fileToEdit)) {
@@ -384,6 +398,7 @@ public final class QuarkusIOSample {
 
         @Override
         public void define(FilterDefinitionCollector c) {
+            c.addVersionMetadata(SAMPLED_VERSIONS);
             for (String version : SAMPLED_VERSIONS) {
                 c.addMetadata(version, guides);
                 if (QuarkusVersions.MAIN.equals(version)) {
@@ -434,6 +449,13 @@ public final class QuarkusIOSample {
             String htmlPath = QuarkusIO.htmlPath(Language.ENGLISH, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
             addOnPagesBranch(htmlPath, htmlPath);
+            return this;
+        }
+
+        public FilterDefinitionCollector addVersionMetadata(Collection<String> versions) {
+            String metadataPath = QuarkusIO.yamlVersionMetadataPath().toString();
+            addOnSourceBranch(metadataPath, metadataPath);
+            addMetadataToFilter(metadataPath, path -> yamlVersionEditor(path, versions));
             return this;
         }
 
