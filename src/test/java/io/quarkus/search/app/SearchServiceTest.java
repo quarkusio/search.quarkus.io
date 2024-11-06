@@ -406,7 +406,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains("Stork リファレンス<span class=\"highlighted\">ガイド</span>",
-                        "Use Hibernate Search with Hibernate ORM and Elasticsearch/OpenSearch");
+                        "Hibernate ORMとElasticsearch/OpenSearchでHibernate Searchを使用");
     }
 
     @Test
@@ -455,9 +455,9 @@ class SearchServiceTest {
     @Test
     void findEnvVariable() {
         var result = given()
-                // the variable that we are "planning" to find is actually QUARKUS_DATASOURCE_JDBC_TRACING_IGNORE_FOR_TRACING
+                // the variable that we are "planning" to find is actually QUARKUS_DATASOURCE_JDBC_URL
                 // But we'll be looking only for a part of it.
-                .queryParam("q", "QUARKUS_DATASOURCE_JDBC_TRACING_")
+                .queryParam("q", "QUARKUS_DATASOURCE_JDBC_U")
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
@@ -470,14 +470,14 @@ class SearchServiceTest {
     @Test
     void findConfigProperty() {
         var result = given()
-                .queryParam("q", "quarkus.websocket.max-frame-size")
+                .queryParam("q", "quarkus.vertx.eventbus.tcp-keep-alive")
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(
-                        Set.of("…Default <span class=\"highlighted\">quarkus.websocket.max</span>-<span class=\"highlighted\">frame</span>-<span class=\"highlighted\">size</span> The maximum amount of data that can be sent in a single <span class=\"highlighted\">frame</span>. Messages…"));
+                        Set.of("…false <span class=\"highlighted\">quarkus.vertx.eventbus.tcp</span>-<span class=\"highlighted\">keep</span>-<span class=\"highlighted\">alive</span> Whether to <span class=\"highlighted\">keep</span> the TCP connection opened (<span class=\"highlighted\">keep</span>-<span class=\"highlighted\">alive</span>). Environment…"));
     }
 
     @Test
@@ -490,7 +490,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Path…"));
+                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Show…"));
     }
 
     @Test
@@ -503,7 +503,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Path…"));
+                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Show…"));
     }
 
     @Test
