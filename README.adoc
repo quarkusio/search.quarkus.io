@@ -5,7 +5,7 @@
 [[architecture]]
 == Architecture
 
-The application is deployed on an OpenShift cluster, next to an OpenSearch instance.
+The application is deployed on an OpenShift cluster, next to an Elasticsearch instance.
 
 It fetches the sources from quarkus.io and localized variants (pt.quarkus.io, ...) to index them,
 and exposes the search feature through a REST API.
@@ -142,34 +142,34 @@ Then start it this way:
 [source,shell]
 ----
 podman pod create -p 8080:8080 -p 9000:9000 -p 9200:9200 --name search.quarkus.io
-# Start multiple OpenSearch containers
+# Start multiple Elasticsearch containers
 podman container run -d --name search-backend-0 --pod search.quarkus.io \
     --cpus=2 --memory=2g \
     -e "node.name=search-backend-0" \
     -e "discovery.seed_hosts=localhost" \
     -e "cluster.initial_cluster_manager_nodes=search-backend-0,search-backend-1,search-backend-2" \
-    -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
-    -e "DISABLE_SECURITY_PLUGIN=true" \
+    -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" \
+    -e "xpack.security.enabled=false" \
     -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    opensearch-custom:latest
+    elasticsearch-custom:latest
 podman container run -d --name search-backend-1 --pod search.quarkus.io \
     --cpus=2 --memory=2g \
     -e "node.name=search-backend-1" \
     -e "discovery.seed_hosts=localhost" \
     -e "cluster.initial_cluster_manager_nodes=search-backend-0,search-backend-1,search-backend-2" \
-    -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
-    -e "DISABLE_SECURITY_PLUGIN=true" \
+    -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" \
+    -e "xpack.security.enabled=false" \
     -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    opensearch-custom:latest
+    elasticsearch-custom:latest
 podman container run -d --name search-backend-2 --pod search.quarkus.io \
     --cpus=2 --memory=2g \
     -e "node.name=search-backend-2" \
     -e "discovery.seed_hosts=localhost" \
     -e "cluster.initial_cluster_manager_nodes=search-backend-0,search-backend-1,search-backend-2" \
-    -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
-    -e "DISABLE_SECURITY_PLUGIN=true" \
+    -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" \
+    -e "xpack.security.enabled=false" \
     -e "cluster.routing.allocation.disk.threshold_enabled=false" \
-    opensearch-custom:latest
+    elasticsearch-custom:latest
 # Then the app; this will fetch the actual data on startup (might take a while):
 podman container run -it --rm --name search.quarkus.io --pod search.quarkus.io search-quarkus-io:999-SNAPSHOT
 # OR, if you already have locals clones of *.quarkus.io:
@@ -251,11 +251,11 @@ you will need to set up a few things manually:
      on quarkusio/search.quarkus.io.
      See `indexing.reporting.github` configuration properties for more details.
    `search-backend-config`::
-   Environment variables for the OpenSearch instances.
+   Environment variables for the Elasticsearch instances.
      +
      Put in there whatever configuration you need for your specific cluster.
    `search-backend-secret`::
-   Secret environment variables for the OpenSearch instances.
+   Secret environment variables for the Elasticsearch instances.
      +
      Put in there whatever secret configuration you need for your specific cluster.
 
