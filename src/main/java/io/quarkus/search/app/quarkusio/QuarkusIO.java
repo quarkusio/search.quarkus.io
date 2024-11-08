@@ -565,7 +565,7 @@ public class QuarkusIO implements Closeable {
             // So if it's missing, that's important context when investigating other errors.
             failureCollector.info(
                     FailureCollector.Stage.TRANSLATION,
-                    "Guide " + guide + " is ignored since we were not able to find an HTML content file for it.");
+                    guide + " is ignored since we were not able to find an HTML content file for it.");
             return null;
         }
 
