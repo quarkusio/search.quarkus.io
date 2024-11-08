@@ -128,7 +128,7 @@ spec:
               value: 'false'
             - name: 'xpack.monitoring.templates.enabled'
               value: 'false'
-            - name: 'xpack.watcher.enabled"'
+            - name: 'xpack.watcher.enabled'
               value: 'false'
           envFrom:
             - configMapRef:
