@@ -11,13 +11,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import io.quarkus.logging.Log;
 import io.quarkus.search.app.indexing.reporting.Failure;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.indexing.reporting.Status;
 import io.quarkus.search.app.indexing.reporting.StatusReporter;
-
-import io.quarkus.logging.Log;
-
 import io.smallrye.mutiny.subscription.Cancellable;
 
 public class IndexingState {
@@ -89,25 +87,9 @@ public class IndexingState {
         }
 
         @Override
-        public void warning(Stage stage, String details) {
-            warning(stage, details, null);
-        }
-
-        @Override
-        public void warning(Stage stage, String details, Exception exception) {
-            Log.warn(details, exception);
-            failures.get(Level.WARNING).add(new Failure(Level.WARNING, stage, details, exception));
-        }
-
-        @Override
-        public void critical(Stage stage, String details) {
-            critical(stage, details, null);
-        }
-
-        @Override
-        public void critical(Stage stage, String details, Exception exception) {
-            Log.error(details, exception);
-            failures.get(Level.CRITICAL).add(new Failure(Level.CRITICAL, stage, details, exception));
+        public void collect(Level level, Stage stage, String details, Exception exception) {
+            Log.log(level.logLevel, details, exception);
+            failures.get(level).add(new Failure(level, stage, details, exception));
         }
 
         private boolean scheduleRetry() {
