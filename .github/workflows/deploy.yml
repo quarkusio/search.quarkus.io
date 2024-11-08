@@ -61,7 +61,7 @@ jobs:
       id: oc-registry
       run: |
         echo -n "OC_REGISTRY_URL=" >> "$GITHUB_OUTPUT"
-        oc registry info >> "$GITHUB_OUTPUT"
+        oc get imagestream -o json | jq -r '.items[0].status.publicDockerImageRepository' | awk -F"[/]" '{print $1}' >> "$GITHUB_OUTPUT"
     - name: Log in to OpenShift Container Registry
       uses: docker/login-action@v3
       with:
@@ -85,12 +85,12 @@ jobs:
           -Drevision="${{ steps.app-version.outputs.value }}" \
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
-          -Dquarkus.container-image.registry="$(oc registry info)" \
+          -Dquarkus.container-image.registry="${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}" \
           -Dquarkus.container-image.group="$(oc project --short)"
 
     - name: Push Elasticsearch container image
       run: |
-        REMOTE_IMAGE_REF="$(oc registry info)/$(oc project --short)/elasticsearch-custom:${{ steps.app-version.outputs.value }}"
+        REMOTE_IMAGE_REF="${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}/$(oc project --short)/elasticsearch-custom:${{ steps.app-version.outputs.value }}"
         # docker doesn't allow the `push source target` syntax, so we have to do this in two steps.
         docker image tag "elasticsearch-custom:latest" "$REMOTE_IMAGE_REF"
         docker push "$REMOTE_IMAGE_REF"
