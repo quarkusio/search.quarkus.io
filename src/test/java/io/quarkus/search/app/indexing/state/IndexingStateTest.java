@@ -45,6 +45,9 @@ public class IndexingStateTest {
             assertThat(state.isInProgress()).isTrue();
             verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
+            // info should not affect the status
+            attempt.info(Stage.INDEXING, "Some info");
+
             // No warning/critical: success
         }
         verify(statusReporterMock).report(eq(Status.SUCCESS), anyMap());
@@ -80,6 +83,9 @@ public class IndexingStateTest {
             verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.warning(Stage.INDEXING, "Some warning");
+
+            // info should not affect the status
+            attempt.info(Stage.INDEXING, "Some info");
         }
         verify(statusReporterMock).report(eq(Status.WARNING), anyMap());
         assertThat(state.isInProgress()).isFalse();
@@ -96,6 +102,9 @@ public class IndexingStateTest {
             verify(statusReporterMock).report(eq(Status.IN_PROGRESS), eq(Map.of()));
 
             attempt.critical(Stage.INDEXING, "Something critical");
+
+            // info should not affect the status
+            attempt.info(Stage.INDEXING, "Some info");
         }
         verify(statusReporterMock).report(eq(Status.CRITICAL), anyMap());
         assertThat(state.isInProgress()).isFalse();

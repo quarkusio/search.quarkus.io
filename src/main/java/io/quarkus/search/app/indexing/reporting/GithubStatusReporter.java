@@ -68,6 +68,8 @@ class GithubStatusReporter implements StatusReporter {
             switch (status) {
                 case IN_PROGRESS, SUCCESS -> {
                     // When in progress or successful, never comment: we want to avoid unnecessary noise.
+                    // Note this means INFO level failures will have been logged by the FailureCollector,
+                    // but won't be reported to GitHub.
                 }
                 case WARNING -> {
                     // When warning, only comment if we didn't comment the same thing recently.

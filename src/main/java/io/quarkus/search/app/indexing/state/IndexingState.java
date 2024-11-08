@@ -11,11 +11,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import io.quarkus.logging.Log;
 import io.quarkus.search.app.indexing.reporting.Failure;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.indexing.reporting.Status;
 import io.quarkus.search.app.indexing.reporting.StatusReporter;
+
+import io.quarkus.logging.Log;
+
 import io.smallrye.mutiny.subscription.Cancellable;
 
 public class IndexingState {
@@ -100,7 +102,7 @@ public class IndexingState {
                 try {
                     scheduledRetry = retryScheduler.apply(retryConfig.delay());
                     // If we get here, a retry was scheduled.
-                    warning(Stage.INDEXING, "Indexing will be tried again later.");
+                    info(Stage.INDEXING, "Indexing will be tried again later.");
                     return true;
                 } catch (RuntimeException e) {
                     // If we get here, we'll abort.
@@ -115,6 +117,8 @@ public class IndexingState {
         }
 
         private static Status indexingResultStatus(Map<Level, List<Failure>> failures) {
+            // INFO level is ignored for the overall status.
+            // We will only report INFO failures if there are other CRITICAL/WARNING failures.
             if (failures.get(Level.CRITICAL).isEmpty()) {
                 if (failures.get(Level.WARNING).isEmpty()) {
                     return Status.SUCCESS;

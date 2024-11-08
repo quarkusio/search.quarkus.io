@@ -13,7 +13,12 @@ public interface FailureCollector {
          * Level for failures that don't prevent reindexing but cause the index to be incomplete/incorrect,
          * and may require maintainer's attention.
          */
-        WARNING(Logger.Level.WARN);
+        WARNING(Logger.Level.WARN),
+        /**
+         * Level for failures that don't prevent reindexing but cause the index to be incomplete/incorrect,
+         * though maintainer's attention is not needed (the solution is just waiting).
+         */
+        INFO(Logger.Level.INFO);
 
         public final Logger.Level logLevel;
 
@@ -33,6 +38,14 @@ public interface FailureCollector {
     }
 
     void collect(Level level, Stage stage, String details, Exception exception);
+
+    default void info(Stage stage, String details) {
+        collect(Level.INFO, stage, details);
+    }
+
+    default void info(Stage stage, String details, Exception exception) {
+        collect(Level.INFO, stage, details, exception);
+    }
 
     default void warning(Stage stage, String details) {
         collect(Level.WARNING, stage, details);
