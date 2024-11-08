@@ -37,7 +37,14 @@
     <version.impsort-maven-plugin>1.12.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
     <version.opensearch>2.18</version.opensearch>
+    <!-- This version needs to match the version in src/main/docker/elasticsearch-custom.Dockerfile -->
+    <version.elasticsearch>8.15</version.elasticsearch>
     <version.quarkus-web-bundler>1.7.3</version.quarkus-web-bundler>
+    <!-- Configuration for the search backend used in tests by default: -->
+    <search.backend.dockerfile>${project.basedir}/src/main/docker/elasticsearch-custom.Dockerfile</search.backend.dockerfile>
+    <search.backend.dockerversion>${version.elasticsearch}</search.backend.dockerversion>
+    <search.backend.dockername>elasticsearch-custom</search.backend.dockername>
+    <search.backend.distribution>elastic</search.backend.distribution>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -269,7 +276,8 @@
           <systemProperties>
             <maven.revision>${revision}</maven.revision>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
-            <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
+            <maven.version.search.backend>${search.backend.dockerversion}</maven.version.search.backend>
+            <maven.name.search.backend>${search.backend.dockername}</maven.name.search.backend>
           </systemProperties>
         </configuration>
       </plugin>
@@ -295,7 +303,9 @@
             <maven.home>${maven.home}</maven.home>
             <maven.revision>${revision}</maven.revision>
             <maven.project.testResourceDirectory>${project.basedir}/src/test/resources</maven.project.testResourceDirectory>
-            <maven.version.opensearch>${version.opensearch}</maven.version.opensearch>
+            <maven.version.search.backend>${search.backend.dockerversion}</maven.version.search.backend>
+            <maven.name.search.backend>${search.backend.dockername}</maven.name.search.backend>
+            <maven.distribution.search.backend>${search.backend.distribution}</maven.distribution.search.backend>
           </systemPropertyVariables>
           <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
             <usePhrasedFileName>true</usePhrasedFileName>
@@ -375,14 +385,14 @@
         <configuration>
           <images>
             <image>
-              <name>opensearch-custom</name>
+              <name>${search.backend.dockername}</name>
               <build>
-                <dockerFile>${project.basedir}/src/main/docker/opensearch-custom.Dockerfile</dockerFile>
+                <dockerFile>${search.backend.dockerfile}</dockerFile>
                 <tags>
                   <!-- Used in deployment workflow, so we don't have to know about the exact version -->
                   <tag>latest</tag>
                   <!-- Workaround until we get https://github.com/quarkusio/quarkus/pull/38896 -->
-                  <tag>${version.opensearch}</tag>
+                  <tag>${search.backend.dockerversion}</tag>
                 </tags>
               </build>
             </image>
@@ -392,6 +402,19 @@
     </plugins>
   </build>
   <profiles>
+    <profile>
+      <!--
+        A simple profile to run the tests against an OpenSearch distribution of the search backend.
+        Keep in mind that this will only work for the tests, not for deploying the app to OpenShift.
+      -->
+      <id>opensearch</id>
+      <properties>
+        <search.backend.dockerfile>${project.basedir}/src/main/docker/opensearch-custom.Dockerfile</search.backend.dockerfile>
+        <search.backend.dockerversion>${version.opensearch}</search.backend.dockerversion>
+        <search.backend.dockername>opensearch-custom</search.backend.dockername>
+        <search.backend.distribution>opensearch</search.backend.distribution>
+      </properties>
+    </profile>
     <profile>
       <!-- Locked dependencies for mvnpm (Update with 'mvn io.mvnpm:locker-maven-plugin:LATEST:lock -Dunlocked') -->
       <id>locker</id>

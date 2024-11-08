@@ -52,16 +52,16 @@ jobs:
     - name: Create ImageStreams
       run: |
         oc create imagestream search-quarkus-io || true
-        oc create imagestream opensearch-custom || true
+        oc create imagestream elasticsearch-custom || true
         # https://docs.openshift.com/container-platform/4.14/openshift_images/using-imagestreams-with-kube-resources.html
         oc set image-lookup search-quarkus-io
-        oc set image-lookup opensearch-custom
+        oc set image-lookup elasticsearch-custom
 
     - name: Retrieve OpenShift Container Registry URL
       id: oc-registry
       run: |
         echo -n "OC_REGISTRY_URL=" >> "$GITHUB_OUTPUT"
-        oc registry info >> "$GITHUB_OUTPUT"
+        oc get imagestream -o json | jq -r '.items[0].status.publicDockerImageRepository' | awk -F"[/]" '{print $1}' >> "$GITHUB_OUTPUT"
     - name: Log in to OpenShift Container Registry
       uses: docker/login-action@v3
       with:
@@ -85,14 +85,14 @@ jobs:
           -Drevision="${{ steps.app-version.outputs.value }}" \
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
-          -Dquarkus.container-image.registry="$(oc registry info)" \
+          -Dquarkus.container-image.registry="${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}" \
           -Dquarkus.container-image.group="$(oc project --short)"
 
-    - name: Push OpenSearch container image
+    - name: Push Elasticsearch container image
       run: |
-        REMOTE_IMAGE_REF="$(oc registry info)/$(oc project --short)/opensearch-custom:${{ steps.app-version.outputs.value }}"
+        REMOTE_IMAGE_REF="${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}/$(oc project --short)/elasticsearch-custom:${{ steps.app-version.outputs.value }}"
         # docker doesn't allow the `push source target` syntax, so we have to do this in two steps.
-        docker image tag "opensearch-custom:latest" "$REMOTE_IMAGE_REF"
+        docker image tag "elasticsearch-custom:latest" "$REMOTE_IMAGE_REF"
         docker push "$REMOTE_IMAGE_REF"
 
     - name: Deploy Helm charts
