@@ -89,25 +89,9 @@ public class IndexingState {
         }
 
         @Override
-        public void warning(Stage stage, String details) {
-            warning(stage, details, null);
-        }
-
-        @Override
-        public void warning(Stage stage, String details, Exception exception) {
-            Log.warn(details, exception);
-            failures.get(Level.WARNING).add(new Failure(Level.WARNING, stage, details, exception));
-        }
-
-        @Override
-        public void critical(Stage stage, String details) {
-            critical(stage, details, null);
-        }
-
-        @Override
-        public void critical(Stage stage, String details, Exception exception) {
-            Log.error(details, exception);
-            failures.get(Level.CRITICAL).add(new Failure(Level.CRITICAL, stage, details, exception));
+        public void collect(Level level, Stage stage, String details, Exception exception) {
+            Log.log(level.logLevel, details, exception);
+            failures.get(level).add(new Failure(level, stage, details, exception));
         }
 
         private boolean scheduleRetry() {
@@ -118,7 +102,7 @@ public class IndexingState {
                 try {
                     scheduledRetry = retryScheduler.apply(retryConfig.delay());
                     // If we get here, a retry was scheduled.
-                    warning(Stage.INDEXING, "Indexing will be tried again later.");
+                    info(Stage.INDEXING, "Indexing will be tried again later.");
                     return true;
                 } catch (RuntimeException e) {
                     // If we get here, we'll abort.
@@ -133,6 +117,8 @@ public class IndexingState {
         }
 
         private static Status indexingResultStatus(Map<Level, List<Failure>> failures) {
+            // INFO level is ignored for the overall status.
+            // We will only report INFO failures if there are other CRITICAL/WARNING failures.
             if (failures.get(Level.CRITICAL).isEmpty()) {
                 if (failures.get(Level.WARNING).isEmpty()) {
                     return Status.SUCCESS;

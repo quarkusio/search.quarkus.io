@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -137,7 +138,7 @@ public class QuarkusIO implements Closeable {
                 //  more than 7 days; so we give it 2 weeks period before we start considering that there's a sync problem:
                 Duration duration = Duration.between(lastSync, Instant.now());
                 if (duration.compareTo(Duration.ofDays(14)) > 0) {
-                    failureCollector.warning(
+                    failureCollector.info(
                             FailureCollector.Stage.TRANSLATION,
                             "Localized repository '" + localized.getKey() + "' is out of sync for " + duration);
                 }
@@ -153,7 +154,7 @@ public class QuarkusIO implements Closeable {
     @Override
     public void close() throws IOException {
         for (QuarkusIOCloneDirectory directory : allSites.values()) {
-            directory.unprocessed().ifPresent(m -> failureCollector.warning(FailureCollector.Stage.PARSING, m));
+            directory.unprocessed().ifPresent(m -> failureCollector.info(FailureCollector.Stage.PARSING, m));
         }
         try (var closer = new Closer<IOException>()) {
             closer.push(CloseableDirectory::close, prefetchedGuides);
@@ -447,12 +448,17 @@ public class QuarkusIO implements Closeable {
 
         try (InputStream file = GitUtils.file(repository, sources, path)) {
             return new PoParser().parseCatalog(file, false);
-        } catch (IOException | IllegalStateException e) {
-            // it may be that not all localized sites are up-to-date, in that case we just assume that the translation is not there
-            // and the non-translated english text will be used.
+        } catch (NoSuchFileException e) {
+            // translation may be missing, but that's just the way it is: it'll get translated when someone has time
+            failureCollector.info(FailureCollector.Stage.TRANSLATION,
+                    "Unable to open translation file " + path + " : " + e.getMessage(), e);
+            // in the meantime we'll use non-translated English text
+            return new Catalog();
+        } catch (IOException e) {
+            // opening/parsing may fail, in which case we definitely need to have a look
             failureCollector.warning(FailureCollector.Stage.TRANSLATION,
-                    "Unable to parse a translation file " + path + " : " + e.getMessage(), e);
-
+                    "Unable to parse translation file " + path + " : " + e.getMessage(), e);
+            // in the meantime we'll use non-translated English text
             return new Catalog();
         }
     }
@@ -555,11 +561,11 @@ public class QuarkusIO implements Closeable {
             // if  a file is not present we do not want to add such guide. Since if the html is not there
             // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
 
-            // Since this file was listed in the yaml of a rev from which the site was built the html should've been present,
-            // but is missing for some reason that needs investigation:
-            failureCollector.warning(
+            // Since this file was listed in the yaml of a rev from which the site was built, the html should've been present.
+            // So if it's missing, that's important context when investigating other errors.
+            failureCollector.info(
                     FailureCollector.Stage.TRANSLATION,
-                    "Guide " + guide + " is ignored since we were not able to find an HTML content file for it.");
+                    guide + " is ignored since we were not able to find an HTML content file for it.");
             return null;
         }
 
