@@ -104,7 +104,7 @@ spec:
             # Setting this env variable is better than setting plugins.security.disabled
             # because this skips installing the plugin altogether (see above)
             - name: xpack.security.enabled
-              value: 'true'
+              value: 'false'
             # Disable disk-based shard allocation thresholds: on large, relatively full disks (>90% used),
             # it will lead to index creation to get stuck waiting for other nodes to join the cluster,
             # which will never happen since we only have one node.
