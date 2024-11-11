@@ -112,7 +112,7 @@ spec:
             - name: cluster.routing.allocation.disk.threshold_enabled
               value: 'false'
             # Disable more plugins/features that we do not use:
-            - name: 'cluster.deprecation_indexing'
+            - name: 'cluster.deprecation_indexing.enabled'
               value: 'false'
             - name: 'xpack.profiling.enabled'
               value: 'false'
