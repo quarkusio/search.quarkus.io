@@ -110,7 +110,7 @@
       <dependency>
         <groupId>org.mvnpm.at.types</groupId>
         <artifactId>lodash</artifactId>
-        <version>4.17.0</version>
+        <version>4.17.13</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -440,7 +440,7 @@
           <dependency>
             <groupId>org.mvnpm.at.types</groupId>
             <artifactId>lodash</artifactId>
-            <version>4.17.0</version>
+            <version>4.17.13</version>
             <scope>provided</scope>
           </dependency>
           <dependency>
