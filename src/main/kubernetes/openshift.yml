@@ -53,18 +53,18 @@ spec:
         alpha.image.policy.openshift.io/resolve-names: '*'
     spec:
       containers:
-        - name: opensearch
+        - name: elasticsearch
           # The image gets pushed manually as part of the "deploy" workflow.
           # This gets replaced with the correct image ref (exact tag).
-          image: opensearch-custom:latest
+          image: elasticsearch-custom:latest
           imagePullPolicy: Always
           resources:
             limits:
-              cpu: '{{ .Values.opensearch.resources.limits.cpu }}'
-              memory: '{{ .Values.opensearch.resources.limits.memory }}'
+              cpu: '{{ .Values.elasticsearch.resources.limits.cpu }}'
+              memory: '{{ .Values.elasticsearch.resources.limits.memory }}'
             requests:
-              cpu: '{{ .Values.opensearch.resources.requests.cpu }}'
-              memory: '{{ .Values.opensearch.resources.requests.memory }}'
+              cpu: '{{ .Values.elasticsearch.resources.requests.cpu }}'
+              memory: '{{ .Values.elasticsearch.resources.requests.memory }}'
           readinessProbe:
             httpGet:
               scheme: HTTP
@@ -80,7 +80,7 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: data
-              mountPath: /usr/share/opensearch/data
+              mountPath: /usr/share/elasticsearch/data
           env:
             - name: cluster.name
               value: search-quarkus-io
@@ -96,26 +96,40 @@ spec:
             # but this shouldn't be too bad as we don't expect swapping to be enabled.
             - name: bootstrap.memory_lock
               value: "false"
-            # OpenSearch doesn't seem to automatically adapt -Xmx to available memory, for some reason
-            - name: OPENSEARCH_JAVA_OPTS
-              value: '{{ .Values.opensearch.envs.OPENSEARCH_JAVA_OPTS }}'
-            # This is necessary to avoid OpenSearch trying to install various things on startup,
-            # which leads to filesystem operations (chmod/chown) that won't work
-            # because only user 1000 has the relevant permissions,
-            # and we can't run with user 1000 on OpenShift.
-            # See also:
-            # - https://github.com/opensearch-project/opensearch-devops/issues/97
-            # - src/main/docker/opensearch-custom.Dockerfile
-            - name: DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI
-              value: 'true'
-            - name: DISABLE_INSTALL_DEMO_CONFIG
-              value: 'true'
+            # Set the -Xmx explictly and don't rely on the search backend to figure out memory limits on its own.
+            - name: ES_JAVA_OPTS
+              value: '{{ .Values.elasticsearch.envs.ES_JAVA_OPTS }}'
             # Not exposed to the internet, no sensitive data
             # => We don't bother with HTTPS and pesky self-signed certificates
             # Setting this env variable is better than setting plugins.security.disabled
             # because this skips installing the plugin altogether (see above)
-            - name: DISABLE_SECURITY_PLUGIN
-              value: 'true'
+            - name: xpack.security.enabled
+              value: 'false'
+            # Disable disk-based shard allocation thresholds: on large, relatively full disks (>90% used),
+            # it will lead to index creation to get stuck waiting for other nodes to join the cluster,
+            # which will never happen since we only have one node.
+            # See https://www.elastic.co/guide/en/elasticsearch/reference/7.17/modules-cluster.html#disk-based-shard-allocation
+            - name: cluster.routing.allocation.disk.threshold_enabled
+              value: 'false'
+            # Disable more plugins/features that we do not use:
+            - name: 'cluster.deprecation_indexing.enabled'
+              value: 'false'
+            - name: 'xpack.profiling.enabled'
+              value: 'false'
+            - name: 'xpack.ent_search.enabled'
+              value: 'false'
+            - name: 'indices.lifecycle.history_index_enabled'
+              value: 'false'
+            - name: 'slm.history_index_enabled'
+              value: 'false'
+            - name: 'stack.templates.enabled'
+              value: 'false'
+            - name: 'xpack.ml.enabled'
+              value: 'false'
+            - name: 'xpack.monitoring.templates.enabled'
+              value: 'false'
+            - name: 'xpack.watcher.enabled'
+              value: 'false'
           envFrom:
             - configMapRef:
                 name: search-backend-config

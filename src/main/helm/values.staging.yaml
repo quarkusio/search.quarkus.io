@@ -1,23 +1,23 @@
 app:
   envs:
     QUARKUS_PROFILE: 'staging'
-    # Avoid overloading the rather resource-constrained OpenSearch instance
-    INDEXING_QUEUE_COUNT: '6'
+    # Avoid overloading the rather resource-constrained Search backend instance
+    INDEXING_QUEUE_COUNT: '4'
     INDEXING_BULK_SIZE: '10'
   resources:
     limits:
-      cpu: 2000m
+      cpu: 1000m
       memory: 1Gi
     requests:
-      cpu: 400m
+      cpu: 250m
       memory: 500Mi
-opensearch:
+elasticsearch:
   envs:
-    OPENSEARCH_JAVA_OPTS: ' -Xms700m -Xmx700m '
+    ES_JAVA_OPTS: ' -Xms500m -Xmx500m '
   resources:
     limits:
-      cpu: 1000m
-      memory: 1.5Gi
-    requests:
       cpu: 500m
       memory: 1.0Gi
+    requests:
+      cpu: 250m
+      memory: 750Mi

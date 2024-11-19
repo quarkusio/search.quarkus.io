@@ -1,4 +1,4 @@
-FROM opensearchproject/opensearch:2.16.0
+FROM opensearchproject/opensearch:2.18.0
 
 # Workaround for https://github.com/opensearch-project/opensearch-devops/issues/97
 RUN chmod -R go=u /usr/share/opensearch

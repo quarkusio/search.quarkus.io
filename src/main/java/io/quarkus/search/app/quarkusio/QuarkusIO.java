@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -15,11 +16,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -79,11 +83,15 @@ public class QuarkusIO implements Closeable {
         return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkus.yaml");
     }
 
+    public static Path yamlVersionMetadataPath() {
+        return Path.of("_data", "versions.yaml");
+    }
+
     public static Path yamlQuarkiverseMetadataPath(String version) {
         return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkiverse.yaml");
     }
 
-    private final Map<Language, GitCloneDirectory> allSites;
+    private final Map<Language, QuarkusIOCloneDirectory> allSites;
     private final Map<Language, URI> siteUris;
     private final CloseableDirectory prefetchedGuides = CloseableDirectory.temp("quarkiverse-guides-");
     private final FailureCollector failureCollector;
@@ -96,8 +104,11 @@ public class QuarkusIO implements Closeable {
         this.siteUris = Collections.unmodifiableMap(languageUriMap);
         this.failureCollector = failureCollector;
 
-        Map<Language, GitCloneDirectory> all = new HashMap<>(localizedSites);
-        all.put(Language.ENGLISH, mainRepository);
+        Map<Language, QuarkusIOCloneDirectory> all = new HashMap<>();
+        all.put(Language.ENGLISH, new QuarkusIOCloneDirectory(failureCollector, mainRepository));
+        for (var entry : localizedSites.entrySet()) {
+            all.put(entry.getKey(), new QuarkusIOCloneDirectory(failureCollector, entry.getValue()));
+        }
         this.allSites = Collections.unmodifiableMap(all);
 
         validateRepositories(mainRepository, localizedSites, failureCollector);
@@ -127,7 +138,7 @@ public class QuarkusIO implements Closeable {
                 //  more than 7 days; so we give it 2 weeks period before we start considering that there's a sync problem:
                 Duration duration = Duration.between(lastSync, Instant.now());
                 if (duration.compareTo(Duration.ofDays(14)) > 0) {
-                    failureCollector.warning(
+                    failureCollector.info(
                             FailureCollector.Stage.TRANSLATION,
                             "Localized repository '" + localized.getKey() + "' is out of sync for " + duration);
                 }
@@ -142,9 +153,12 @@ public class QuarkusIO implements Closeable {
 
     @Override
     public void close() throws IOException {
+        for (QuarkusIOCloneDirectory directory : allSites.values()) {
+            directory.unprocessed().ifPresent(m -> failureCollector.info(FailureCollector.Stage.PARSING, m));
+        }
         try (var closer = new Closer<IOException>()) {
             closer.push(CloseableDirectory::close, prefetchedGuides);
-            closer.pushAll(GitCloneDirectory::close, allSites.values());
+            closer.pushAll(QuarkusIOCloneDirectory::close, allSites.values());
         }
     }
 
@@ -159,12 +173,14 @@ public class QuarkusIO implements Closeable {
         return allSites.entrySet().stream()
                 .flatMap(entry -> {
                     Language language = entry.getKey();
-                    GitCloneDirectory cloneDirectory = entry.getValue();
+                    GitCloneDirectory cloneDirectory = entry.getValue().cloneDirectory();
+                    VersionFilter versionFilter = entry.getValue().versionFilter();
                     RevTree translationSourcesTree = cloneDirectory.sourcesTranslationTree();
                     Repository repository = cloneDirectory.git().getRepository();
 
                     return cloneDirectory.sourcesFileStream("_data/versioned", path -> path.endsWith("quarkus.yaml"))
                             .map(QuarkusIO::extractVersion)
+                            .filter(versionFilter)
                             .flatMap(quarkusVersion -> {
                                 String quarkus = quarkusVersion.path();
 
@@ -190,12 +206,14 @@ public class QuarkusIO implements Closeable {
         return allSites.entrySet().stream()
                 .flatMap(entry -> {
                     Language language = entry.getKey();
-                    GitCloneDirectory cloneDirectory = entry.getValue();
+                    GitCloneDirectory cloneDirectory = entry.getValue().cloneDirectory();
+                    VersionFilter versionFilter = entry.getValue().versionFilter();
                     RevTree translationSourcesTree = cloneDirectory.sourcesTranslationTree();
                     Repository repository = cloneDirectory.git().getRepository();
 
                     return cloneDirectory.sourcesFileStream("_data", path -> path.matches("_data/guides-\\d+-\\d+\\.yaml"))
                             .map(QuarkusIO::extractLegacyVersion)
+                            .filter(versionFilter)
                             .flatMap(quarkusVersion -> {
                                 String quarkus = quarkusVersion.path();
 
@@ -204,7 +222,7 @@ public class QuarkusIO implements Closeable {
                                         resolveLegacyTranslationPath(quarkusVersion.versionDirectory(), language));
 
                                 try (InputStream file = cloneDirectory.sourcesFile(quarkus)) {
-                                    return parseYamlLegacyMetadata(entry.getValue(), file, quarkusVersion.version(), language,
+                                    return parseYamlLegacyMetadata(cloneDirectory, file, quarkusVersion.version(), language,
                                             translations);
                                 } catch (IOException e) {
                                     throw new IllegalStateException(
@@ -217,10 +235,13 @@ public class QuarkusIO implements Closeable {
 
     private Stream<Guide> quarkiverseGuides() {
         Language language = Language.ENGLISH;
-        GitCloneDirectory cloneDirectory = allSites.get(language);
+        QuarkusIOCloneDirectory quarkusIOCloneDirectory = allSites.get(language);
+        GitCloneDirectory cloneDirectory = quarkusIOCloneDirectory.cloneDirectory();
+        VersionFilter versionFilter = quarkusIOCloneDirectory.versionFilter();
 
         return cloneDirectory.sourcesFileStream("_data/versioned", path -> path.endsWith("quarkiverse.yaml"))
                 .map(QuarkusIO::extractQuarkiverseVersion)
+                .filter(versionFilter)
                 .flatMap(quarkusVersion -> {
                     String quarkus = quarkusVersion.path();
 
@@ -239,10 +260,13 @@ public class QuarkusIO implements Closeable {
 
     private Stream<Guide> legacyQuarkiverseGuides() {
         Language language = Language.ENGLISH;
-        GitCloneDirectory cloneDirectory = allSites.get(language);
+        QuarkusIOCloneDirectory quarkusIOCloneDirectory = allSites.get(language);
+        GitCloneDirectory cloneDirectory = quarkusIOCloneDirectory.cloneDirectory();
+        VersionFilter versionFilter = quarkusIOCloneDirectory.versionFilter();
 
         return cloneDirectory.sourcesFileStream("_data", path -> path.matches("_data/guides-\\d+-\\d+\\.yaml"))
                 .map(QuarkusIO::extractLegacyVersion)
+                .filter(versionFilter)
                 .flatMap(quarkusVersion -> {
                     String quarkus = quarkusVersion.path();
 
@@ -261,10 +285,11 @@ public class QuarkusIO implements Closeable {
 
     private Map<Language, Catalog> createTranslations(Function<Language, String> pathCreator) {
         Map<Language, Catalog> translations = new HashMap<>();
-        for (Map.Entry<Language, GitCloneDirectory> entry : allSites.entrySet()) {
+        for (Map.Entry<Language, QuarkusIOCloneDirectory> entry : allSites.entrySet()) {
             Language lang = entry.getKey();
+            GitCloneDirectory cloneDirectory = entry.getValue().cloneDirectory();
             translations.put(lang, translations(
-                    entry.getValue().git().getRepository(), entry.getValue().sourcesTranslationTree(),
+                    cloneDirectory.git().getRepository(), cloneDirectory.sourcesTranslationTree(),
                     pathCreator.apply(lang)));
         }
         return translations;
@@ -423,12 +448,17 @@ public class QuarkusIO implements Closeable {
 
         try (InputStream file = GitUtils.file(repository, sources, path)) {
             return new PoParser().parseCatalog(file, false);
-        } catch (IOException | IllegalStateException e) {
-            // it may be that not all localized sites are up-to-date, in that case we just assume that the translation is not there
-            // and the non-translated english text will be used.
+        } catch (NoSuchFileException e) {
+            // translation may be missing, but that's just the way it is: it'll get translated when someone has time
+            failureCollector.info(FailureCollector.Stage.TRANSLATION,
+                    "Unable to open translation file " + path + " : " + e.getMessage(), e);
+            // in the meantime we'll use non-translated English text
+            return new Catalog();
+        } catch (IOException e) {
+            // opening/parsing may fail, in which case we definitely need to have a look
             failureCollector.warning(FailureCollector.Stage.TRANSLATION,
-                    "Unable to parse a translation file " + path + " : " + e.getMessage(), e);
-
+                    "Unable to parse translation file " + path + " : " + e.getMessage(), e);
+            // in the meantime we'll use non-translated English text
             return new Catalog();
         }
     }
@@ -485,6 +515,17 @@ public class QuarkusIO implements Closeable {
         return parser.apply(quarkusYaml);
     }
 
+    @SuppressWarnings("unchecked")
+    private static Set<String> parseVersions(InputStream inputStream) {
+        Map<String, Object> versionsYaml;
+        Yaml yaml = new Yaml();
+        versionsYaml = yaml.load(inputStream);
+
+        Collection<String> versions = (Collection<String>) versionsYaml.get("documentation");
+
+        return new LinkedHashSet<>(versions);
+    }
+
     private Guide createGuide(GitCloneDirectory cloneDirectory, String quarkusVersion, String type,
             Map<String, Object> parsedGuide,
             String summaryKey, Language language, Catalog messages) {
@@ -520,11 +561,11 @@ public class QuarkusIO implements Closeable {
             // if  a file is not present we do not want to add such guide. Since if the html is not there
             // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
 
-            // Since this file was listed in the yaml of a rev from which the site was built the html should've been present,
-            // but is missing for some reason that needs investigation:
-            failureCollector.warning(
+            // Since this file was listed in the yaml of a rev from which the site was built, the html should've been present.
+            // So if it's missing, that's important context when investigating other errors.
+            failureCollector.info(
                     FailureCollector.Stage.TRANSLATION,
-                    "Guide " + guide + " is ignored since we were not able to find an HTML content file for it.");
+                    guide + " is ignored since we were not able to find an HTML content file for it.");
             return null;
         }
 
@@ -582,4 +623,83 @@ public class QuarkusIO implements Closeable {
     record VersionAndPaths(String version, String versionDirectory, String path) {
     }
 
+    record QuarkusIOCloneDirectory(VersionFilter versionFilter, GitCloneDirectory cloneDirectory) implements Closeable {
+        public QuarkusIOCloneDirectory(FailureCollector failureCollector, GitCloneDirectory cloneDirectory) {
+            this(VersionFilter.filter(cloneDirectory, failureCollector), cloneDirectory);
+        }
+
+        @Override
+        public void close() throws IOException {
+            try (var closer = new Closer<IOException>()) {
+                closer.push(GitCloneDirectory::close, cloneDirectory);
+            }
+        }
+
+        public Optional<String> unprocessed() {
+            Collection<String> unprocessedVersions = versionFilter.unprocessedVersions();
+            if (!unprocessedVersions.isEmpty()) {
+                return Optional.of(
+                        "Not all expected versions were discovered while parsing %s. Missing versions are: %s"
+                                .formatted(cloneDirectory.details(), unprocessedVersions));
+            }
+            return Optional.empty();
+        }
+    }
+
+    private static abstract class VersionFilter implements Predicate<VersionAndPaths> {
+
+        private static VersionFilter filter(GitCloneDirectory cloneDirectory, FailureCollector failureCollector) {
+            try (InputStream inputStream = cloneDirectory.sourcesFile("_data/versions.yaml")) {
+                Set<String> versions = parseVersions(inputStream);
+                return new CollectionFilter(versions);
+            } catch (Exception e) {
+                failureCollector.warning(FailureCollector.Stage.PARSING,
+                        "Unable to find versions file with explicit list of versions to index within %s, resulting in including all discovered versions."
+                                .formatted(cloneDirectory.toString()));
+                return AcceptAllFilter.INSTANCE;
+
+            }
+        }
+
+        public abstract Collection<String> unprocessedVersions();
+
+        private static class CollectionFilter extends VersionFilter {
+
+            private final Map<String, Boolean> versions;
+
+            public CollectionFilter(Collection<String> versions) {
+                this.versions = new HashMap<>(versions.size());
+                for (String version : versions) {
+                    this.versions.put(version, false);
+                }
+            }
+
+            @Override
+            public Collection<String> unprocessedVersions() {
+                return versions.entrySet().stream()
+                        .filter(Predicate.not(Map.Entry::getValue))
+                        .map(Map.Entry::getKey)
+                        .toList();
+            }
+
+            @Override
+            public boolean test(VersionAndPaths version) {
+                return Boolean.TRUE.equals(versions.compute(version.version(), (key, value) -> value == null ? null : true));
+            }
+        }
+
+        private static class AcceptAllFilter extends VersionFilter {
+            public static final VersionFilter INSTANCE = new AcceptAllFilter();
+
+            @Override
+            public boolean test(VersionAndPaths s) {
+                return true;
+            }
+
+            @Override
+            public Collection<String> unprocessedVersions() {
+                return List.of();
+            }
+        }
+    }
 }

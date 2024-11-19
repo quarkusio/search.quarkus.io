@@ -3,6 +3,7 @@ package io.quarkus.search.app.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,7 +60,7 @@ public final class GitUtils {
         treeWalk.setRecursive(true);
         treeWalk.setFilter(PathFilter.create(path));
         if (!treeWalk.next()) {
-            throw new IllegalStateException("Missing file '%s' in '%s'".formatted(path, tree));
+            throw new NoSuchFileException("Missing file '%s' in '%s'".formatted(path, tree));
         }
         ObjectId objectId = treeWalk.getObjectId(0);
         ObjectLoader loader = repo.open(objectId);
