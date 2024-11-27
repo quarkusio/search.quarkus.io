@@ -37,6 +37,7 @@ import io.quarkus.vertx.http.ManagementInterface;
 
 import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
+import org.hibernate.search.util.common.impl.Throwables;
 
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
@@ -253,7 +254,7 @@ public class IndexingService {
                 } catch (TimeoutException e) {
                     future.cancel(true);
                 } catch (ExecutionException e) {
-                    e.getCause();
+                    throw Throwables.toRuntimeException(e.getCause());
                 }
             }
 
