@@ -33,8 +33,8 @@ public class InputProviderHtmlBodyTextBridge implements ValueBridge<InputProvide
                     return encode(content);
                 } else {
                     Log.warnf(
-                            "Was unable to find the content section of a guide. Using whole document as text. %s",
-                            provider);
+                            "Was unable to find the content section of a guide. Using whole document as text. %s Document starts with: %.10000s",
+                            provider, body.toString());
                     return encode(body);
                 }
             }
