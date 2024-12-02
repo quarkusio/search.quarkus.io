@@ -2,7 +2,7 @@ app:
   envs:
     QUARKUS_PROFILE: 'staging'
     # Avoid overloading the rather resource-constrained Search backend instance
-    INDEXING_QUEUE_COUNT: '6'
+    INDEXING_QUEUE_COUNT: '4'
     INDEXING_BULK_SIZE: '10'
   resources:
     limits:
