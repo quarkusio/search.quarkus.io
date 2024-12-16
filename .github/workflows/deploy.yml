@@ -42,6 +42,11 @@ jobs:
       with:
          version: 'v3.13.3'
 
+    - name: Install CLI tools from OpenShift Mirror
+      uses: redhat-actions/openshift-tools-installer@v1
+      with:
+        oc: "latest"
+
     - name: Log in to OpenShift
       uses: redhat-actions/oc-login@v1
       with:
