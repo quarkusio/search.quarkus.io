@@ -3,21 +3,21 @@ app:
     QUARKUS_PROFILE: 'staging'
     # Avoid overloading the rather resource-constrained Search backend instance
     INDEXING_QUEUE_COUNT: '4'
-    INDEXING_BULK_SIZE: '10'
+    INDEXING_BULK_SIZE: '5'
   resources:
     limits:
       cpu: 1000m
-      memory: 1Gi
+      memory: 750Mi
     requests:
       cpu: 250m
-      memory: 500Mi
+      memory: 400Mi
 elasticsearch:
   envs:
-    ES_JAVA_OPTS: ' -Xms500m -Xmx500m '
+    ES_JAVA_OPTS: ' -Xms350m -Xmx350m '
   resources:
     limits:
       cpu: 500m
       memory: 1.0Gi
     requests:
       cpu: 250m
-      memory: 750Mi
+      memory: 500Mi
