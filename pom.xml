@@ -39,7 +39,7 @@
     <version.opensearch>2.18</version.opensearch>
     <!-- This version needs to match the version in src/main/docker/elasticsearch-custom.Dockerfile -->
     <version.elasticsearch>8.17</version.elasticsearch>
-    <version.quarkus-web-bundler>1.8.0</version.quarkus-web-bundler>
+    <version.quarkus-web-bundler>1.8.1</version.quarkus-web-bundler>
     <!-- Configuration for the search backend used in tests by default: -->
     <search.backend.dockerfile>${project.basedir}/src/main/docker/elasticsearch-custom.Dockerfile</search.backend.dockerfile>
     <search.backend.dockerversion>${version.elasticsearch}</search.backend.dockerversion>
