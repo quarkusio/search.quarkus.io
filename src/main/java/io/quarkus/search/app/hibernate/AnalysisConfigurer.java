@@ -25,6 +25,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
 
     public static final String DEFAULT = "basic_analyzer";
     public static final String DEFAULT_SEARCH = DEFAULT + "_search";
+    public static final String SUGGESTION = "suggestion";
     public static final String AUTOCOMPLETE = "autocomplete";
     public static final String SORT = "sort";
     // This is simplified by assuming no default package, lowercase package names and capitalized class name,
@@ -34,6 +35,10 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
 
     public static String defaultAnalyzer(Language language) {
         return language.addSuffix(DEFAULT);
+    }
+
+    public static String suggestionAnalyzer(Language language) {
+        return language.addSuffix(SUGGESTION);
     }
 
     public static String defaultSearchAnalyzer(Language language) {
@@ -101,6 +106,16 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "asciifolding")
                 .charFilters("html_strip");
 
+        context.analyzer(suggestionAnalyzer(language)).custom()
+                .tokenizer("standard")
+                .tokenFilters(
+                        // To make all words in lowercase.
+                        "lowercase",
+                        // To convert characters into ascii ones, e.g. à to a or ę to e etc.
+                        "asciifolding",
+                        "shingle")
+                .charFilters("html_strip");
+
         // The analyzer to be applied to the user-input text.
         context.analyzer(defaultSearchAnalyzer(language)).custom()
                 .tokenizer("standard")
@@ -158,6 +173,16 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "icu_normalizer",
                         "html_strip");
 
+        context.analyzer(suggestionAnalyzer(language)).custom()
+                .tokenizer("kuromoji_tokenizer")
+                .tokenFilters(
+                        // To make all words in lowercase.
+                        "lowercase",
+                        // To convert characters into ascii ones, e.g. à to a or ę to e etc.
+                        "asciifolding",
+                        "shingle")
+                .charFilters("html_strip");
+
         context.analyzer(defaultSearchAnalyzer(language)).custom()
                 .tokenizer("kuromoji_tokenizer")
                 .tokenFilters(
@@ -209,6 +234,16 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                         "smartcn_stop",
                         regularStemmerFilter(language),
                         "asciifolding")
+                .charFilters("html_strip");
+
+        context.analyzer(suggestionAnalyzer(language)).custom()
+                .tokenizer("smartcn_tokenizer")
+                .tokenFilters(
+                        // To make all words in lowercase.
+                        "lowercase",
+                        // To convert characters into ascii ones, e.g. à to a or ę to e etc.
+                        "asciifolding",
+                        "shingle")
                 .charFilters("html_strip");
 
         // The analyzer to be applied to the user-input text.
