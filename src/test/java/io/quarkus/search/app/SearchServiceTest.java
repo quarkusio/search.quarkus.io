@@ -485,6 +485,62 @@ class SearchServiceTest {
                         "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> <span class=\"highlighted\">and</span> <span class=\"highlighted\">propagation</span>");
     }
 
+    /**
+     * Since there are some typos, the search results should include a suggestion with the text that would produce some results.
+     */
+    @Test
+    void suggestion() {
+        var result = given()
+                .queryParam("q", "hiberante search")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("hibernate search");
+
+        result = given()
+                .queryParam("q", "aplication")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("application");
+
+        result = given()
+                .queryParam("q", "Configuring your aplication")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("configuring your application");
+
+        result = given()
+                .queryParam("q", "vertex")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("vert.x");
+    }
+
+    /**
+     * As the query text is already fine, and matches the existing tokens, no suggestion is expected.
+     */
+    @Test
+    void noSuggestion() {
+        var result = given()
+                .queryParam("q", "hibernate search")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion()).isNull();
+    }
+
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
             String cssClass) {
         return sentence -> {
