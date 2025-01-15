@@ -61,6 +61,7 @@ public class Guide {
 
     @I18nFullTextField(name = "fullContent", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), highlightable = Highlightable.FAST_VECTOR, termVector = TermVector.WITH_POSITIONS_OFFSETS, analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nFullTextField(name = "fullContent_autocomplete", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzerPrefix = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
+    @I18nFullTextField(name = "fullContent_suggestion", valueBridge = @ValueBridgeRef(type = InputProviderHtmlBodyTextBridge.class), analyzerPrefix = AnalysisConfigurer.SUGGESTION, searchAnalyzerPrefix = AnalysisConfigurer.SUGGESTION)
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.NO)
     public I18nData<InputProvider> htmlFullContentProvider = new I18nData<>();
 
