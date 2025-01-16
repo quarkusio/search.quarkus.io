@@ -2,26 +2,21 @@ package io.quarkus.search.app.quarkiverseio;
 
 import java.io.Closeable;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.Objects;
 import java.util.stream.Stream;
-
-import jakarta.ws.rs.core.UriBuilder;
 
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.hibernate.InputProvider;
-import io.quarkus.search.app.indexing.IndexableGuides;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
 
@@ -31,128 +26,134 @@ import org.hibernate.search.util.common.impl.Closer;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
-public class QuarkiverseIO implements IndexableGuides, Closeable {
+public class QuarkiverseIO implements Closeable {
+
+    // Quarkiverse extensions may use different directories for their "current" version.
+    // We will be going one, by one from the "most likely present" directory:
+    private static final List<String> LATEST_VERSIONS = List.of("dev", "main");
 
     public static final String QUARKIVERSE_ORIGIN = "quarkiverse-hub";
 
-    private final URI quarkiverseDocsIndex;
     private final FailureCollector failureCollector;
 
-    private final List<Guide> quarkiverseGuides = new ArrayList<>();
     private final boolean enabled;
-    private final CloseableDirectory guideHtmls;
+    private final Path pages;
+    private final URI baseUri;
+    private final CloseableDirectory tempDir;
 
-    public QuarkiverseIO(QuarkiverseIOConfig config, FailureCollector failureCollector) {
-        this.quarkiverseDocsIndex = config.webUri();
-        this.enabled = config.enabled();
+    public QuarkiverseIO(boolean enabled, Path pages, URI baseUri, FailureCollector failureCollector,
+            CloseableDirectory tempDir) {
         this.failureCollector = failureCollector;
-        try {
-            guideHtmls = CloseableDirectory.temp("quarkiverse_htmls_");
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to fetch quarkiverse guides: %s".formatted(e.getMessage()), e);
-        }
+        this.enabled = enabled;
+        this.pages = pages;
+        this.baseUri = baseUri;
+        this.tempDir = tempDir;
     }
 
-    public void parseGuides() {
-        Document index = null;
-        try {
-            index = Jsoup.connect(quarkiverseDocsIndex.toString()).get();
-        } catch (IOException e) {
-            failureCollector.critical(FailureCollector.Stage.PARSING, "Unable to fetch the Quarkiverse Docs index page.", e);
-            // no point in doing anything else here:
-            return;
-        }
-
-        // find links to quarkiverse extension docs:
-        Elements quarkiverseGuideIndexLinks = index.select("ul.components li.component a.title");
-
-        for (Element quarkiverseGuideIndexLink : quarkiverseGuideIndexLinks) {
-            Guide guide = new Guide();
-            String topLevelTitle = quarkiverseGuideIndexLink.text();
-            guide.title.set(topLevelTitle);
-
-            Document extensionIndex = null;
-            try {
-                extensionIndex = readGuide(guide, quarkiverseGuideIndexLink.absUrl("href"), Optional.empty());
-            } catch (URISyntaxException | IOException e) {
-                failureCollector.warning(FailureCollector.Stage.PARSING,
-                        "Unable to fetch guide: " + topLevelTitle, e);
-                continue;
-            }
-
-            quarkiverseGuides.add(guide);
-
-            // find other sub-pages on the left side
-            Map<URI, String> indexLinks = new HashMap<>();
-            Elements extensionSubGuides = extensionIndex.select("nav.nav-menu .nav-item a");
-            for (Element element : extensionSubGuides) {
-                String href = element.absUrl("href");
-                URI uri = UriBuilder.fromUri(href).replaceQuery(null).fragment(null).build();
-                indexLinks.computeIfAbsent(uri, u -> element.text());
-            }
-
-            for (Map.Entry<URI, String> entry : indexLinks.entrySet()) {
-                Guide sub = new Guide();
-                sub.title.set(entry.getValue());
-                try {
-                    readGuide(sub, entry.getKey().toString(), Optional.of(topLevelTitle));
-                } catch (URISyntaxException | IOException e) {
-                    failureCollector.warning(FailureCollector.Stage.PARSING,
-                            "Unable to fetch guide: " + topLevelTitle, e);
-                    continue;
-                }
-                quarkiverseGuides.add(sub);
-            }
-        }
-    }
-
-    private Document readGuide(Guide guide, String link, Optional<String> titlePrefix) throws URISyntaxException, IOException {
-        guide.url = new URI(link);
+    private Guide readGuide(Path file) {
+        Guide guide = new Guide();
+        guide.url = baseUri.resolve(pages.relativize(file).toString());
         guide.type = "reference";
         guide.origin = QUARKIVERSE_ORIGIN;
 
-        Document extensionIndex = Jsoup.connect(link).get();
-        Elements content = extensionIndex.select("div.content");
+        try {
+            Document document = Jsoup.parse(file);
 
-        String title = content.select("h1.page").text();
-        if (!title.isBlank()) {
-            String actualTitle = titlePrefix.map(prefix -> "%s: %s".formatted(prefix, title)).orElse(title);
-            guide.title.set(actualTitle);
+            String title = document.select("h1.page").text();
+            if (title.isBlank()) {
+                title = document.select("nav.breadcrumbs").text();
+            }
+            if (title.isBlank()) {
+                title = document.select("h3.title").text();
+            }
+            guide.title.set(title.trim());
+
+            guide.summary.set(document.select("div#preamble").text());
+        } catch (IOException e) {
+            failureCollector.warning(FailureCollector.Stage.PARSING, "Failed to parse guide file: " + file, e);
         }
-        guide.summary.set(content.select("div#preamble").text());
-        guide.htmlFullContentProvider.set(new FileInputProvider(link, dumpHtmlToFile(content.html())));
+
+        guide.htmlFullContentProvider.set(new FileInputProvider(file));
 
         Log.debugf("Parsed guide: %s", guide.url);
-        return extensionIndex;
-    }
-
-    private Path dumpHtmlToFile(String html) throws IOException {
-        Path path = guideHtmls.path().resolve(UUID.randomUUID().toString());
-        try (FileOutputStream fos = new FileOutputStream(path.toFile())) {
-            fos.write(html.getBytes(StandardCharsets.UTF_8));
-        }
-        return path;
+        return guide;
     }
 
     public Stream<Guide> guides() {
         if (enabled) {
-            parseGuides();
+            Stream<Path> quarkiverseStream = null;
+            try {
+                quarkiverseStream = Files.list(pages);
+                return quarkiverseStream.filter(Files::isDirectory)
+                        // First get the extensions directories:
+                        .filter(dir -> dir.getFileName().toString().startsWith("quarkus"))
+                        // then try to look for `dev` directory as a "latest" version,
+                        // if we don't find one, we'll report it as a "warning"
+                        .map(this::latestVersion)
+                        .filter(Objects::nonNull)
+                        .flatMap(this::filesToIndex)
+                        .map(this::readGuide);
+            } catch (IOException e) {
+                if (quarkiverseStream != null) {
+                    quarkiverseStream.close();
+                }
+                failureCollector.critical(FailureCollector.Stage.PARSING, "Unable to fetch the Quarkiverse Docs index page.",
+                        e);
+            }
         }
-        return quarkiverseGuides.stream();
+        return Stream.empty();
+    }
+
+    private Stream<Path> filesToIndex(Path path) {
+        List<Path> files = new ArrayList<>();
+        try {
+            Files.walkFileTree(
+                    path, new SimpleFileVisitor<>() {
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                            if (file.getFileName().toString().endsWith(".html")) {
+                                files.add(file);
+                            }
+                            return FileVisitResult.CONTINUE;
+                        }
+
+                        @Override
+                        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                            // some extensions have these extra directories that are not "visible" from the docs page themselves,
+                            // but are still deployed (and hence accessible). We want to ignore those:
+                            if (dir.getFileName().toString().equals("includes")) {
+                                return FileVisitResult.SKIP_SUBTREE;
+                            }
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+        } catch (IOException e) {
+            failureCollector.critical(FailureCollector.Stage.PARSING, "Failed to traverse the directory tree: " + path, e);
+        }
+        return files.stream();
+    }
+
+    private Path latestVersion(Path extensionRoot) {
+        for (String maybeLatestVersion : LATEST_VERSIONS) {
+            Path version = extensionRoot.resolve(maybeLatestVersion);
+            if (Files.exists(version)) {
+                return version;
+            }
+        }
+        failureCollector.warning(FailureCollector.Stage.PARSING,
+                "Cannot find latest version of Quarkiverse Docs within " + extensionRoot);
+        return null;
     }
 
     @Override
     public void close() throws IOException {
         try (var closer = new Closer<IOException>()) {
-            closer.push(CloseableDirectory::close, guideHtmls);
-            closer.push(List::clear, quarkiverseGuides);
+            closer.push(CloseableDirectory::close, tempDir);
         }
     }
 
-    private record FileInputProvider(String link, Path content) implements InputProvider {
+    private record FileInputProvider(Path content) implements InputProvider {
 
         @Override
         public InputStream open() throws IOException {

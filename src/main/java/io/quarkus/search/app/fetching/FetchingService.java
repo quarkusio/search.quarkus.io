@@ -1,9 +1,11 @@
 package io.quarkus.search.app.fetching;
 
+import static io.quarkus.search.app.util.FileUtils.untar;
 import static io.quarkus.search.app.util.FileUtils.unzip;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -32,6 +34,12 @@ import io.quarkus.runtime.LaunchMode;
 import org.hibernate.search.util.common.impl.Closer;
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 
+import org.kohsuke.github.GHArtifact;
+import org.kohsuke.github.GHRepository;
+import org.kohsuke.github.GHWorkflowRun;
+import org.kohsuke.github.GitHub;
+import org.kohsuke.github.GitHubBuilder;
+
 import io.vertx.core.impl.ConcurrentHashSet;
 
 @ApplicationScoped
@@ -49,8 +57,45 @@ public class FetchingService {
     private final Map<URI, GitCloneDirectory.Details> detailsCache = new ConcurrentHashMap<>();
     private final Set<CloseableDirectory> tempDirectories = new ConcurrentHashSet<>();
 
-    public QuarkiverseIO fetchQuarkiverseIo(FailureCollector failureCollector) {
-        return new QuarkiverseIO(quarkiverseIOConfig, failureCollector);
+    public QuarkiverseIO fetchQuarkiverseIo(FailureCollector failureCollector) throws IOException {
+        CloseableDirectory tempDir = CloseableDirectory.temp("quarkiverse-io");
+        Path artifact = null;
+        if (quarkiverseIOConfig.githubArtifact().isPresent()) {
+            QuarkiverseIOConfig.GithubArtifact ghConfig = quarkiverseIOConfig.githubArtifact().get();
+            GitHub github = new GitHubBuilder().withOAuthToken(ghConfig.token()).build();
+            GHRepository repository = github.getRepository(ghConfig.repository());
+            for (GHWorkflowRun run : repository.queryWorkflowRuns()
+                    .conclusion(GHWorkflowRun.Conclusion.SUCCESS)
+                    .list().withPageSize(10)) {
+                if (ghConfig.actionName().equals(run.getName())) {
+                    for (GHArtifact ghArtifact : run.listArtifacts().withPageSize(5).toList()) {
+                        if (ghConfig.artifactName().equals(ghArtifact.getName())) {
+                            artifact = tempDir.path().resolve(ghArtifact.getName() + ".zip");
+                            final Path finalArtifact = artifact;
+                            Log.infof("Downloading Quarkiverse %s artifact #%s", ghConfig.artifactName(), ghArtifact.getId());
+                            ghArtifact.download(is -> Files.copy(is, finalArtifact));
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+            if (artifact == null) {
+                throw new IllegalStateException("Artifact " + ghConfig.artifactName() + " not found.");
+            }
+        } else if (quarkiverseIOConfig.zip().isPresent()) {
+            artifact = quarkiverseIOConfig.zip().get().path();
+        } else {
+            throw new IllegalStateException(
+                    "Cannot fetch Quarkiverse guides as neither zip nor GitHub configuration was supplied");
+        }
+
+        unzip(artifact, tempDir.path());
+        Path pages = tempDir.path().resolve("pages");
+        untar(tempDir.path().resolve("artifact.tar"), pages);
+
+        return new QuarkiverseIO(quarkiverseIOConfig.enabled(), pages, quarkiverseIOConfig.baseUri(), failureCollector,
+                tempDir);
     }
 
     public QuarkusIO fetchQuarkusIo(FailureCollector failureCollector) {

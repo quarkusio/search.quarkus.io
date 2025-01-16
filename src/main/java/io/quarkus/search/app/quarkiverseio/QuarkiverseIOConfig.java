@@ -1,18 +1,39 @@
 package io.quarkus.search.app.quarkiverseio;
 
 import java.net.URI;
+import java.nio.file.Path;
+import java.util.Optional;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 
 @ConfigMapping(prefix = "quarkiverseio")
 public interface QuarkiverseIOConfig {
-    String WEB_URI_DEFAULT_STRING = "https://docs.quarkiverse.io/index/explore/index.html";
-    URI WEB_URI_DEFAULT = URI.create(WEB_URI_DEFAULT_STRING);
 
-    @WithDefault(WEB_URI_DEFAULT_STRING)
-    URI webUri();
+    Optional<Zip> zip();
+
+    Optional<GithubArtifact> githubArtifact();
 
     @WithDefault("true")
     boolean enabled();
+
+    @WithDefault("https://docs.quarkiverse.io/")
+    URI baseUri();
+
+    interface GithubArtifact {
+        String token();
+
+        String repository();
+
+        //@WithDefault( "Publish website" )
+        String actionName();
+
+        //@WithDefault( "github-pages" )
+        String artifactName();
+    }
+
+    interface Zip {
+        Path path();
+    }
+
 }

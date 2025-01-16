@@ -31,7 +31,6 @@ import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.entity.Language;
-import io.quarkus.search.app.indexing.IndexableGuides;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
@@ -48,7 +47,7 @@ import org.fedorahosted.tennera.jgettext.Message;
 import org.fedorahosted.tennera.jgettext.PoParser;
 import org.yaml.snakeyaml.Yaml;
 
-public class QuarkusIO implements IndexableGuides, Closeable {
+public class QuarkusIO implements Closeable {
 
     public static final String QUARKUS_ORIGIN = "quarkus";
     public static final GitCloneDirectory.Branches MAIN_BRANCHES = new GitCloneDirectory.Branches(
