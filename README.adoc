@@ -85,6 +85,34 @@ INDEXING_REPORTING_GITHUB_ISSUE_ID={github-issue-id-in-your-repository}
 INDEXING_REPORTING_GITHUB_WARNING_REPEAT_DELAY=10m
 ----
 
+=== Updating the built-in docs.quarkiverse.io sample
+
+By default, the app will use the built-in docs.quarkiverse.io sample containing a snapshot of docs.quarkiverse.io.
+
+Quarkiverse guides are indexed from the GitHub workflow artifact created as part of
+the https://github.com/quarkiverse/quarkiverse-docs/actions/workflows/publish.yml[publish action].
+To update the included sample: go to the https://github.com/quarkiverse/quarkiverse-docs/actions/workflows/publish.yml?query=is%3Asuccess[page],
+open the first run at the top (latest successful execution) and download the `github-pages` at the bottom of the page.
+
+GitHub has a 100mb limit on the files we can include in the repository. This means that the downloaded artifact has to be cleaned up
+a bit. Unpack the archive and remove some of the extensions (in particular try dropping the ones taking the most space, e.g. `quarkus-backstage`.).
+Make sure to keep Amazon S3 guides as those are used in tests.
+Once you are done removing extensions, archive remaining guides back and replace the existing file.
+
+=== Downloading the latest docs.quarkiverse.io artifact
+
+If during the development there's a need to use a fresh docs.quarkiverse.io artifact downloaded by the app itself during the indexing process,
+add the following properties to your `.env` file:
+
+[source,properties]
+----
+# see about tokens https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+QUARKIVERSEIO_GITHUB_ARTIFACT_TOKEN={your-generated-github-token}
+QUARKIVERSEIO_GITHUB_ARTIFACT_REPOSITORY=quarkiverse/quarkiverse-docs
+QUARKIVERSEIO_GITHUB_ARTIFACT_ACTION_NAME=Publish website
+QUARKIVERSEIO_GITHUB_ARTIFACT_ARTIFACT_NAME=github-pages
+----
+
 [[testing]]
 == Testing
 

@@ -2,6 +2,9 @@ package io.quarkus.search.app.entity;
 
 import java.util.List;
 
+import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
+import io.quarkus.search.app.quarkusio.QuarkusIO;
+
 import org.hibernate.search.mapper.pojo.bridge.RoutingBridge;
 import org.hibernate.search.mapper.pojo.bridge.binding.RoutingBindingContext;
 import org.hibernate.search.mapper.pojo.bridge.mapping.programmatic.RoutingBinder;
@@ -10,14 +13,23 @@ import org.hibernate.search.mapper.pojo.route.DocumentRoutes;
 
 public class QuarkusVersionAndLanguageRoutingBinder implements RoutingBinder {
     private static String key(String version, Language language) {
-        if (language == null) {
-            return version;
+        return key(version, language, QuarkusIO.QUARKUS_ORIGIN);
+    }
+
+    private static String key(String version, Language language, String origin) {
+        StringBuilder key = new StringBuilder();
+        key.append(origin);
+        if (version != null) {
+            key.append("/").append(version);
         }
-        return version + "/" + language.code;
+        if (language != null) {
+            key.append("/").append(language.code);
+        }
+        return key.toString();
     }
 
     public static List<String> searchKeys(String version, Language language) {
-        return List.of(key(version, language), key(version, null));
+        return List.of(key(version, language), key(version, null), key(null, null, QuarkiverseIO.QUARKIVERSE_ORIGIN));
     }
 
     @Override
@@ -34,7 +46,11 @@ public class QuarkusVersionAndLanguageRoutingBinder implements RoutingBinder {
         @Override
         public void route(DocumentRoutes routes, Object entityIdentifier, Guide entity,
                 RoutingBridgeRouteContext context) {
-            routes.addRoute().routingKey(key(entity.quarkusVersion, entity.language));
+            if (QuarkiverseIO.QUARKIVERSE_ORIGIN.equals(entity.origin)) {
+                routes.addRoute().routingKey(key(null, null, QuarkiverseIO.QUARKIVERSE_ORIGIN));
+            } else {
+                routes.addRoute().routingKey(key(entity.quarkusVersion, entity.language));
+            }
         }
 
         @Override

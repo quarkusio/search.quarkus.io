@@ -30,11 +30,11 @@ export class QsGuide extends LitElement {
           font-weight: 400;
           cursor: pointer;
           text-decoration: underline;
-          color: var(--link-color);
+          color: var(--link-color, #1259A5);
       }
 
       .qs-guide a:hover {
-          color: var(--link-color-hover);
+          color: var(--link-color-hover, #c00);
       }
 
       .qs-guide h4 {

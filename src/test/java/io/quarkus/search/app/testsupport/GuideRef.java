@@ -31,7 +31,7 @@ public record GuideRef(String nameAfterRestRenaming, String nameBeforeRestRenami
     public static final GuideRef ALL_CONFIG = create("all-config");
     public static final GuideRef ALL_BUILDITEMS = create("all-builditems");
     public static final GuideRef QUARKIVERSE_AMAZON_S3 = createQuarkiverse(
-            "https://quarkiverse.github.io/quarkiverse-docs/quarkus-amazon-services/dev/amazon-s3.html");
+            "https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-s3.html");
     // NOTE: when adding new constants here, don't forget to run the main() method in QuarkusIOSample
     // to update the QuarkusIO sample in src/test/resources.
 

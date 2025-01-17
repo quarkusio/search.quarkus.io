@@ -112,6 +112,11 @@
         <artifactId>lodash</artifactId>
         <version>4.17.13</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>1.27.1</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <dependencies>
@@ -203,6 +208,10 @@
     <dependency>
       <groupId>io.quarkiverse.helm</groupId>
       <artifactId>quarkus-helm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
     </dependency>
 
     <!-- Web Dependencies -->
