@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.quarkus.search.app.entity.Guide;
@@ -27,6 +28,7 @@ import org.hibernate.search.util.common.impl.Closer;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 public class QuarkiverseIO implements Closeable {
 
@@ -59,9 +61,11 @@ public class QuarkiverseIO implements Closeable {
         try {
             Document document = Jsoup.parse(file);
 
-            String title = document.select("h1.page").text();
+            String title = document.select("nav.breadcrumbs li").stream()
+                    .map(Element::text)
+                    .collect(Collectors.joining(" | "));
             if (title.isBlank()) {
-                title = document.select("nav.breadcrumbs").text();
+                title = document.select("h1.page").text();
             }
             if (title.isBlank()) {
                 title = document.select("h3.title").text();
