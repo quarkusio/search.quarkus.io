@@ -10,30 +10,39 @@ import io.smallrye.config.WithDefault;
 @ConfigMapping(prefix = "quarkiverseio")
 public interface QuarkiverseIOConfig {
 
-    Optional<Zip> zip();
+    @WithDefault("github-artifact")
+    SourceType source();
 
-    Optional<GithubArtifact> githubArtifact();
+    enum SourceType {
+        NONE,
+        GITHUB_ARTIFACT,
+        ZIP
+    }
 
-    @WithDefault("true")
-    boolean enabled();
+    Zip zip();
+
+    GithubArtifact githubArtifact();
 
     @WithDefault("https://docs.quarkiverse.io/")
     URI baseUri();
 
     interface GithubArtifact {
-        String token();
+        // Only necessary if source = github-artifact
+        Optional<String> token();
 
+        @WithDefault("quarkiverse/quarkiverse-docs")
         String repository();
 
-        //@WithDefault( "Publish website" )
+        @WithDefault("Publish website")
         String actionName();
 
-        //@WithDefault( "github-pages" )
+        @WithDefault("github-pages")
         String artifactName();
     }
 
     interface Zip {
-        Path path();
+        // Only necessary if source = zip
+        Optional<Path> path();
     }
 
 }
