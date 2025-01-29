@@ -3,6 +3,8 @@ package io.quarkus.search.app;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
+import java.util.List;
 import java.util.Map;
 
 import io.quarkus.search.app.dto.GuideSearchHit;
@@ -20,6 +22,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
 
@@ -107,6 +112,25 @@ class SearchServiceQuarkiverseTest {
                 .satisfiesOnlyOnce(
                         uri -> assertThat(uri).asString()
                                 .contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.nameBeforeRestRenaming()));
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void relevance(String query, URI[] expectedGuideUrls) {
+        var result = search(query);
+        // Using "startsWith" here, because what we want is to have the most relevant hits first.
+        // We don't mind that much if there's a trail of not-so-relevant hits.
+        assertThat(result.hits()).extracting(GuideSearchHit::url).startsWith(expectedGuideUrls);
+    }
+
+    private static List<Arguments> relevance() {
+        return List.of(
+                // Before relevance was fixed, Hibernate Search Extras was way down the result list.
+                Arguments.of("hibernate search extras", GuideRef.urls(
+                        GuideRef.QUARKIVERSE_HIBERNATE_SEARCH_EXTRAS,
+                        GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH))
+        // Add more scenarios here if the need arises; see SearchServiceTest#relevance()
+        );
     }
 
     @Test
