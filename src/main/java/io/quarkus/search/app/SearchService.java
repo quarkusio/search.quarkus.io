@@ -21,6 +21,7 @@ import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 
+import org.hibernate.search.backend.elasticsearch.ElasticsearchExtension;
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.engine.search.common.ValueModel;
 import org.hibernate.search.engine.search.predicate.dsl.MatchPredicateOptionsStep;
@@ -31,6 +32,8 @@ import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestQuery;
+
+import com.google.gson.JsonObject;
 
 @ApplicationScoped
 @Path("/")
@@ -60,6 +63,7 @@ public class SearchService {
             @RestQuery @DefaultValue("100") @Min(0) @Max(value = 200, message = MAX_FOR_PERF_MESSAGE) int contentSnippetsLength) {
         try (var session = searchMapping.createSession()) {
             var result = session.search(Guide.class)
+                    .extension(ElasticsearchExtension.get())
                     .select(f -> f.composite().from(
                             f.id(),
                             f.field("type"),
@@ -125,6 +129,7 @@ public class SearchService {
                     .sort(f -> f.score().then().field(language.addSuffix("title_sort")))
                     .routing(QuarkusVersionAndLanguageRoutingBinder.searchKeys(version, language))
                     .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)
+                    .requestTransformer(context -> requestSuggestion(context.body(), q, language, highlightCssClass))
                     .fetch(page * PAGE_SIZE, PAGE_SIZE);
             return new SearchResult<>(result);
         }
@@ -151,6 +156,26 @@ public class SearchService {
 
     private static MatchPredicateOptionsStep<?> originMatch(SearchPredicateFactory f, String origin) {
         return f.match().field("origin").matching(origin);
+    }
+
+    private void requestSuggestion(JsonObject payload, String q, Language language, String highlightCssClass) {
+        if (q == null || q.isBlank()) {
+            return;
+        }
+        JsonObject suggest = new JsonObject();
+        payload.add("suggest", suggest);
+        suggest.addProperty("text", q);
+        JsonObject suggestion = new JsonObject();
+        suggest.add("didYouMean", suggestion);
+        JsonObject phrase = new JsonObject();
+        suggestion.add("phrase", phrase);
+        phrase.addProperty("field", language.addSuffix("fullContent_suggestion"));
+        phrase.addProperty("size", 1);
+        phrase.addProperty("gram_size", 1);
+        JsonObject highlight = new JsonObject();
+        phrase.add("highlight", highlight);
+        highlight.addProperty("pre_tag", "<span class=\"" + highlightCssClass + "\">");
+        highlight.addProperty("post_tag", "</span>");
     }
 
 }

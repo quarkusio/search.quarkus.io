@@ -6,10 +6,12 @@ import {LocalSearch} from "./local-search";
 export const QS_START_EVENT = 'qs-start';
 export const QS_RESULT_EVENT = 'qs-result';
 export const QS_NEXT_PAGE_EVENT = 'qs-next-page';
+export const QS_QUERY_SUGGESTION_EVENT = 'qs-query-suggestion';
 
 export interface QsResult {
   hits: QsHit[];
   hasMoreHits: boolean;
+  suggestion: QsSuggestion;
 }
 
 export interface QsHit {
@@ -19,6 +21,11 @@ export interface QsHit {
   keywords: string | undefined;
   content: string | undefined;
   type: string | undefined;
+}
+
+export interface QsSuggestion {
+  query: string;
+  highlighted: string;
 }
 
 /**
@@ -106,6 +113,7 @@ export class QsForm extends LitElement {
     LocalSearch.enableLocalSearch();
     const formElements = this._getFormElements();
     this.addEventListener(QS_NEXT_PAGE_EVENT, this._handleNextPage);
+    this.addEventListener(QS_QUERY_SUGGESTION_EVENT, this._handleQuerySuggestion)
     formElements.forEach((el) => {
       const eventName = this._isInput(el) ? 'input' : 'change';
       el.addEventListener(eventName, this._handleInputChange);
@@ -118,6 +126,7 @@ export class QsForm extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.removeEventListener(QS_NEXT_PAGE_EVENT, this._handleNextPage);
+    this.removeEventListener(QS_QUERY_SUGGESTION_EVENT, this._handleQuerySuggestion)
     const formElements = this._getFormElements();
     formElements.forEach(el => {
       const eventName = this._isInput(el) ? 'input' : 'change';
@@ -218,6 +227,15 @@ export class QsForm extends LitElement {
   private _handleNextPage = (e: CustomEvent) => {
     this._page++;
     this._search();
+  }
+
+  private _handleQuerySuggestion = (e: CustomEvent) => {
+    this._getFormElements().forEach((el) => {
+      if (this._isInput(el) && el.name === 'q') {
+        el.value = e.detail.suggestion.query;
+      }
+    });
+    this._handleInputChange(e);
   }
 
   private _isInput(el: HTMLFormElement) {
