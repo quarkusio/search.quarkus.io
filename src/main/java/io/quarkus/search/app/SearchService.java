@@ -18,10 +18,14 @@ import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
+import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.engine.search.common.ValueModel;
+import org.hibernate.search.engine.search.predicate.dsl.MatchPredicateOptionsStep;
+import org.hibernate.search.engine.search.predicate.dsl.PredicateFinalStep;
+import org.hibernate.search.engine.search.predicate.dsl.SearchPredicateFactory;
 import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
@@ -77,27 +81,25 @@ public class SearchService {
                         }
 
                         if (q != null && !q.isBlank()) {
-                            root.add(f.bool().must(f.simpleQueryString()
-                                    .field(language.addSuffix("title")).boost(10.0f)
-                                    .field(language.addSuffix("topics")).boost(10.0f)
-                                    .field(language.addSuffix("keywords")).boost(10.0f)
-                                    .field(language.addSuffix("summary")).boost(5.0f)
-                                    .field(language.addSuffix("fullContent"))
-                                    .field(language.addSuffix("keywords_autocomplete")).boost(1.0f)
-                                    .field(language.addSuffix("title_autocomplete")).boost(1.0f)
-                                    .field(language.addSuffix("summary_autocomplete")).boost(0.5f)
-                                    .field(language.addSuffix("fullContent_autocomplete")).boost(0.1f)
-                                    .matching(q)
-                                    // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
-                                    // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side.
-                                    // we also add phrase flag so that entire phrases could be searched as well, e.g.: "hibernate search"
-                                    .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR, SimpleQueryFlag.PHRASE)
-                                    .defaultOperator(BooleanOperator.AND))
-                                    .should(f.match().field("origin").matching(QuarkusIO.QUARKUS_ORIGIN).constantScore()
-                                            .boost(1000.0f))
-                                    .should(f.not(f.match().field(language.addSuffix("topics"))
-                                            .matching("compatibility", ValueModel.INDEX))
-                                            .boost(50.0f)));
+                            root.add(f.or(
+                                    // Duplicate the query so that we apply a multiplicative boost to quarkus.io guides.
+                                    // The end result is that a low-relevance match on quarkus.io _can_ be scored
+                                    // lower than a high-relevance match on quarkiverse.io,
+                                    // if it's significantly more relevant.
+                                    // Note that we could, alternatively,
+                                    // do something like bool().must(textMatch()).should(origin(quarkusio).boost(2f))),
+                                    // but then the boost would be additive, so we would ignore relative relevance
+                                    // of quarkus.io/quarkiverse.io results.
+                                    f.bool().must(textMatch(f, q, language))
+                                            .filter(originMatch(f, QuarkusIO.QUARKUS_ORIGIN))
+                                            // Always score lower for compatibility (legacy) guides.
+                                            // TODO: Maybe we should use a duplicate query with multiplicative boost for this too?
+                                            .should(f.not(f.match().field(language.addSuffix("topics"))
+                                                    .matching("compatibility", ValueModel.INDEX))
+                                                    .boost(50.0f))
+                                            .boost(2.0f),
+                                    f.bool().must(textMatch(f, q, language))
+                                            .filter(originMatch(f, QuarkiverseIO.QUARKIVERSE_ORIGIN))));
                         }
                     })
                     .highlighter(f -> f.fastVector()
@@ -126,6 +128,29 @@ public class SearchService {
                     .fetch(page * PAGE_SIZE, PAGE_SIZE);
             return new SearchResult<>(result);
         }
+    }
+
+    private PredicateFinalStep textMatch(SearchPredicateFactory f, String q, Language language) {
+        return f.simpleQueryString()
+                .field(language.addSuffix("title")).boost(10.0f)
+                .field(language.addSuffix("topics")).boost(10.0f)
+                .field(language.addSuffix("keywords")).boost(10.0f)
+                .field(language.addSuffix("summary")).boost(5.0f)
+                .field(language.addSuffix("fullContent"))
+                .field(language.addSuffix("keywords_autocomplete")).boost(1.0f)
+                .field(language.addSuffix("title_autocomplete")).boost(1.0f)
+                .field(language.addSuffix("summary_autocomplete")).boost(0.5f)
+                .field(language.addSuffix("fullContent_autocomplete")).boost(0.1f)
+                .matching(q)
+                // See: https://github.com/elastic/elasticsearch/issues/39905#issuecomment-471578025
+                // while the issue is about stopwords the same problem is observed for synonyms on search-analyzer side.
+                // we also add phrase flag so that entire phrases could be searched as well, e.g.: "hibernate search"
+                .flags(SimpleQueryFlag.AND, SimpleQueryFlag.OR, SimpleQueryFlag.PHRASE)
+                .defaultOperator(BooleanOperator.AND);
+    }
+
+    private static MatchPredicateOptionsStep<?> originMatch(SearchPredicateFactory f, String origin) {
+        return f.match().field("origin").matching(origin);
     }
 
 }
