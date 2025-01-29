@@ -59,13 +59,12 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide .origin {
-          background-size: 20px 20px;
+          background-size: 100px 25px;
           background-repeat: no-repeat;
           background-position: center;
-          margin-left: 5px;
-          width: 20px;
-          height: 20px;
-          display: inline-block;
+          width: 100px;
+          height: 30px;
+          display: block;
           vertical-align: middle;
       }
 
@@ -123,7 +122,7 @@ export class QsGuide extends LitElement {
         <div>
           <h4>
             <a href="${this.relativizeUrl()}" target="_blank">${this._renderHTML(this.title)}</a>
-            ${(this.origin && this.origin.toLowerCase() !== 'quarkus') ? html`<span class="origin ${this.origin}" title="${this.origin}"></span>` : ''}
+            ${(this.origin && this.origin.toLowerCase() !== 'quarkus') ? html`<a href="${this._originLink()}" target="_blank" class="origin" title="${this._originTitle()}">${unsafeHTML(this._originIcon())}</a>` : ''}
           </h4>
           <div class="summary">
             <p>${this._renderHTML(this.summary)}</p>
@@ -155,13 +154,7 @@ export class QsGuide extends LitElement {
 
   private icon(): string {
     const icon = icons.docs[this.type];
-    if (icon) {
-      const match = icon.match(/.*(<svg.*<\/svg>)/);
-      if (match) {
-        return match[1];
-      }
-    }
-    return '';
+    return this._iconToSvg(icon);
   }
 
   private _renderHTML(content?: string | [string]) {
@@ -173,4 +166,41 @@ export class QsGuide extends LitElement {
     }
     return unsafeHTML(content);
   }
+
+  private _originTitle(): string {
+    if ('quarkiverse-hub' === this.origin) {
+      return 'Quarkus extension project contributed by the community';
+    } else {
+      return this.origin;
+    }
+  }
+
+  private _originLink(): string {
+    if ('quarkiverse-hub' === this.origin) {
+      return 'https://github.com/quarkiverse';
+    } else {
+      return '#';
+    }
+  }
+
+  private _originIcon():string {
+    const icon = icons.origins['quarkiverse-hub' === this.origin ? 'quarkiverse' : this.origin];
+    console.log(icon)
+    return this._iconToSvg(icon);
+  }
+
+  private _iconToSvg(icon: string):string {
+    if (icon) {
+      const match = icon.match(/.*(<svg.*<\/svg>)/);
+      if (match) {
+        // NOTE: we are getting a data-url string here and some characters in there may be encoded, in particular `#`
+        // decoding with decodeURI or decodeURIComponent are failing, hence we just manually replace some of these characters
+        //
+        // Ideally we would change the svg loading to text but that breaks other parts of the app >_<
+        return match[1].replaceAll('%23', '#');
+      }
+    }
+    return '';
+  }
+
 }
