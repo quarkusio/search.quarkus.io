@@ -74,7 +74,7 @@ _DEV_QUARKUSIO_WEB_URI=http://localhost:4000
 ----
 
 By default, in dev mode, any parsing/indexing warnings and errors are going to be simply logged.
-But in case you want to get index errors reported to a GitHub issue, next properties should be added:
+But in case you want to get index errors reported to a GitHub issue, the following properties should be added:
 [source,properties]
 ----
 _DEV_INDEXING_REPORTING_TYPE=github-issue
@@ -106,11 +106,9 @@ add the following properties to your `.env` file:
 
 [source,properties]
 ----
+_DEV_QUARKIVERSEIO_SOURCE=github-artifact
 # see about tokens https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
 QUARKIVERSEIO_GITHUB_ARTIFACT_TOKEN={your-generated-github-token}
-QUARKIVERSEIO_GITHUB_ARTIFACT_REPOSITORY=quarkiverse/quarkiverse-docs
-QUARKIVERSEIO_GITHUB_ARTIFACT_ACTION_NAME=Publish website
-QUARKIVERSEIO_GITHUB_ARTIFACT_ARTIFACT_NAME=github-pages
 ----
 
 [[testing]]

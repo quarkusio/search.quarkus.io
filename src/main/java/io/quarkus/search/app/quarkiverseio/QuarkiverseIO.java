@@ -13,6 +13,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import io.quarkus.search.app.entity.Guide;
@@ -37,15 +38,13 @@ public class QuarkiverseIO implements Closeable {
 
     private final FailureCollector failureCollector;
 
-    private final boolean enabled;
-    private final Path pages;
+    private final Optional<Path> pages;
     private final URI baseUri;
     private final CloseableDirectory tempDir;
 
-    public QuarkiverseIO(boolean enabled, Path pages, URI baseUri, FailureCollector failureCollector,
+    public QuarkiverseIO(Optional<Path> pages, URI baseUri, FailureCollector failureCollector,
             CloseableDirectory tempDir) {
         this.failureCollector = failureCollector;
-        this.enabled = enabled;
         this.pages = pages;
         this.baseUri = baseUri;
         this.tempDir = tempDir;
@@ -53,7 +52,7 @@ public class QuarkiverseIO implements Closeable {
 
     private Guide readGuide(Path file) {
         Guide guide = new Guide();
-        guide.url = baseUri.resolve(pages.relativize(file).toString());
+        guide.url = baseUri.resolve(pages.get().relativize(file).toString());
         guide.type = "reference";
         guide.origin = QUARKIVERSE_ORIGIN;
 
@@ -81,28 +80,29 @@ public class QuarkiverseIO implements Closeable {
     }
 
     public Stream<Guide> guides() {
-        if (enabled) {
-            Stream<Path> quarkiverseStream = null;
-            try {
-                quarkiverseStream = Files.list(pages);
-                return quarkiverseStream.filter(Files::isDirectory)
-                        // First get the extensions directories:
-                        .filter(dir -> dir.getFileName().toString().startsWith("quarkus"))
-                        // then try to look for `dev` directory as a "latest" version,
-                        // if we don't find one, we'll report it as a "warning"
-                        .map(this::latestVersion)
-                        .filter(Objects::nonNull)
-                        .flatMap(this::filesToIndex)
-                        .map(this::readGuide);
-            } catch (IOException e) {
-                if (quarkiverseStream != null) {
-                    quarkiverseStream.close();
-                }
-                failureCollector.critical(FailureCollector.Stage.PARSING, "Unable to fetch the Quarkiverse Docs index page.",
-                        e);
-            }
+        if (pages.isEmpty()) {
+            return Stream.empty();
         }
-        return Stream.empty();
+        Stream<Path> quarkiverseStream = null;
+        try {
+            quarkiverseStream = Files.list(pages.get());
+            return quarkiverseStream.filter(Files::isDirectory)
+                    // First get the extensions directories:
+                    .filter(dir -> dir.getFileName().toString().startsWith("quarkus"))
+                    // then try to look for `dev` directory as a "latest" version,
+                    // if we don't find one, we'll report it as a "warning"
+                    .map(this::latestVersion)
+                    .filter(Objects::nonNull)
+                    .flatMap(this::filesToIndex)
+                    .map(this::readGuide);
+        } catch (IOException e) {
+            if (quarkiverseStream != null) {
+                quarkiverseStream.close();
+            }
+            failureCollector.critical(FailureCollector.Stage.PARSING, "Unable to fetch the Quarkiverse Docs index page.",
+                    e);
+            return Stream.empty();
+        }
     }
 
     private Stream<Path> filesToIndex(Path path) {

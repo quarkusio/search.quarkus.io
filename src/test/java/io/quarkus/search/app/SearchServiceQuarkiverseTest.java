@@ -36,7 +36,7 @@ class SearchServiceQuarkiverseTest {
     public static class Profile implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of("quarkiverseio.enabled", "true");
+            return Map.of("quarkiverseio.source", "zip");
         }
     }
 
