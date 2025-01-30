@@ -214,7 +214,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    FETCHED_GUIDE_1_CONTENT_HTML);
+                                    FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.CHINESE,
                                     "何かのタイトル",
@@ -223,7 +223,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.SPANISH,
                                     "何かのタイトル",
@@ -232,7 +232,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.JAPANESE,
                                     "何かのタイトル",
@@ -241,7 +241,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.PORTUGUESE,
                                     "何かのタイトル",
@@ -250,7 +250,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.ENGLISH,
                                     "Some other title",
@@ -259,7 +259,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    FETCHED_GUIDE_2_CONTENT_HTML);
+                                    FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.CHINESE,
                                     "Some other title",
@@ -270,7 +270,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.SPANISH,
                                     "Some other title",
@@ -279,7 +279,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.JAPANESE,
                                     "Some other title",
@@ -288,7 +288,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.PORTUGUESE,
                                     "Some other title",
@@ -297,7 +297,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             default -> Assertions.<Consumer<Guide>> fail("Unexpected URL: " + guide.url);
                         }));
             }
@@ -323,7 +323,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    FETCHED_GUIDE_1_CONTENT_HTML_UPDATED);
+                                    FETCHED_GUIDE_1_CONTENT_PROCESSED_UPDATED);
                             case "https://cn.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.CHINESE,
                                     "Some updated title",
@@ -332,7 +332,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://es.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.SPANISH,
                                     "Some updated title",
@@ -341,7 +341,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://ja.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.JAPANESE,
                                     "Some updated title",
@@ -350,7 +350,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://pt.quarkus.io/guides/" + FETCHED_GUIDE_1_NAME -> isGuide(
                                     Language.PORTUGUESE,
                                     "Some updated title",
@@ -359,7 +359,7 @@ class FetchingServiceTest {
                                     Set.of("category1", "category2"),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
-                                    JA_FETCHED_GUIDE_1_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
                             case "https://quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.ENGLISH,
                                     "Some other title",
@@ -368,7 +368,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    FETCHED_GUIDE_2_CONTENT_HTML);
+                                    FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://cn.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.CHINESE,
                                     "Some other title",
@@ -379,7 +379,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.SPANISH,
                                     "Some other title",
@@ -388,7 +388,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://ja.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.JAPANESE,
                                     "Some other title",
@@ -397,7 +397,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
                                     Language.PORTUGUESE,
                                     "Some other title",
@@ -406,7 +406,7 @@ class FetchingServiceTest {
                                     Set.of("getting-started"),
                                     Set.of(),
                                     Set.of(),
-                                    JA_FETCHED_GUIDE_2_CONTENT_HTML);
+                                    JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             default -> Assertions.<Consumer<Guide>> fail("Unexpected URL: " + guide.url);
                         }));
             }
@@ -479,6 +479,9 @@ class FetchingServiceTest {
             <h2>Some other subsection</h2>
             This is another subsection
             """;
+    private static final String FETCHED_GUIDE_1_CONTENT_PROCESSED = """
+            Some title This is the guide body Some subsection This is a subsection Some other subsection This is another subsection
+            """;
 
     private static final String FETCHED_GUIDE_1_CONTENT_HTML_UPDATED = """
             <html>
@@ -491,6 +494,9 @@ class FetchingServiceTest {
             <h2>Some other updated subsection</h2>
             This is another updated subsection
             """;
+    private static final String FETCHED_GUIDE_1_CONTENT_PROCESSED_UPDATED = """
+            Some title This is the updated guide body Some updated subsection This is an updated subsection Some other updated subsection This is another updated subsection
+            """;
     private static final String FETCHED_GUIDE_2_NAME = "bar";
     private static final String FETCHED_GUIDE_2_CONTENT_HTML = """
             <html>
@@ -498,6 +504,9 @@ class FetchingServiceTest {
             <body>
             <h1>Some other title</h1>
             <p>This is the other guide body
+            """;
+    private static final String FETCHED_GUIDE_2_CONTENT_PROCESSED = """
+            Some other title This is the other guide body
             """;
     private static final String JA_PO_METADATA_YAML = """
             msgid ""
@@ -543,12 +552,18 @@ class FetchingServiceTest {
             <h2>他のサブセクション</h2>
             これは別のサブセクションです
             """;
+    private static final String JA_FETCHED_GUIDE_1_CONTENT_PROCESSED = """
+            何かのタイトル こちらがガイド本体です 一部のサブセクション これはサブセクションです 他のサブセクション これは別のサブセクションです
+            """;
     private static final String JA_FETCHED_GUIDE_2_CONTENT_HTML = """
             <html>
             <head></head>
             <body>
             <h1>他のタイトル</h1>
             <p>こちらはもう一方のガイド本体です
+            """;
+    private static final String JA_FETCHED_GUIDE_2_CONTENT_PROCESSED = """
+            他のタイトル こちらはもう一方のガイド本体です
             """;
 
     private static Consumer<Guide> isGuide(Language language, String title, String summary, String keywords,

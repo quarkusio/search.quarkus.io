@@ -1,9 +1,7 @@
 package io.quarkus.search.app.quarkiverseio;
 
 import java.io.Closeable;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -73,11 +71,10 @@ public class QuarkiverseIO implements Closeable {
             guide.title.set(title.trim());
 
             guide.summary.set(document.select("div#preamble").text());
+            guide.htmlFullContentProvider.set(InputProvider.from(document, tempDir, file));
         } catch (IOException e) {
             failureCollector.warning(FailureCollector.Stage.PARSING, "Failed to parse guide file: " + file, e);
         }
-
-        guide.htmlFullContentProvider.set(new FileInputProvider(file));
 
         Log.debugf("Parsed guide: %s", guide.url);
         return guide;
@@ -154,14 +151,6 @@ public class QuarkiverseIO implements Closeable {
     public void close() throws IOException {
         try (var closer = new Closer<IOException>()) {
             closer.push(CloseableDirectory::close, tempDir);
-        }
-    }
-
-    private record FileInputProvider(Path content) implements InputProvider {
-
-        @Override
-        public InputStream open() throws IOException {
-            return new FileInputStream(content.toFile());
         }
     }
 }

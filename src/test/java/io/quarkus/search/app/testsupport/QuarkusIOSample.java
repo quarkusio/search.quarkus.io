@@ -271,27 +271,6 @@ public final class QuarkusIOSample {
         });
     }
 
-    @SuppressWarnings("unchecked") // since we are expecting a specific YAML structure and don't need to test each nested node for a correct type.
-    private static void yamlQuarkiverseEditor(String version, Path fileToEdit) {
-        yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
-            Set<String> guideRefs = Arrays.stream(GuideRef.quarkiverse()).map(g -> g.name(version)).collect(Collectors.toSet());
-
-            Map<String, Object> filtered = new HashMap<>();
-            Map<String, List<Object>> guides = new HashMap<>();
-            filtered.put("types", guides);
-            for (Map.Entry<String, List<Map<String, Object>>> entry : ((Map<String, List<Map<String, Object>>>) quarkusYaml
-                    .get("types")).entrySet()) {
-                for (Map<String, Object> guide : entry.getValue()) {
-                    if (guideRefs.contains(Objects.toString(guide.get("url"), null))) {
-                        guides.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
-                                .add(guide);
-                    }
-                }
-            }
-            return filtered;
-        });
-    }
-
     private static void yamlVersionEditor(Path fileToEdit, Collection<String> versions) {
         yamlQuarkusEditor(fileToEdit, quarkusYaml -> {
             Map<String, Object> filtered = new HashMap<>();
@@ -401,9 +380,6 @@ public final class QuarkusIOSample {
             c.addVersionMetadata(SAMPLED_VERSIONS);
             for (String version : SAMPLED_VERSIONS) {
                 c.addMetadata(version, guides);
-                if (QuarkusVersions.MAIN.equals(version)) {
-                    c.addQuarkiverseMetadata(version);
-                }
                 for (GuideRef guideRef : guides) {
                     c.addGuide(guideRef, version);
                 }
@@ -423,9 +399,6 @@ public final class QuarkusIOSample {
         public void define(FilterDefinitionCollector c) {
             for (String version : SAMPLED_VERSIONS) {
                 c.addLocalizedMetadata(language, version);
-                if (QuarkusVersions.MAIN.equals(version)) {
-                    c.addLocalizedQuarkiverseMetadata(language, version);
-                }
                 for (GuideRef guideRef : GuideRef.local()) {
                     c.addLocalizedGuide(language, guideRef, version);
                 }
@@ -466,13 +439,6 @@ public final class QuarkusIOSample {
             return this;
         }
 
-        public FilterDefinitionCollector addQuarkiverseMetadata(String version) {
-            String metadataPath = QuarkusIO.yamlQuarkiverseMetadataPath(version).toString();
-            addOnSourceBranch(metadataPath, metadataPath);
-            addMetadataToFilter(metadataPath, path -> yamlQuarkiverseEditor(version, path));
-            return this;
-        }
-
         public FilterDefinitionCollector addLocalizedGuide(Language language, GuideRef ref, String version) {
             String htmlPath = QuarkusIO.htmlPath(language, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
@@ -483,14 +449,6 @@ public final class QuarkusIOSample {
         public FilterDefinitionCollector addLocalizedMetadata(Language language, String version) {
             String metadataPath = Path.of("l10n", "po", language.locale)
                     .resolve(QuarkusIO.yamlMetadataPath(version) + ".po")
-                    .toString();
-            addOnSourceBranch(metadataPath, metadataPath);
-            return this;
-        }
-
-        public FilterDefinitionCollector addLocalizedQuarkiverseMetadata(Language language, String version) {
-            String metadataPath = Path.of("l10n", "po", language.locale)
-                    .resolve(QuarkusIO.yamlQuarkiverseMetadataPath(version) + ".po")
                     .toString();
             addOnSourceBranch(metadataPath, metadataPath);
             return this;
