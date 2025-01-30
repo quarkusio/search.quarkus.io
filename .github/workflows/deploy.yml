@@ -29,26 +29,26 @@ jobs:
       QUARKUS_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b # v4.6.0
       with:
         distribution: temurin
         java-version: 17
 
     - name: Set up Helm
-      uses: azure/setup-helm@v4.0.0
+      uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
       with:
          version: 'v3.13.3'
 
     - name: Install CLI tools from OpenShift Mirror
-      uses: redhat-actions/openshift-tools-installer@v1
+      uses: redhat-actions/openshift-tools-installer@144527c7d98999f2652264c048c7a9bd103f8a82 # v1.13.1
       with:
         oc: "latest"
 
     - name: Log in to OpenShift
-      uses: redhat-actions/oc-login@v1
+      uses: redhat-actions/oc-login@5eb45e848b168b6bf6b8fe7f1561003c12e3c99d # v1.3
       with:
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
         openshift_token: ${{ github.ref == 'refs/heads/production' && secrets.OPENSHIFT_TOKEN_PROD || secrets.OPENSHIFT_TOKEN_DEV }}
@@ -68,7 +68,7 @@ jobs:
         echo -n "OC_REGISTRY_URL=" >> "$GITHUB_OUTPUT"
         oc get imagestream -o json | jq -r '.items[0].status.publicDockerImageRepository' | awk -F"[/]" '{print $1}' >> "$GITHUB_OUTPUT"
     - name: Log in to OpenShift Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
       with:
         registry: ${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}
         username: ignored
