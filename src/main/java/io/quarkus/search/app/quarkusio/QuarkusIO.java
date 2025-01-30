@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -31,10 +32,10 @@ import io.quarkus.search.app.QuarkusVersions;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.entity.I18nData;
 import io.quarkus.search.app.entity.Language;
+import io.quarkus.search.app.hibernate.InputProvider;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
-import io.quarkus.search.app.util.GitInputProvider;
 import io.quarkus.search.app.util.GitUtils;
 
 import org.hibernate.search.util.common.impl.Closer;
@@ -45,6 +46,7 @@ import org.eclipse.jgit.revwalk.RevTree;
 import org.fedorahosted.tennera.jgettext.Catalog;
 import org.fedorahosted.tennera.jgettext.Message;
 import org.fedorahosted.tennera.jgettext.PoParser;
+import org.jsoup.Jsoup;
 import org.yaml.snakeyaml.Yaml;
 
 public class QuarkusIO implements Closeable {
@@ -87,7 +89,7 @@ public class QuarkusIO implements Closeable {
 
     private final Map<Language, QuarkusIOCloneDirectory> allSites;
     private final Map<Language, URI> siteUris;
-    private final CloseableDirectory prefetchedGuides = CloseableDirectory.temp("quarkiverse-guides-");
+    private final CloseableDirectory processedGuidesDirectory = CloseableDirectory.temp("preprocessed-guides-");
     private final FailureCollector failureCollector;
 
     public QuarkusIO(QuarkusIOConfig config, GitCloneDirectory mainRepository,
@@ -151,7 +153,7 @@ public class QuarkusIO implements Closeable {
             directory.unprocessed().ifPresent(m -> failureCollector.info(FailureCollector.Stage.PARSING, m));
         }
         try (var closer = new Closer<IOException>()) {
-            closer.push(CloseableDirectory::close, prefetchedGuides);
+            closer.push(CloseableDirectory::close, processedGuidesDirectory);
             closer.pushAll(QuarkusIOCloneDirectory::close, allSites.values());
         }
     }
@@ -407,6 +409,13 @@ public class QuarkusIO implements Closeable {
     private Guide createCoreGuide(GitCloneDirectory cloneDirectory, String quarkusVersion, String type,
             Map<String, Object> parsedGuide,
             String summaryKey, Language language, Catalog messages) {
+        String parsedUrl = toString(parsedGuide.get("url"));
+
+        InputProvider inputProvider = createInputProvider(cloneDirectory, htmlPath(language, quarkusVersion, parsedUrl));
+        if (inputProvider == null) {
+            return null;
+        }
+
         Guide guide = new Guide();
         guide.quarkusVersion = quarkusVersion;
         guide.language = language;
@@ -417,25 +426,46 @@ public class QuarkusIO implements Closeable {
         guide.type = type;
         guide.title.set(language, renderMarkdown(translate(messages, toString(parsedGuide.get("title")))));
         guide.summary.set(language, renderMarkdown(translate(messages, toString(parsedGuide.get(summaryKey)))));
-        String parsedUrl = toString(parsedGuide.get("url"));
         guide.url = httpUrl(siteUris.get(language), quarkusVersion, parsedUrl);
-        GitInputProvider gitInputProvider = new GitInputProvider(cloneDirectory.git(), cloneDirectory.pagesTree(),
-                htmlPath(language, quarkusVersion, parsedUrl));
-        guide.htmlFullContentProvider.set(language, gitInputProvider);
 
-        if (!gitInputProvider.isFileAvailable()) {
+        guide.htmlFullContentProvider.set(language, inputProvider);
+
+        return guide;
+    }
+
+    private InputProvider createInputProvider(GitCloneDirectory cloneDirectory, String path) {
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+
+        InputProvider inputProvider;
+        String message = "";
+        if (!GitUtils.fileExists(cloneDirectory.git().getRepository(), cloneDirectory.pagesTree(), path)) {
             // if  a file is not present we do not want to add such guide. Since if the html is not there
             // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
 
             // Since this file was listed in the yaml of a rev from which the site was built, the html should've been present.
             // So if it's missing, that's important context when investigating other errors.
-            failureCollector.info(
-                    FailureCollector.Stage.TRANSLATION,
-                    guide + " is ignored since we were not able to find an HTML content file for it.");
-            return null;
+            inputProvider = null;
+            message = path + " is ignored since we were not able to find an HTML content file for it." + cloneDirectory;
+        } else {
+            try {
+                inputProvider = InputProvider.from(
+                        Jsoup.parse(GitUtils.file(cloneDirectory.git().getRepository(), cloneDirectory.pagesTree(), path),
+                                StandardCharsets.UTF_8.displayName(), "/"),
+                        processedGuidesDirectory,
+                        path);
+            } catch (IOException e) {
+                message = path + " is ignored since we were not able to write a preprocessed HTML content file for it: "
+                        + e.getMessage();
+                inputProvider = null;
+            }
         }
 
-        return guide;
+        if (inputProvider == null) {
+            failureCollector.info(FailureCollector.Stage.PARSING, message);
+        }
+        return inputProvider;
     }
 
     private static String toString(Object value) {
