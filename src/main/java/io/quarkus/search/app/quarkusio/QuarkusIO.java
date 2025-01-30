@@ -85,10 +85,6 @@ public class QuarkusIO implements Closeable {
         return Path.of("_data", "versions.yaml");
     }
 
-    public static Path yamlQuarkiverseMetadataPath(String version) {
-        return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkiverse.yaml");
-    }
-
     private final Map<Language, QuarkusIOCloneDirectory> allSites;
     private final Map<Language, URI> siteUris;
     private final CloseableDirectory prefetchedGuides = CloseableDirectory.temp("quarkiverse-guides-");
