@@ -9,7 +9,7 @@ app:
     # This should ensure that we will discover potential memory issues on staging sooner (when running builds locally).
     limits:
       cpu: 1000m
-      memory: 1Gi
+      memory: 1.5Gi
     requests:
       cpu: 250m
       memory: 500Mi
