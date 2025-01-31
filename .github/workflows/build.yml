@@ -69,6 +69,7 @@ jobs:
         retention-days: 7
     - name: Produce report and add it as job summary
       uses: quarkusio/action-build-reporter@02e2aea3728e6f31199387eeba0dcdbd18b75159 # main
+      if: always()
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         build-reports-artifacts-path: .
