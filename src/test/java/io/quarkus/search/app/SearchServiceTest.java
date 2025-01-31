@@ -248,7 +248,6 @@ class SearchServiceTest {
                 GuideRef.HIBERNATE_ORM_PANACHE,
                 GuideRef.HIBERNATE_ORM_PANACHE_KOTLIN,
                 GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH,
-                GuideRef.HIBERNATE_REACTIVE,
                 GuideRef.HIBERNATE_REACTIVE_PANACHE,
                 GuideRef.SPRING_DATA_JPA,
                 GuideRef.DUPLICATED_CONTEXT,
