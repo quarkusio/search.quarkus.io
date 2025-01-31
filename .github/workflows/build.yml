@@ -56,7 +56,7 @@ jobs:
       if: always()
       run: |
         7z a -tzip build-reports.zip -r \
-            '**/target/*-reports/TEST-*.xml' \
+            'target/*-reports/TEST-*.xml' \
             'target/build-report.json' \
             LICENSE.txt
     - name: Upload build reports
