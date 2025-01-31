@@ -24,6 +24,7 @@ on:
 
 jobs:
   build:
+    name: Build
 
     runs-on: ubuntu-latest
 
@@ -49,3 +50,25 @@ jobs:
 
     - name: Build with Maven
       run: mvn -B install
+
+    # Publish build reports
+    - name: Prepare build reports archive
+      if: always()
+      run: |
+        7z a -tzip build-reports.zip -r \
+            '**/target/*-reports/TEST-*.xml' \
+            'target/build-report.json' \
+            LICENSE.txt
+    - name: Upload build reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: "build-reports-${{ github.run_attempt }}-Build"
+        path: |
+          build-reports.zip
+        retention-days: 7
+    - name: Produce report and add it as job summary
+      uses: quarkusio/action-build-reporter@main
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        build-reports-artifacts-path: .
