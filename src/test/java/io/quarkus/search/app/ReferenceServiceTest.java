@@ -47,7 +47,7 @@ class ReferenceServiceTest {
 
     @Test
     void languages() {
-        assertThat(get("languages")).containsExactly("en", "es", "pt", "cn", "ja");
+        assertThat(get("languages")).containsExactly("en", "pt", "cn", "ja");
     }
 
     @Test
