@@ -27,6 +27,7 @@ import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.indexing.reporting.StatusReporter;
 import io.quarkus.search.app.indexing.state.IndexingAlreadyInProgressException;
 import io.quarkus.search.app.indexing.state.IndexingState;
+import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.util.ExceptionUtils;
 
@@ -233,7 +234,8 @@ public class IndexingService {
     private void indexAll(FailureCollector failureCollector) {
         Log.info("Indexing...");
         try (Rollover rollover = Rollover.start(searchMapping)) {
-            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector)) {
+            try (QuarkusIO quarkusIO = fetchingService.fetchQuarkusIo(failureCollector);
+                    QuarkiverseIO quarkiverseIO = fetchingService.fetchQuarkiverseIo(failureCollector)) {
                 Log.info("Indexing quarkus.io...");
                 var failFastFailureHandler = new FailFastMassIndexingFailureHandler();
                 var future = searchMapping.scope(Object.class).massIndexer()
@@ -243,7 +245,7 @@ public class IndexingService {
                         .mergeSegmentsOnFinish(true)
                         .batchSizeToLoadObjects(indexingConfig.batchSize())
                         .threadsToLoadObjects(indexingConfig.parallelism().orElse(6))
-                        .context(QuarkusIOLoadingContext.class, QuarkusIOLoadingContext.of(quarkusIO))
+                        .context(QuarkusIOLoadingContext.class, QuarkusIOLoadingContext.of(quarkusIO, quarkiverseIO))
                         .monitor(new StreamMassIndexingLoggingMonitor())
                         .failureHandler(failFastFailureHandler)
                         .start()

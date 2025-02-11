@@ -24,20 +24,21 @@ on:
 
 jobs:
   build:
+    name: Build
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
       with:
         distribution: temurin
         java-version: 17
 
     - name: Cache local Maven repository
-      uses: actions/cache@v3
+      uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -49,3 +50,25 @@ jobs:
 
     - name: Build with Maven
       run: mvn -B install
+
+    # Publish build reports
+    - name: Prepare build reports archive
+      if: always()
+      run: |
+        7z a -tzip build-reports.zip -r \
+            '**/target/*-reports/TEST-*.xml' \
+            'target/build-report.json' \
+            LICENSE.txt
+    - name: Upload build reports
+      uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # 4.6.0
+      if: always()
+      with:
+        name: "build-reports-${{ github.run_attempt }}-Build"
+        path: |
+          build-reports.zip
+        retention-days: 7
+    - name: Produce report and add it as job summary
+      uses: quarkusio/action-build-reporter@02e2aea3728e6f31199387eeba0dcdbd18b75159 # main
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        build-reports-artifacts-path: .

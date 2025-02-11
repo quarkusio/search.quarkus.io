@@ -2,22 +2,24 @@ app:
   envs:
     QUARKUS_PROFILE: 'staging'
     # Avoid overloading the rather resource-constrained Search backend instance
-    INDEXING_QUEUE_COUNT: '6'
+    INDEXING_QUEUE_COUNT: '4'
     INDEXING_BULK_SIZE: '10'
   resources:
+    # When changing the memory limit for staging make sure to update the `test.jvm.args` value in the pom.
+    # This should ensure that we will discover potential memory issues on staging sooner (when running builds locally).
     limits:
       cpu: 1000m
-      memory: 1Gi
+      memory: 1.5Gi
     requests:
       cpu: 250m
       memory: 500Mi
 elasticsearch:
   envs:
-    ES_JAVA_OPTS: ' -Xms500m -Xmx500m '
+    ES_JAVA_OPTS: ' -Xms750m -Xmx750m '
   resources:
     limits:
       cpu: 500m
-      memory: 1.0Gi
+      memory: 1.5Gi
     requests:
       cpu: 250m
-      memory: 750Mi
+      memory: 1.0Mi

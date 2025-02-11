@@ -1,9 +1,10 @@
 import {LitElement, html, css, unsafeCSS} from 'lit';
 import {customElement, property, state, queryAll} from 'lit/decorators.js';
 import './qs-guide'
-import {QS_NEXT_PAGE_EVENT, QS_RESULT_EVENT, QS_START_EVENT, QsResult} from "./qs-form";
+import {QS_NEXT_PAGE_EVENT, QS_QUERY_SUGGESTION_EVENT, QS_RESULT_EVENT, QS_START_EVENT, QsResult} from "./qs-form";
 import debounce from 'lodash/debounce';
 import icons from "./assets/icons";
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
 
 /**
@@ -41,8 +42,20 @@ export class QsTarget extends LitElement {
       font-style: italic;
       text-align: center;
       background: var(--empty-background-color, #F0CA4D);
+      
+      .suggestion {
+        text-decoration: underline;
+        cursor: pointer;
+        .highlighted {
+          font-weight: bold;
+        }
+      }
     }
 
+    .search-result-title {
+      margin-top: 2.5rem;
+      font-weight: var(--heading-font-weight);
+    }
 
     qs-guide {
       grid-column: span 4;
@@ -64,6 +77,7 @@ export class QsTarget extends LitElement {
    
   `;
 
+  @property({type: String, attribute: 'search-results-title'}) searchResultsTitle: string = '';
   @property({type: String}) private type: string = "guide";
   @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
   @state() private _result: QsResult | undefined;
@@ -90,14 +104,24 @@ export class QsTarget extends LitElement {
   render() {
     if (this._result?.hits) {
       if (this._result.hits.length === 0) {
-        return html`
+        if (this._result.suggestion) {
+          return html`
+            <div id="qs-target" class="no-hits">
+              <p>Sorry, no ${this.type}s matched your search.
+                Did you mean <span class="suggestion" @click=${this._querySuggestion}>${unsafeHTML(this._result.suggestion.highlighted)}</span>?</p>
+            </div>
+          `;
+        } else {
+          return html`
           <div id="qs-target" class="no-hits">
             <p>Sorry, no ${this.type}s matched your search. Please try again.</p>
           </div>
         `;
+        }
       }
       const result = this._result.hits.map(i => this._renderHit(i));
       return html`
+        ${this.searchResultsTitle === '' ? '' : html`<h1 class="search-result-title">${this.searchResultsTitle}</h1>`}
         <div id="qs-target" class="qs-hits" aria-label="Search Hits">
           ${result}
         </div>
@@ -187,5 +211,9 @@ export class QsTarget extends LitElement {
 
   private _loadingEnd = () => {
     this._loading = false;
+  }
+
+  private _querySuggestion() {
+    this._form.dispatchEvent(new CustomEvent(QS_QUERY_SUGGESTION_EVENT, {detail: {suggestion: this._result.suggestion}}));
   }
 }

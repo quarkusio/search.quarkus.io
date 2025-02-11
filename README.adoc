@@ -74,7 +74,7 @@ _DEV_QUARKUSIO_WEB_URI=http://localhost:4000
 ----
 
 By default, in dev mode, any parsing/indexing warnings and errors are going to be simply logged.
-But in case you want to get index errors reported to a GitHub issue, next properties should be added:
+But in case you want to get index errors reported to a GitHub issue, the following properties should be added:
 [source,properties]
 ----
 _DEV_INDEXING_REPORTING_TYPE=github-issue
@@ -83,6 +83,32 @@ INDEXING_REPORTING_GITHUB_TOKEN={your-generated-github-token}
 INDEXING_REPORTING_GITHUB_ISSUE_REPOSITORY={your-github-user}/search.quarkus.io
 INDEXING_REPORTING_GITHUB_ISSUE_ID={github-issue-id-in-your-repository}
 INDEXING_REPORTING_GITHUB_WARNING_REPEAT_DELAY=10m
+----
+
+=== Updating the built-in docs.quarkiverse.io sample
+
+By default, the app will use the built-in docs.quarkiverse.io sample containing a snapshot of docs.quarkiverse.io.
+
+Quarkiverse guides are indexed from the GitHub workflow artifact created as part of
+the https://github.com/quarkiverse/quarkiverse-docs/actions/workflows/publish.yml[publish action].
+To update the included sample: go to the https://github.com/quarkiverse/quarkiverse-docs/actions/workflows/publish.yml?query=is%3Asuccess[page],
+open the first run at the top (latest successful execution) and download the `github-pages` at the bottom of the page.
+
+GitHub has a 100mb limit on the files we can include in the repository. This means that the downloaded artifact has to be cleaned up
+a bit. Unpack the archive and remove some of the extensions (in particular try dropping the ones taking the most space, e.g. `quarkus-backstage`.).
+Make sure to keep Amazon S3 guides as those are used in tests.
+Once you are done removing extensions, archive remaining guides back and replace the existing file.
+
+=== Downloading the latest docs.quarkiverse.io artifact
+
+If during the development there's a need to use a fresh docs.quarkiverse.io artifact downloaded by the app itself during the indexing process,
+add the following properties to your `.env` file:
+
+[source,properties]
+----
+_DEV_QUARKIVERSEIO_SOURCE=github-artifact
+# see about tokens https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+QUARKIVERSEIO_GITHUB_ARTIFACT_TOKEN={your-generated-github-token}
 ----
 
 [[testing]]
@@ -204,11 +230,13 @@ There are two namespaces containing two separate deployments at the moment:
 
 * Production (`production` branch):
 ** Console: https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/prod-search-quarkus-io
+** Search Web UI: none; that's on purpose, people should use https://quarkus.io/guides
 ** Endpoint: https://search.quarkus.io/api/guides/search
 ** Endpoint spec (OpenAPI): https://search.quarkus.io/api/openapi
 ** Indexing status reports: https://github.com/quarkusio/search.quarkus.io/issues/130
 * Staging (`main` branch):
 ** Console: https://console-openshift-console.apps.ospo-osci.z3b1.p1.openshiftapps.com/k8s/cluster/projects/dev-search-quarkus-io
+** Search Web UI (for testing/debugging purposes): https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/
 ** Endpoint: https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/api/guides/search
 ** Endpoint spec (OpenAPI): https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/api/openapi
 ** SwaggerUI: https://search-quarkus-io-dev-search-quarkus-io.apps.ospo-osci.z3b1.p1.openshiftapps.com/q/swagger-ui/

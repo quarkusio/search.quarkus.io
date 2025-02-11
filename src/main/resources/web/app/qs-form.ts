@@ -6,10 +6,12 @@ import {LocalSearch} from "./local-search";
 export const QS_START_EVENT = 'qs-start';
 export const QS_RESULT_EVENT = 'qs-result';
 export const QS_NEXT_PAGE_EVENT = 'qs-next-page';
+export const QS_QUERY_SUGGESTION_EVENT = 'qs-query-suggestion';
 
 export interface QsResult {
   hits: QsHit[];
   hasMoreHits: boolean;
+  suggestion: QsSuggestion;
 }
 
 export interface QsHit {
@@ -19,6 +21,11 @@ export interface QsHit {
   keywords: string | undefined;
   content: string | undefined;
   type: string | undefined;
+}
+
+export interface QsSuggestion {
+  query: string;
+  highlighted: string;
 }
 
 /**
@@ -49,6 +56,7 @@ export class QsForm extends LitElement {
   @property({type: String}) language: String = "en";
   @property({type: String, attribute: 'quarkus-version'}) quarkusversion?: string;
   @property({type: String, attribute: 'local-search'}) localSearch: boolean = false;
+  @property({type: String, attribute: 'origin-filter'}) originFilter: string = '';
 
   @state({
     hasChanged(newVal: any, oldVal: any) {
@@ -61,11 +69,13 @@ export class QsForm extends LitElement {
   private _page: number = 0;
   private _currentHitCount: number = 0;
   private _abortController?: AbortController = null;
+  private _initialQueryStringPresent: boolean;
 
   constructor() {
     super();
     const searchParams = new URLSearchParams(window.location.hash.substring(1));
     if (searchParams.size > 0) {
+      this._initialQueryStringPresent = true;
       const formElements = this._getFormElements();
       for (const formElement of formElements) {
         const value = searchParams.get(formElement.name);
@@ -85,6 +95,10 @@ export class QsForm extends LitElement {
   }
 
   update(changedProperties: Map<any, any>) {
+    if (this._initialQueryStringPresent) {
+      this._initialQueryStringPresent = false;
+      this._handleInputChange(null);
+    }
     window.location.hash = this._browserData ? (new URLSearchParams(this._browserData)).toString() : '';
     if (!this._backendData) {
       this._clearSearch();
@@ -99,6 +113,7 @@ export class QsForm extends LitElement {
     LocalSearch.enableLocalSearch();
     const formElements = this._getFormElements();
     this.addEventListener(QS_NEXT_PAGE_EVENT, this._handleNextPage);
+    this.addEventListener(QS_QUERY_SUGGESTION_EVENT, this._handleQuerySuggestion)
     formElements.forEach((el) => {
       const eventName = this._isInput(el) ? 'input' : 'change';
       el.addEventListener(eventName, this._handleInputChange);
@@ -111,6 +126,7 @@ export class QsForm extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.removeEventListener(QS_NEXT_PAGE_EVENT, this._handleNextPage);
+    this.removeEventListener(QS_QUERY_SUGGESTION_EVENT, this._handleQuerySuggestion)
     const formElements = this._getFormElements();
     formElements.forEach(el => {
       const eventName = this._isInput(el) ? 'input' : 'change';
@@ -183,6 +199,9 @@ export class QsForm extends LitElement {
     if (this.quarkusversion) {
       formData['version'] = this.quarkusversion;
     }
+    if (this.originFilter) {
+      formData['origin'] = this.originFilter;
+    }
     var elements = 0;
     for (let el: HTMLFormElement of formElements) {
       if (this._isInput(el) && (el.value.length === 0 || el.value.length < this.minChars)) {
@@ -208,6 +227,15 @@ export class QsForm extends LitElement {
   private _handleNextPage = (e: CustomEvent) => {
     this._page++;
     this._search();
+  }
+
+  private _handleQuerySuggestion = (e: CustomEvent) => {
+    this._getFormElements().forEach((el) => {
+      if (this._isInput(el) && el.name === 'q') {
+        el.value = e.detail.suggestion.query;
+      }
+    });
+    this._handleInputChange(e);
   }
 
   private _isInput(el: HTMLFormElement) {

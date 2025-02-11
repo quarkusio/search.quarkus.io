@@ -270,10 +270,9 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .satisfiesAnyOf(
+                        .satisfies(
                                 uri -> assertThat(uri).startsWith("https://quarkus.io/version/"
-                                        + QuarkusVersions.MAIN + "/guides/"),
-                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
+                                        + QuarkusVersions.MAIN + "/guides/")));
         result = given()
                 .queryParam("q", "orm")
                 .queryParam("version", "main")
@@ -285,26 +284,7 @@ class SearchServiceTest {
                 .isNotEmpty()
                 .allSatisfy(hit -> assertThat(hit).extracting(GuideSearchHit::url, InstanceOfAssertFactories.URI_TYPE)
                         .asString()
-                        .satisfiesAnyOf(
-                                uri -> assertThat(uri).startsWith("https://quarkus.io/version/main/guides/"),
-                                uri -> assertThat(uri).startsWith("https://quarkiverse.github.io/quarkiverse-docs")));
-    }
-
-    @Test
-    void quarkiverse() {
-        var result = given()
-                .queryParam("q", "amazon")
-                .queryParam("version", QuarkusVersions.MAIN)
-                .when().get(GUIDES_SEARCH)
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::url)
-                .satisfiesOnlyOnce(
-                        uri -> assertThat(uri).asString().contains(GuideRef.QUARKIVERSE_AMAZON_S3.nameBeforeRestRenaming()))
-                .satisfiesOnlyOnce(
-                        uri -> assertThat(uri).asString()
-                                .contains(GuideRef.HIBERNATE_SEARCH_ORM_ELASTICSEARCH.nameBeforeRestRenaming()));
+                        .satisfies(uri -> assertThat(uri).startsWith("https://quarkus.io/version/main/guides/")));
     }
 
     @Test
@@ -410,20 +390,6 @@ class SearchServiceTest {
     }
 
     @Test
-    void language_quarkiverse() {
-        var result = given()
-                .queryParam("q", "クラウドストレージ") // means "Cloud storage"
-                .queryParam("language", "ja")
-                .queryParam("version", "main")
-                .when().get(GUIDES_SEARCH)
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::url).satisfiesExactlyInAnyOrder(
-                uri -> assertThat(uri.toString()).startsWith(GuideRef.QUARKIVERSE_AMAZON_S3.name()));
-    }
-
-    @Test
     void quoteEmptyQuoteTitleTranslation() {
         var result = given()
                 // this title has a blank string in a translation file for CN, so we want to look for it and make sure that we won't fail to retrieve the results:
@@ -517,6 +483,62 @@ class SearchServiceTest {
         assertThat(result.hits()).extracting(GuideSearchHit::title)
                 .contains(
                         "<span class=\"highlighted\">Duplicated</span> <span class=\"highlighted\">context</span>, <span class=\"highlighted\">context</span> <span class=\"highlighted\">locals</span>, <span class=\"highlighted\">asynchronous</span> <span class=\"highlighted\">processing</span> <span class=\"highlighted\">and</span> <span class=\"highlighted\">propagation</span>");
+    }
+
+    /**
+     * Since there are some typos, the search results should include a suggestion with the text that would produce some results.
+     */
+    @Test
+    void suggestion() {
+        var result = given()
+                .queryParam("q", "hiberante search")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("hibernate search");
+
+        result = given()
+                .queryParam("q", "aplication")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("application");
+
+        result = given()
+                .queryParam("q", "Configuring your aplication")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("configuring your application");
+
+        result = given()
+                .queryParam("q", "vertex")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion().query())
+                .isEqualTo("vert.x");
+    }
+
+    /**
+     * As the query text is already fine, and matches the existing tokens, no suggestion is expected.
+     */
+    @Test
+    void noSuggestion() {
+        var result = given()
+                .queryParam("q", "hibernate search")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+        assertThat(result.suggestion()).isNull();
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
