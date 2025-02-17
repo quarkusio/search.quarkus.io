@@ -27,7 +27,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.18.2</quarkus.version>
+    <quarkus.version>3.18.3</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.5.2</surefire-plugin.version>
@@ -71,7 +71,7 @@
       <dependency>
         <groupId>io.quarkiverse.githubapi</groupId>
         <artifactId>quarkus-github-api</artifactId>
-        <version>1.322.0</version>
+        <version>1.326.0</version>
       </dependency>
       <dependency>
         <groupId>org.commonmark</groupId>
