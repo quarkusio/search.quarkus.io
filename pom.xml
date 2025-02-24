@@ -27,7 +27,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.18.3</quarkus.version>
+    <quarkus.version>3.19.0</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.5.2</surefire-plugin.version>
@@ -96,7 +96,7 @@
       <dependency>
         <groupId>io.quarkiverse.playwright</groupId>
         <artifactId>quarkus-playwright</artifactId>
-        <version>2.1.0</version>
+        <version>2.1.1</version>
       </dependency>
       <dependency>
         <groupId>org.mvnpm</groupId>
@@ -256,7 +256,7 @@
     <dependency>
       <groupId>io.quarkiverse.playwright</groupId>
       <artifactId>quarkus-playwright</artifactId>
-      <version>2.1.0</version>
+      <version>2.1.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
