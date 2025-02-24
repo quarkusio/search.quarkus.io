@@ -99,7 +99,7 @@ export class QsForm extends LitElement {
       this._initialQueryStringPresent = false;
       this._handleInputChange(null);
     }
-    window.location.hash = this._browserData ? (new URLSearchParams(this._browserData)).toString() : '';
+    window.location.hash = this._browserData ? (new URLSearchParams(this._browserData)).toString() : window.location.hash;
     if (!this._backendData) {
       this._clearSearch();
     } else {
