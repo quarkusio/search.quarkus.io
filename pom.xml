@@ -21,20 +21,20 @@
     <url>https://github.com/quarkusio/search.quarkus.io/issues</url>
   </issueManagement>
   <properties>
-    <compiler-plugin.version>3.13.0</compiler-plugin.version>
+    <compiler-plugin.version>3.14.0</compiler-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.18.2</quarkus.version>
+    <quarkus.version>3.19.0</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.5.2</surefire-plugin.version>
     <!-- Match the memory limits to the ones set for the staging profile (see src/main/helm/values.staging.yaml). -->
     <test.jvm.args>-Xms1536m -Xmx1536m</test.jvm.args>
     <version.docker.plugin>0.45.1</version.docker.plugin>
-    <version.formatter.plugin>2.24.1</version.formatter.plugin>
+    <version.formatter.plugin>2.25.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.12.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/opensearch-custom.Dockerfile -->
     <version.opensearch>2.18</version.opensearch>
@@ -71,7 +71,7 @@
       <dependency>
         <groupId>io.quarkiverse.githubapi</groupId>
         <artifactId>quarkus-github-api</artifactId>
-        <version>1.322.0</version>
+        <version>1.326.0</version>
       </dependency>
       <dependency>
         <groupId>org.commonmark</groupId>
@@ -96,7 +96,7 @@
       <dependency>
         <groupId>io.quarkiverse.playwright</groupId>
         <artifactId>quarkus-playwright</artifactId>
-        <version>2.1.0</version>
+        <version>2.1.1</version>
       </dependency>
       <dependency>
         <groupId>org.mvnpm</groupId>
@@ -256,7 +256,7 @@
     <dependency>
       <groupId>io.quarkiverse.playwright</groupId>
       <artifactId>quarkus-playwright</artifactId>
-      <version>2.1.0</version>
+      <version>2.1.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
