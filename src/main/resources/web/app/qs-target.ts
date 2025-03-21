@@ -42,6 +42,19 @@ export class QsTarget extends LitElement {
       font-style: italic;
       text-align: center;
       background: var(--empty-background-color, #F0CA4D);
+      box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.05), 0 4px 20px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .search-result-title {
+      margin-top: 2.5rem;
+      font-weight: var(--heading-font-weight);
+    }
+
+    .result-message {
+      box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.05), 0 4px 20px 0 rgba(0, 0, 0, 0.05);
+      background: var(--empty-background-color, #F0CA4D);
+      padding: 10px 10px 10px 90px;
+      font-size: 0.9rem;
       
       .suggestion {
         text-decoration: underline;
@@ -50,11 +63,6 @@ export class QsTarget extends LitElement {
           font-weight: bold;
         }
       }
-    }
-
-    .search-result-title {
-      margin-top: 2.5rem;
-      font-weight: var(--heading-font-weight);
     }
 
     qs-guide {
@@ -104,29 +112,34 @@ export class QsTarget extends LitElement {
   render() {
     if (this._result?.hits) {
       if (this._result.hits.length === 0) {
-        if (this._result.suggestion) {
-          return html`
-            <div id="qs-target" class="no-hits">
-              <p>Sorry, no ${this.type}s matched your search.
-                Did you mean <span class="suggestion" @click=${this._querySuggestion}>${unsafeHTML(this._result.suggestion.highlighted)}</span>?</p>
-            </div>
-          `;
-        } else {
-          return html`
+        return html`
           <div id="qs-target" class="no-hits">
             <p>Sorry, no ${this.type}s matched your search. Please try again.</p>
           </div>
         `;
-        }
       }
       const result = this._result.hits.map(i => this._renderHit(i));
-      return html`
-        ${this.searchResultsTitle === '' ? '' : html`<h1 class="search-result-title">${this.searchResultsTitle}</h1>`}
-        <div id="qs-target" class="qs-hits" aria-label="Search Hits">
-          ${result}
-        </div>
-        ${this._loading ? this._renderLoading() : ''}
-      `;
+      if (this._result.suggestion) {
+        return html`
+          ${this.searchResultsTitle === '' ? '' : html`<h1 class="search-result-title">${this.searchResultsTitle}</h1>`}
+            <div class="result-message">
+              <p class="">No ${this.type}s matched your original search query.
+                  Showing results for <span class="suggestion" @click=${this._querySuggestion}>${unsafeHTML(this._result.suggestion.highlighted)}</span> instead.</p>
+            </div>
+            <div id="qs-target" class="qs-hits" aria-label="Search Hits">
+              ${result}
+            </div>
+            ${this._loading ? this._renderLoading() : ''}
+          `;
+      } else {
+        return html`
+          ${this.searchResultsTitle === '' ? '' : html`<h1 class="search-result-title">${this.searchResultsTitle}</h1>`}
+          <div id="qs-target" class="qs-hits" aria-label="Search Hits">
+            ${result}
+          </div>
+          ${this._loading ? this._renderLoading() : ''}
+        `;
+      }
     }
     if (this._loading) {
       return html`
