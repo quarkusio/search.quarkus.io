@@ -518,7 +518,7 @@ class SearchServiceTest {
                 .isEqualTo("configuring your application");
 
         result = given()
-                .queryParam("q", "vertex")
+                .queryParam("q", "vert.ex")
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)

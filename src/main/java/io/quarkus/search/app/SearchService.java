@@ -21,7 +21,10 @@ import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 
+import io.quarkus.logging.Log;
+
 import org.hibernate.search.backend.elasticsearch.ElasticsearchExtension;
+import org.hibernate.search.backend.elasticsearch.search.query.ElasticsearchSearchResult;
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.engine.search.common.ValueModel;
 import org.hibernate.search.engine.search.predicate.dsl.MatchPredicateOptionsStep;
@@ -29,10 +32,12 @@ import org.hibernate.search.engine.search.predicate.dsl.PredicateFinalStep;
 import org.hibernate.search.engine.search.predicate.dsl.SearchPredicateFactory;
 import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryFlag;
 import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
+import org.hibernate.search.mapper.pojo.standalone.session.SearchSession;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestQuery;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 @ApplicationScoped
@@ -62,77 +67,95 @@ public class SearchService {
             @RestQuery @DefaultValue("1") @Min(0) @Max(value = 10, message = MAX_FOR_PERF_MESSAGE) int contentSnippets,
             @RestQuery @DefaultValue("100") @Min(0) @Max(value = 200, message = MAX_FOR_PERF_MESSAGE) int contentSnippetsLength) {
         try (var session = searchMapping.createSession()) {
-            var result = session.search(Guide.class)
-                    .extension(ElasticsearchExtension.get())
-                    .select(f -> f.composite().from(
-                            f.id(),
-                            f.field("type"),
-                            f.field("origin"),
-                            f.highlight(language.addSuffix("title")).highlighter("highlighter_title_or_summary").single(),
-                            f.highlight(language.addSuffix("summary")).highlighter("highlighter_title_or_summary").single(),
-                            f.highlight(language.addSuffix("fullContent")).highlighter("highlighter_content"))
-                            .asList(GuideSearchHit::new))
-                    .where((f, root) -> {
-                        // Match all documents by default
-                        root.add(f.matchAll());
-
-                        if (categories != null && !categories.isEmpty()) {
-                            root.add(f.terms().field("categories").matchingAny(categories));
-                        }
-
-                        if (origin != null && !origin.isEmpty()) {
-                            root.add(f.match().field("origin").matching(origin));
-                        }
-
-                        if (q != null && !q.isBlank()) {
-                            root.add(f.or(
-                                    // Duplicate the query so that we apply a multiplicative boost to quarkus.io guides.
-                                    // The end result is that a low-relevance match on quarkus.io _can_ be scored
-                                    // lower than a high-relevance match on quarkiverse.io,
-                                    // if it's significantly more relevant.
-                                    // Note that we could, alternatively,
-                                    // do something like bool().must(textMatch()).should(origin(quarkusio).boost(2f))),
-                                    // but then the boost would be additive, so we would ignore relative relevance
-                                    // of quarkus.io/quarkiverse.io results.
-                                    f.bool().must(textMatch(f, q, language))
-                                            .filter(originMatch(f, QuarkusIO.QUARKUS_ORIGIN))
-                                            // Always score lower for compatibility (legacy) guides.
-                                            // TODO: Maybe we should use a duplicate query with multiplicative boost for this too?
-                                            .should(f.not(f.match().field(language.addSuffix("topics"))
-                                                    .matching("compatibility", ValueModel.INDEX))
-                                                    .boost(50.0f))
-                                            .boost(2.0f),
-                                    f.bool().must(textMatch(f, q, language))
-                                            .filter(originMatch(f, QuarkiverseIO.QUARKIVERSE_ORIGIN))));
-                        }
-                    })
-                    .highlighter(f -> f.fastVector()
-                            // Highlighters are going to use spans-with-classes so that we will have more control over styling the visual on the search results screen.
-                            .tag("<span class=\"" + highlightCssClass + "\">", "</span>"))
-                    .highlighter("highlighter_title_or_summary", f -> f.fastVector()
-                            // We want the whole text of the field, regardless of whether it has a match or not.
-                            .noMatchSize(TITLE_OR_SUMMARY_MAX_SIZE)
-                            .fragmentSize(TITLE_OR_SUMMARY_MAX_SIZE)
-                            // We want the whole text as a single fragment
-                            .numberOfFragments(1))
-                    .highlighter("highlighter_content", f -> f.fastVector()
-                            // If there's no match in the full content we don't want to return anything.
-                            .noMatchSize(0)
-                            // Content is really huge, so we want to only get small parts of the sentences.
-                            // We give control to the caller on the content snippet length and the number of these fragments
-                            .numberOfFragments(contentSnippets)
-                            .fragmentSize(contentSnippetsLength)
-                            // The rest of fragment configuration is static
-                            .orderByScore(true)
-                            // We don't use sentence boundaries because those can result in huge fragments
-                            .boundaryScanner().chars().boundaryMaxScan(10).end())
-                    .sort(f -> f.score().then().field(language.addSuffix("title_sort")))
-                    .routing(QuarkusVersionAndLanguageRoutingBinder.searchKeys(version, language))
-                    .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)
-                    .requestTransformer(context -> requestSuggestion(context.body(), q, language, highlightCssClass))
-                    .fetch(page * PAGE_SIZE, PAGE_SIZE);
-            return new SearchResult<>(result);
+            var result = performSearch(version, categories, q, origin, language, highlightCssClass, page, contentSnippets,
+                    contentSnippetsLength, session);
+            if (result.total().hitCountLowerBound() > 0) {
+                return new SearchResult<>(result);
+            } else {
+                SearchResult.Suggestion suggestion = extractSuggestion(result);
+                if (suggestion != null) {
+                    result = performSearch(version, categories, suggestion.query(), origin, language, highlightCssClass, page,
+                            contentSnippets, contentSnippetsLength, session);
+                }
+                return new SearchResult<>(result, result.total().hitCountLowerBound() > 0 ? suggestion : null);
+            }
         }
+    }
+
+    private ElasticsearchSearchResult<GuideSearchHit> performSearch(String version, List<String> categories, String q,
+            String origin, Language language, String highlightCssClass, int page, int contentSnippets,
+            int contentSnippetsLength, SearchSession session) {
+        return session.search(Guide.class)
+                .extension(ElasticsearchExtension.get())
+                .select(f -> f.composite().from(
+                        f.id(),
+                        f.field("type"),
+                        f.field("origin"),
+                        f.highlight(language.addSuffix("title")).highlighter("highlighter_title_or_summary").single(),
+                        f.highlight(language.addSuffix("summary")).highlighter("highlighter_title_or_summary").single(),
+                        f.highlight(language.addSuffix("fullContent")).highlighter("highlighter_content"))
+                        .asList(GuideSearchHit::new))
+                .where((f, root) -> {
+                    // Match all documents by default
+                    root.add(f.matchAll());
+
+                    if (categories != null && !categories.isEmpty()) {
+                        root.add(f.terms().field("categories").matchingAny(categories));
+                    }
+
+                    if (origin != null && !origin.isEmpty()) {
+                        root.add(f.match().field("origin").matching(origin));
+                    }
+
+                    if (q != null && !q.isBlank()) {
+                        root.add(f.or(
+                                // Duplicate the query so that we apply a multiplicative boost to quarkus.io guides.
+                                // The end result is that a low-relevance match on quarkus.io _can_ be scored
+                                // lower than a high-relevance match on quarkiverse.io,
+                                // if it's significantly more relevant.
+                                // Note that we could, alternatively,
+                                // do something like bool().must(textMatch()).should(origin(quarkusio).boost(2f))),
+                                // but then the boost would be additive, so we would ignore relative relevance
+                                // of quarkus.io/quarkiverse.io results.
+                                f.bool().must(textMatch(f, q, language))
+                                        .filter(originMatch(f, QuarkusIO.QUARKUS_ORIGIN))
+                                        // Always score lower for compatibility (legacy) guides.
+                                        // TODO: Maybe we should use a duplicate query with multiplicative boost for this too?
+                                        .should(f.not(f.match().field(language.addSuffix("topics"))
+                                                .matching("compatibility", ValueModel.INDEX))
+                                                .boost(50.0f))
+                                        .boost(2.0f),
+                                f.bool().must(textMatch(f, q, language))
+                                        .filter(originMatch(f, QuarkiverseIO.QUARKIVERSE_ORIGIN))));
+                    }
+                })
+                .highlighter(f -> f.fastVector()
+                        // Highlighters are going to use spans-with-classes so that we will have more control over styling the visual on the search results screen.
+                        .tag("<span class=\"" + highlightCssClass + "\">", "</span>"))
+                .highlighter(
+                        "highlighter_title_or_summary", f -> f.fastVector()
+                                // We want the whole text of the field, regardless of whether it has a match or not.
+                                .noMatchSize(TITLE_OR_SUMMARY_MAX_SIZE)
+                                .fragmentSize(TITLE_OR_SUMMARY_MAX_SIZE)
+                                // We want the whole text as a single fragment
+                                .numberOfFragments(1))
+                .highlighter(
+                        "highlighter_content", f -> f.fastVector()
+                                // If there's no match in the full content we don't want to return anything.
+                                .noMatchSize(0)
+                                // Content is really huge, so we want to only get small parts of the sentences.
+                                // We give control to the caller on the content snippet length and the number of these fragments
+                                .numberOfFragments(contentSnippets)
+                                .fragmentSize(contentSnippetsLength)
+                                // The rest of fragment configuration is static
+                                .orderByScore(true)
+                                // We don't use sentence boundaries because those can result in huge fragments
+                                .boundaryScanner().chars().boundaryMaxScan(10).end())
+                .sort(f -> f.score().then().field(language.addSuffix("title_sort")))
+                .routing(QuarkusVersionAndLanguageRoutingBinder.searchKeys(version, language))
+                .totalHitCountThreshold(TOTAL_HIT_COUNT_THRESHOLD + (page + 1) * PAGE_SIZE)
+                .requestTransformer(context -> requestSuggestion(context.body(), q, language, highlightCssClass))
+                .fetch(page * PAGE_SIZE, PAGE_SIZE);
     }
 
     private PredicateFinalStep textMatch(SearchPredicateFactory f, String q, Language language) {
@@ -176,6 +199,27 @@ public class SearchService {
         phrase.add("highlight", highlight);
         highlight.addProperty("pre_tag", "<span class=\"" + highlightCssClass + "\">");
         highlight.addProperty("post_tag", "</span>");
+    }
+
+    private static SearchResult.Suggestion extractSuggestion(ElasticsearchSearchResult<?> result) {
+        try {
+            JsonObject suggest = result.responseBody().getAsJsonObject("suggest");
+            if (suggest != null) {
+                JsonArray options = suggest
+                        .getAsJsonArray("didYouMean")
+                        .get(0).getAsJsonObject()
+                        .getAsJsonArray("options");
+                if (options != null && !options.isEmpty()) {
+                    JsonObject suggestion = options.get(0).getAsJsonObject();
+                    return new SearchResult.Suggestion(suggestion.get("text").getAsString(),
+                            suggestion.get("highlighted").getAsString());
+                }
+            }
+        } catch (RuntimeException e) {
+            // Though it shouldn't happen, just in case we will catch any exceptions and return no suggestions:
+            Log.warnf(e, "Failed to extract suggestion: %s" + e.getMessage());
+        }
+        return null;
     }
 
 }
