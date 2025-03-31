@@ -30,7 +30,7 @@
     <quarkus.version>3.21.0</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
-    <surefire-plugin.version>3.5.2</surefire-plugin.version>
+    <surefire-plugin.version>3.5.3</surefire-plugin.version>
     <!-- Match the memory limits to the ones set for the staging profile (see src/main/helm/values.staging.yaml). -->
     <test.jvm.args>-Xms1536m -Xmx1536m</test.jvm.args>
     <version.docker.plugin>0.45.1</version.docker.plugin>
