@@ -36,6 +36,10 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
+    groups:
+      workflow-actions:
+        patterns:
+          - "*"
     allow:
       - dependency-name: "actions/*"
       - dependency-name: "redhat-actions/*"
