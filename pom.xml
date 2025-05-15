@@ -27,17 +27,17 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-    <quarkus.version>3.21.0</quarkus.version>
+    <quarkus.version>3.22.2</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.5.3</surefire-plugin.version>
     <!-- Match the memory limits to the ones set for the staging profile (see src/main/helm/values.staging.yaml). -->
     <test.jvm.args>-Xms1536m -Xmx1536m</test.jvm.args>
-    <version.docker.plugin>0.45.1</version.docker.plugin>
+    <version.docker.plugin>0.46.0</version.docker.plugin>
     <version.formatter.plugin>2.26.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.12.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/elasticsearch-custom.Dockerfile -->
-    <version.elasticsearch>8.17</version.elasticsearch>
+    <version.elasticsearch>8.18</version.elasticsearch>
     <version.quarkus-web-bundler>1.8.1</version.quarkus-web-bundler>
     <!-- Configuration for the search backend used in tests by default: -->
     <search.backend.dockerfile>${project.basedir}/src/main/docker/elasticsearch-custom.Dockerfile</search.backend.dockerfile>
@@ -64,7 +64,7 @@
       <dependency>
         <groupId>io.quarkiverse.jgit</groupId>
         <artifactId>quarkus-jgit</artifactId>
-        <version>3.3.3</version>
+        <version>3.5.1</version>
       </dependency>
       <dependency>
         <groupId>io.quarkiverse.githubapi</groupId>
@@ -79,7 +79,7 @@
       <dependency>
         <groupId>org.jsoup</groupId>
         <artifactId>jsoup</artifactId>
-        <version>1.19.1</version>
+        <version>1.20.1</version>
       </dependency>
       <dependency>
         <groupId>org.fedorahosted.tennera</groupId>
@@ -99,7 +99,7 @@
       <dependency>
         <groupId>org.mvnpm</groupId>
         <artifactId>lit</artifactId>
-        <version>3.2.1</version>
+        <version>3.3.0</version>
       </dependency>
       <dependency>
         <groupId>org.mvnpm</groupId>
@@ -254,7 +254,6 @@
     <dependency>
       <groupId>io.quarkiverse.playwright</groupId>
       <artifactId>quarkus-playwright</artifactId>
-      <version>2.1.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -268,7 +267,7 @@
       <extension>
         <groupId>io.quarkus.bot</groupId>
         <artifactId>build-reporter-maven-extension</artifactId>
-        <version>3.9.9</version>
+        <version>3.11.1</version>
       </extension>
     </extensions>
     <plugins>
@@ -436,7 +435,7 @@
           <dependency>
             <groupId>org.mvnpm.at.lit</groupId>
             <artifactId>reactive-element</artifactId>
-            <version>2.0.4</version>
+            <version>2.1.0</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
@@ -454,19 +453,19 @@
           <dependency>
             <groupId>org.mvnpm</groupId>
             <artifactId>lit-element</artifactId>
-            <version>4.1.1</version>
+            <version>4.2.0</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
             <groupId>org.mvnpm</groupId>
             <artifactId>lit-html</artifactId>
-            <version>3.2.1</version>
+            <version>3.3.0</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
             <groupId>org.mvnpm</groupId>
             <artifactId>lit</artifactId>
-            <version>3.2.1</version>
+            <version>3.3.0</version>
             <scope>provided</scope>
           </dependency>
           <dependency>
