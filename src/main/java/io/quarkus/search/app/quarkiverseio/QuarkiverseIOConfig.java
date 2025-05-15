@@ -38,6 +38,9 @@ public interface QuarkiverseIOConfig {
 
         @WithDefault("github-pages")
         String artifactName();
+
+        @WithDefault("main")
+        String mainBranchName();
     }
 
     interface Zip {

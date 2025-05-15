@@ -96,7 +96,7 @@ public class FetchingService {
         for (GHWorkflowRun run : repository.queryWorkflowRuns()
                 .conclusion(GHWorkflowRun.Conclusion.SUCCESS)
                 .list().withPageSize(10)) {
-            if (ghConfig.actionName().equals(run.getName())) {
+            if (ghConfig.actionName().equals(run.getName()) && ghConfig.mainBranchName().equals(run.getHeadBranch())) {
                 for (GHArtifact ghArtifact : run.listArtifacts().withPageSize(5).toList()) {
                     if (ghConfig.artifactName().equals(ghArtifact.getName())) {
                         artifact = tempDir.path().resolve(ghArtifact.getName() + ".zip");
