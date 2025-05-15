@@ -105,16 +105,15 @@ public class FetchingService {
                                 "Downloading Quarkiverse %s artifact #%s", ghConfig.artifactName(),
                                 ghArtifact.getId());
                         ghArtifact.download(is -> Files.copy(is, finalArtifact));
-                        break;
+                        return finalArtifact;
                     }
                 }
-                break;
+                Log.warnf(
+                        "The Github action run %s of %s is missing the required % artifact. Trying to find it in a previous run.",
+                        run.getId(), ghConfig.actionName(), ghConfig.artifactName());
             }
         }
-        if (artifact == null) {
-            throw new IllegalStateException("GitHub artifact " + ghConfig.artifactName() + " not found.");
-        }
-        return artifact;
+        throw new IllegalStateException("GitHub artifact " + ghConfig.artifactName() + " not found.");
     }
 
     public QuarkusIO fetchQuarkusIo(FailureCollector failureCollector) {
