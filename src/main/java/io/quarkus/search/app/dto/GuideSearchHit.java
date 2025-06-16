@@ -3,6 +3,7 @@ package io.quarkus.search.app.dto;
 import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public record GuideSearchHit(URI url, String type, String origin, String title, String summary, Set<String> content) {
@@ -10,17 +11,17 @@ public record GuideSearchHit(URI url, String type, String origin, String title, 
     public GuideSearchHit(URI url,
             String type,
             String origin,
-            String title,
-            String summary,
+            Optional<String> title,
+            Optional<String> summary,
             List<String> content) {
-        this(url, type, origin, title != null ? title : "", summary != null ? summary : "", wrap(content));
+        this(url, type, origin, title.orElse(""), summary.orElse(""), wrap(content));
     }
 
     @SuppressWarnings("unchecked")
     public GuideSearchHit(List<?> values) {
         this(
                 (URI) values.get(0), (String) values.get(1), (String) values.get(2),
-                (String) values.get(3), (String) values.get(4),
+                (Optional<String>) values.get(3), (Optional<String>) values.get(4),
                 (List<String>) values.get(5));
     }
 

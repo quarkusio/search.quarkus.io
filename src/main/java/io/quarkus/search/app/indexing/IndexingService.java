@@ -22,7 +22,6 @@ import jakarta.inject.Inject;
 import io.quarkus.search.app.ReferenceService;
 import io.quarkus.search.app.fetching.FetchingService;
 import io.quarkus.search.app.hibernate.QuarkusIOLoadingContext;
-import io.quarkus.search.app.hibernate.StreamMassIndexingLoggingMonitor;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
 import io.quarkus.search.app.indexing.reporting.StatusReporter;
 import io.quarkus.search.app.indexing.state.IndexingAlreadyInProgressException;
@@ -246,7 +245,6 @@ public class IndexingService {
                         .batchSizeToLoadObjects(indexingConfig.batchSize())
                         .threadsToLoadObjects(indexingConfig.parallelism().orElse(6))
                         .context(QuarkusIOLoadingContext.class, QuarkusIOLoadingContext.of(quarkusIO, quarkiverseIO))
-                        .monitor(new StreamMassIndexingLoggingMonitor())
                         .failureHandler(failFastFailureHandler)
                         .start()
                         .toCompletableFuture();
