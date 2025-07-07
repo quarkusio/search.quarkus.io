@@ -109,7 +109,7 @@
       <dependency>
         <groupId>org.mvnpm.at.types</groupId>
         <artifactId>lodash</artifactId>
-        <version>4.17.19</version>
+        <version>4.17.20</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -441,7 +441,7 @@
           <dependency>
             <groupId>org.mvnpm.at.types</groupId>
             <artifactId>lodash</artifactId>
-            <version>4.17.19</version>
+            <version>4.17.20</version>
             <scope>provided</scope>
           </dependency>
           <dependency>
