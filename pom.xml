@@ -305,6 +305,18 @@
             <arg>-parameters</arg>
             <arg>-Xlint:unchecked</arg>
           </compilerArgs>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.hibernate.search</groupId>
+              <artifactId>hibernate-search-processor</artifactId>
+              <version>8.0.0.Final</version>
+            </path>
+            <path>
+              <groupId>org.hibernate.search</groupId>
+              <artifactId>hibernate-search-backend-elasticsearch</artifactId>
+              <version>8.0.0.Final</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>

@@ -15,7 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 
 import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
-import io.quarkus.search.app.entity.Guide;
+import io.quarkus.search.app.entity.Guide__;
 import io.quarkus.search.app.entity.Language;
 import io.quarkus.search.app.entity.QuarkusVersionAndLanguageRoutingBinder;
 import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
@@ -85,12 +85,12 @@ public class SearchService {
     private ElasticsearchSearchResult<GuideSearchHit> performSearch(String version, List<String> categories, String q,
             String origin, Language language, String highlightCssClass, int page, int contentSnippets,
             int contentSnippetsLength, SearchSession session) {
-        return session.search(Guide.class)
+        return session.search(Guide__.INDEX.scope(session))
                 .extension(ElasticsearchExtension.get())
                 .select(f -> f.composite().from(
                         f.id(),
-                        f.field("type"),
-                        f.field("origin"),
+                        f.field(Guide__.INDEX.type),
+                        f.field(Guide__.INDEX.origin),
                         f.highlight(language.addSuffix("title")).highlighter("highlighter_title_or_summary").optional(),
                         f.highlight(language.addSuffix("summary")).highlighter("highlighter_title_or_summary").optional(),
                         f.highlight(language.addSuffix("fullContent")).highlighter("highlighter_content"))
@@ -100,11 +100,11 @@ public class SearchService {
                     root.add(f.matchAll());
 
                     if (categories != null && !categories.isEmpty()) {
-                        root.add(f.terms().field("categories").matchingAny(categories));
+                        root.add(f.terms().field(Guide__.INDEX.categories).matchingAny(categories));
                     }
 
                     if (origin != null && !origin.isEmpty()) {
-                        root.add(f.match().field("origin").matching(origin));
+                        root.add(f.match().field(Guide__.INDEX.origin).matching(origin));
                     }
 
                     if (q != null && !q.isBlank()) {
