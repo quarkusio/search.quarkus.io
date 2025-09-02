@@ -1,4 +1,4 @@
-FROM elastic/elasticsearch:9.0.4
+FROM elastic/elasticsearch:9.1.3
 
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch analysis-kuromoji
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch analysis-smartcn
