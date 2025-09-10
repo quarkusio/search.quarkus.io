@@ -18,6 +18,9 @@ concurrency:
   group: deployment
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
 
