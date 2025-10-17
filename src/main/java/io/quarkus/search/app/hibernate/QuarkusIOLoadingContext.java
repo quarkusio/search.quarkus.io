@@ -24,11 +24,6 @@ public class QuarkusIOLoadingContext {
         this.guides = guides.iterator();
     }
 
-    public int size() {
-        // we don't know the size, so progress reporting will be incorrect :(
-        return -1;
-    }
-
     public List<Guide> nextBatch(int batchSize) {
         List<Guide> list = new ArrayList<>();
         for (int i = 0; guides.hasNext() && i < batchSize; i++) {

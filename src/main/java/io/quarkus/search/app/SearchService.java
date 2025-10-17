@@ -91,8 +91,8 @@ public class SearchService {
                         f.id(),
                         f.field("type"),
                         f.field("origin"),
-                        f.highlight(language.addSuffix("title")).highlighter("highlighter_title_or_summary").single(),
-                        f.highlight(language.addSuffix("summary")).highlighter("highlighter_title_or_summary").single(),
+                        f.highlight(language.addSuffix("title")).highlighter("highlighter_title_or_summary").optional(),
+                        f.highlight(language.addSuffix("summary")).highlighter("highlighter_title_or_summary").optional(),
                         f.highlight(language.addSuffix("fullContent")).highlighter("highlighter_content"))
                         .asList(GuideSearchHit::new))
                 .where((f, root) -> {

@@ -29,11 +29,6 @@ public class GuideLoadingBinder implements EntityLoadingBinder {
                     }
 
                     @Override
-                    public long totalCount() {
-                        return context.size();
-                    }
-
-                    @Override
                     public void loadNext() throws InterruptedException {
                         List<Guide> batch = context.nextBatch(options.batchSize());
                         if (batch.isEmpty()) {
