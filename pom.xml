@@ -37,7 +37,7 @@
     <version.formatter.plugin>2.29.0</version.formatter.plugin>
     <version.impsort-maven-plugin>1.12.0</version.impsort-maven-plugin>
     <!-- This version needs to match the version in src/main/docker/elasticsearch-custom.Dockerfile -->
-    <version.elasticsearch>9.0</version.elasticsearch>
+    <version.elasticsearch>9.2</version.elasticsearch>
     <version.quarkus-web-bundler>1.9.3</version.quarkus-web-bundler>
     <!-- Configuration for the search backend used in tests by default: -->
     <search.backend.dockerfile>${project.basedir}/src/main/docker/elasticsearch-custom.Dockerfile</search.backend.dockerfile>
