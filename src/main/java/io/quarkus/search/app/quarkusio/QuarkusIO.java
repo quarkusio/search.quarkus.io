@@ -424,6 +424,7 @@ public class QuarkusIO implements Closeable {
             guide.origin = QUARKUS_ORIGIN;
         }
         guide.type = type;
+        guide.status = toString(parsedGuide.get("status"));
         guide.title.set(language, renderMarkdown(translate(messages, toString(parsedGuide.get("title")))));
         guide.summary.set(language, renderMarkdown(translate(messages, toString(parsedGuide.get(summaryKey)))));
         guide.url = httpUrl(siteUris.get(language), quarkusVersion, parsedUrl);
