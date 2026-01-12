@@ -429,7 +429,7 @@
           <dependency>
             <groupId>org.mvnpm.at.lit-labs</groupId>
             <artifactId>ssr-dom-shim</artifactId>
-            <version>1.5.0</version>
+            <version>1.5.1</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
