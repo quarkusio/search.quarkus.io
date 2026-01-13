@@ -90,6 +90,7 @@ public class SearchService {
                 .select(f -> f.composite().from(
                         f.id(),
                         f.field("type"),
+                        f.field("status"),
                         f.field("origin"),
                         f.highlight(language.addSuffix("title")).highlighter("highlighter_title_or_summary").optional(),
                         f.highlight(language.addSuffix("summary")).highlighter("highlighter_title_or_summary").optional(),

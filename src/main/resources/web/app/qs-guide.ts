@@ -82,6 +82,32 @@ export class QsGuide extends LitElement {
         fill: var(--main-text-color);
       }
 
+      .qs-guide .status-tag {
+          cursor: default;
+          font-size: 0.6em;
+          line-height: 1em;
+          text-transform: uppercase;
+          font-weight: bold;
+          display: inline-block;
+          padding: 4px 12px;
+          border-radius: 50px;
+      }
+
+      .status-preview {
+          color: var(--tag-preview-text-color);
+          background-color: var(--tag-preview-background-color);
+      }
+
+      .status-deprecated {
+          color: var(--tag-deprecated-text-color);
+          background-color: var(--tag-deprecated-background-color);
+      }
+
+      .status-experimental {
+          color: var(--tag-experimental-text-color);
+          background-color: var(--tag-experimental-background-color);
+      }
+
       .summary {
           min-height: 40px;
       }
@@ -89,6 +115,7 @@ export class QsGuide extends LitElement {
 
   @property({type: Object}) data: any;
   @property({type: String}) type: string =  "default";
+  @property({type: String}) status: string;
   @property({type: String}) url: string;
   @property({type: String}) title: string;
   @property({type: String}) summary: string;
@@ -124,6 +151,7 @@ export class QsGuide extends LitElement {
             <a href="${this.relativizeUrl()}" target="_blank">${this._renderHTML(this.title)}</a>
             ${(this.origin && this.origin.toLowerCase() !== 'quarkus') ? html`<a href="${this._originLink()}" target="_blank" class="origin" title="${this._originTitle()}">${unsafeHTML(this._originIcon())}</a>` : ''}
           </h4>
+          ${this.status && this.status !== 'stable' ? html`<span class="status-tag status-${this.status}" title="${this._statusHint()}">${this.status}</span>` : ''} 
           <div class="summary">
             <p>${this._renderHTML(this.summary)}</p>
           </div>
@@ -203,4 +231,12 @@ export class QsGuide extends LitElement {
     return '';
   }
 
+  private _statusHint() {
+    switch (this.status) {
+        case 'experimental': return 'Early feedback is requested to mature the idea';
+        case 'preview': return 'Backward compatibility and presence in the ecosystem is not guaranteed';
+        case 'deprecated': return 'This extension is likely to be replaced or removed';
+        default: return '';
+    }
+  }
 }

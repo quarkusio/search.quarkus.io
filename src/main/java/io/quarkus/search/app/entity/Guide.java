@@ -46,6 +46,9 @@ public class Guide {
     @KeywordField
     public String origin;
 
+    @KeywordField(searchable = Searchable.NO)
+    public String status;
+
     @I18nFullTextField(highlightable = Highlightable.FAST_VECTOR, termVector = TermVector.WITH_POSITIONS_OFFSETS, analyzerPrefix = AnalysisConfigurer.DEFAULT, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nFullTextField(name = "title_autocomplete", analyzerPrefix = AnalysisConfigurer.AUTOCOMPLETE, searchAnalyzerPrefix = AnalysisConfigurer.DEFAULT_SEARCH)
     @I18nKeywordField(name = "title_sort", normalizerPrefix = AnalysisConfigurer.SORT, searchable = Searchable.NO, sortable = Sortable.YES)
