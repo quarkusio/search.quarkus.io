@@ -109,7 +109,7 @@
       <dependency>
         <groupId>org.mvnpm.at.types</groupId>
         <artifactId>lodash</artifactId>
-        <version>4.17.21</version>
+        <version>4.17.23</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -429,7 +429,7 @@
           <dependency>
             <groupId>org.mvnpm.at.lit-labs</groupId>
             <artifactId>ssr-dom-shim</artifactId>
-            <version>1.5.0</version>
+            <version>1.5.1</version>
             <scope>runtime</scope>
           </dependency>
           <dependency>
@@ -441,7 +441,7 @@
           <dependency>
             <groupId>org.mvnpm.at.types</groupId>
             <artifactId>lodash</artifactId>
-            <version>4.17.21</version>
+            <version>4.17.23</version>
             <scope>provided</scope>
           </dependency>
           <dependency>
