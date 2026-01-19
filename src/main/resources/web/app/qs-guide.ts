@@ -51,6 +51,7 @@ export class QsGuide extends LitElement {
       .qs-guide .content-highlights {
           font-size: 0.7rem;
           line-height: 1rem;
+          word-break: break-word;
           color: var(--content-highlight-color);
 
           p {
