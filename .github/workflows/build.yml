@@ -63,7 +63,7 @@ jobs:
             'target/build-report.json' \
             LICENSE.txt
     - name: Upload build reports
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # 6.0.0
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
       if: always()
       with:
         name: "build-reports-${{ github.run_attempt }}-Build"
