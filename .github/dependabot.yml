@@ -40,6 +40,3 @@ updates:
       workflow-actions:
         patterns:
           - "*"
-    allow:
-      - dependency-name: "actions/*"
-      - dependency-name: "redhat-actions/*"
