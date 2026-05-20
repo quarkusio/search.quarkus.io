@@ -2,6 +2,7 @@ package io.quarkus.search.app.indexing.reporting;
 
 import static io.quarkus.search.app.indexing.reporting.StatusRenderer.toStatusDetailsMarkdown;
 import static io.quarkus.search.app.indexing.reporting.StatusRenderer.toStatusSummary;
+import static io.quarkus.search.app.util.GitHubApiRetry.executeWithRetry;
 import static io.quarkus.search.app.util.Streams.toStream;
 import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 
@@ -148,7 +149,13 @@ class GithubStatusReporter implements StatusReporter {
         for (int i = 0; i < commentsToDelete && i < comments.size(); i++) {
             var comment = comments.get(i);
             try {
-                comment.delete();
+                executeWithRetry(() -> {
+                    try {
+                        comment.delete();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             } catch (Exception e) {
                 Log.errorf(e, "Failed to delete comment %s from issue %s#%s",
                         comment.getId(), config.issue().repository(), issue.getNumber());
