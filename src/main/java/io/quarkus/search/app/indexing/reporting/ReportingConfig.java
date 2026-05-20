@@ -21,6 +21,17 @@ public interface ReportingConfig {
          */
         Duration warningRepeatDelay();
 
+        /**
+         * @return The comment count threshold that triggers packing (deleting old comments).
+         *         GitHub limits issues to 2500 comments, so this should be set below that.
+         */
+        int commentPackThreshold();
+
+        /**
+         * @return The number of most recent comments to retain when packing.
+         */
+        int commentPackRetained();
+
         interface Issue {
             String repository();
 
