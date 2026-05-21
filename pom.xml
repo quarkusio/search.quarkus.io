@@ -320,6 +320,8 @@
             <maven.version.search.backend>${search.backend.dockerversion}</maven.version.search.backend>
             <maven.name.search.backend>${search.backend.dockername}</maven.name.search.backend>
             <maven.distribution.search.backend>${search.backend.distribution}</maven.distribution.search.backend>
+            <search.quarkus.io.github-api.comment-delete-delay-millis>10</search.quarkus.io.github-api.comment-delete-delay-millis>
+            <search.quarkus.io.github-api.retry-wait-millis>10</search.quarkus.io.github-api.retry-wait-millis>
           </systemPropertyVariables>
           <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
             <usePhrasedFileName>true</usePhrasedFileName>
