@@ -136,14 +136,15 @@ class GithubStatusReporter implements StatusReporter {
         int commentCount = issue.getCommentsCount();
         int threshold = config.commentPackThreshold();
         int retained = config.commentPackRetained();
+        int maxToRemove = config.commentPackMaxToRemove();
 
         if (commentCount <= threshold) {
             return;
         }
 
-        int commentsToDelete = commentCount - retained;
+        int commentsToDelete = Math.min(commentCount - retained, maxToRemove);
         Log.infof("Packing issue %s#%s: deleting %d old comments (keeping %d most recent)",
-                config.issue().repository(), issue.getNumber(), commentsToDelete, retained);
+                config.issue().repository(), issue.getNumber(), commentsToDelete, commentCount - commentsToDelete);
 
         var comments = toStream(issue.queryComments().list()).toList();
         for (int i = 0; i < commentsToDelete && i < comments.size(); i++) {

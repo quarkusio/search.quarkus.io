@@ -32,6 +32,12 @@ public interface ReportingConfig {
          */
         int commentPackRetained();
 
+        /**
+         * @return The maximum number of comments to remove when packing.
+         *         May be useful when applying packing on issues with a high number of comments.
+         */
+        int commentPackMaxToRemove();
+
         interface Issue {
             String repository();
 
