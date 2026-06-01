@@ -71,7 +71,7 @@ jobs:
         echo -n "OC_REGISTRY_URL=" >> "$GITHUB_OUTPUT"
         oc get imagestream -o json | jq -r '.items[0].status.publicDockerImageRepository' | awk -F"[/]" '{print $1}' >> "$GITHUB_OUTPUT"
     - name: Log in to OpenShift Container Registry
-      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         registry: ${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}
         username: ignored
