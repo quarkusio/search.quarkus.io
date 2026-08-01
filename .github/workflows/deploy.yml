@@ -32,10 +32,10 @@ jobs:
       QUARKUS_PROFILE: ${{ github.ref == 'refs/heads/production' && 'prod' || 'staging' }}
 
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up JDK 21
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+      uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
       with:
         distribution: temurin
         java-version: 21
@@ -51,7 +51,7 @@ jobs:
         oc: "latest"
 
     - name: Log in to OpenShift
-      uses: redhat-actions/oc-login@5eb45e848b168b6bf6b8fe7f1561003c12e3c99d # v1.3
+      uses: redhat-actions/oc-login@f19c5f4f98c725396a5eeb265b1338333634828a # v2.0
       with:
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
         openshift_token: ${{ github.ref == 'refs/heads/production' && secrets.OPENSHIFT_TOKEN_PROD || secrets.OPENSHIFT_TOKEN_DEV }}
@@ -71,7 +71,7 @@ jobs:
         echo -n "OC_REGISTRY_URL=" >> "$GITHUB_OUTPUT"
         oc get imagestream -o json | jq -r '.items[0].status.publicDockerImageRepository' | awk -F"[/]" '{print $1}' >> "$GITHUB_OUTPUT"
     - name: Log in to OpenShift Container Registry
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
         registry: ${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}
         username: ignored
