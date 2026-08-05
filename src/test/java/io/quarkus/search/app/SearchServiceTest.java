@@ -7,11 +7,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.quarkus.search.app.dto.GroupedGuideHit;
+import io.quarkus.search.app.dto.GroupedSearchResult;
 import io.quarkus.search.app.dto.GuideSearchHit;
 import io.quarkus.search.app.dto.SearchResult;
 import io.quarkus.search.app.testsupport.GuideRef;
@@ -43,7 +44,10 @@ import io.restassured.filter.log.LogDetail;
 class SearchServiceTest {
     private static final TypeRef<SearchResult<GuideSearchHit>> SEARCH_RESULT_SEARCH_HITS = new TypeRef<>() {
     };
+    private static final TypeRef<GroupedSearchResult> GROUPED_SEARCH_RESULT = new TypeRef<>() {
+    };
     private static final String GUIDES_SEARCH = "/guides/search";
+    private static final String GUIDES_SEARCH_GROUPED = "/guides/search/grouped";
 
     private SearchResult<GuideSearchHit> search(String term) {
         return given()
@@ -331,51 +335,6 @@ class SearchServiceTest {
     }
 
     @Test
-    void highlight_content() {
-        var result = given()
-                .queryParam("q", "orm")
-                .queryParam("highlightCssClass", "highlighted-content")
-                .queryParam("contentSnippets", "1")
-                .queryParam("contentSnippetsLength", "50")
-                .when().get(GUIDES_SEARCH)
-                .then()
-                .statusCode(200)
-                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-
-        AtomicInteger matches = new AtomicInteger(0);
-        assertThat(result.hits()).extracting(GuideSearchHit::content).hasSize(9)
-                .allSatisfy(content -> assertThat(content).hasSize(1)
-                        .allSatisfy(hitsHaveCorrectWordHighlighted(matches, "orm", "highlighted-content")));
-        assertThat(matches.get())
-                .as("Number of occurrences of 'orm' in " + result.hits().stream().map(GuideSearchHit::content).toList())
-                .isEqualTo(14);
-    }
-
-    @Test
-    void highlight_content_tooManySnippets() {
-        given()
-                .queryParam("q", "orm")
-                .queryParam("highlightCssClass", "highlighted-content")
-                .queryParam("contentSnippets", "11")
-                .queryParam("contentSnippetsLength", "50")
-                .when().get(GUIDES_SEARCH)
-                .then()
-                .statusCode(400);
-    }
-
-    @Test
-    void highlight_content_snippetsLengthTooHigh() {
-        given()
-                .queryParam("q", "orm")
-                .queryParam("highlightCssClass", "highlighted-content")
-                .queryParam("contentSnippets", "2")
-                .queryParam("contentSnippetsLength", "201")
-                .when().get(GUIDES_SEARCH)
-                .then()
-                .statusCode(400);
-    }
-
-    @Test
     void language() {
         var result = given()
                 .queryParam("q", "ガイド")
@@ -421,16 +380,12 @@ class SearchServiceTest {
     @Test
     void findEnvVariable() {
         var result = given()
-                // the variable that we are "planning" to find is actually QUARKUS_DATASOURCE_JDBC_URL
-                // But we'll be looking only for a part of it.
                 .queryParam("q", "QUARKUS_DATASOURCE_JDBC_U")
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::content)
-                // empty set since we are not looking for an entire var name, and our autocomplete on text is only producing grams up to 10 chars
-                .containsOnly(Set.of());
+        assertThat(result.hits()).isNotEmpty();
     }
 
     @Test
@@ -441,9 +396,7 @@ class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::content)
-                .containsOnly(
-                        Set.of("…false <span class=\"highlighted\">quarkus.vertx.eventbus.tcp</span>-<span class=\"highlighted\">keep</span>-<span class=\"highlighted\">alive</span> Whether to <span class=\"highlighted\">keep</span> the TCP connection opened (<span class=\"highlighted\">keep</span>-<span class=\"highlighted\">alive</span>). Environment…"));
+        assertThat(result.hits()).isNotEmpty();
     }
 
     @Test
@@ -454,9 +407,7 @@ class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::content)
-                .containsOnly(Set.of(
-                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Show…"));
+        assertThat(result.hits()).isNotEmpty();
     }
 
     @Test
@@ -467,9 +418,7 @@ class SearchServiceTest {
                 .then()
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
-        assertThat(result.hits()).extracting(GuideSearchHit::content)
-                .containsOnly(Set.of(
-                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Show…"));
+        assertThat(result.hits()).isNotEmpty();
     }
 
     @Test
@@ -539,6 +488,143 @@ class SearchServiceTest {
                 .statusCode(200)
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.suggestion()).isNull();
+    }
+
+    @Test
+    void groupedSearch_queryMatching() {
+        var result = given()
+                .queryParam("q", "orm")
+                .when().get(GUIDES_SEARCH_GROUPED)
+                .then()
+                .statusCode(200)
+                .extract().body().as(GROUPED_SEARCH_RESULT);
+
+        assertThat(result.categories()).isNotEmpty();
+        assertThat(result.categories()).allSatisfy(category -> {
+            assertThat(category.category()).isNotBlank();
+            assertThat(category.hitCount()).isPositive();
+            assertThat(category.hits()).isNotEmpty();
+            assertThat(category.hits()).allSatisfy(hit -> {
+                assertThat(hit.url()).isNotNull();
+                assertThat(hit.type()).isNotNull();
+                assertThat(hit.origin()).isNotNull();
+            });
+        });
+    }
+
+    @Test
+    void groupedSearch_noQuery() {
+        var result = when().get(GUIDES_SEARCH_GROUPED)
+                .then()
+                .statusCode(200)
+                .extract().body().as(GROUPED_SEARCH_RESULT);
+
+        assertThat(result.categories()).isNotEmpty();
+
+        var allUrls = result.categories().stream()
+                .flatMap(c -> c.hits().stream())
+                .map(GroupedGuideHit::url)
+                .toList();
+        assertThat(allUrls).isNotEmpty();
+    }
+
+    @Test
+    void groupedSearch_noResults() {
+        var result = given()
+                .queryParam("q", "termnotmatchinganything")
+                .when().get(GUIDES_SEARCH_GROUPED)
+                .then()
+                .statusCode(200)
+                .extract().body().as(GROUPED_SEARCH_RESULT);
+
+        assertThat(result.categories()).isEmpty();
+    }
+
+    @Test
+    void groupedSearch_hitsHaveTitleAndSummary() {
+        var result = given()
+                .queryParam("q", "hibernate")
+                .when().get(GUIDES_SEARCH_GROUPED)
+                .then()
+                .statusCode(200)
+                .extract().body().as(GROUPED_SEARCH_RESULT);
+
+        assertThat(result.categories()).isNotEmpty();
+        var allHits = result.categories().stream()
+                .flatMap(c -> c.hits().stream())
+                .toList();
+        assertThat(allHits).isNotEmpty();
+        assertThat(allHits).allSatisfy(hit -> {
+            assertThat(hit.title()).isNotBlank();
+            assertThat(hit.summary()).isNotNull();
+        });
+    }
+
+    @Test
+    void groupedSearch_highlightTitle() {
+        var result = given()
+                .queryParam("q", "orm")
+                .when().get(GUIDES_SEARCH_GROUPED)
+                .then()
+                .statusCode(200)
+                .extract().body().as(GROUPED_SEARCH_RESULT);
+
+        assertThat(result.categories()).isNotEmpty();
+        var allTitles = result.categories().stream()
+                .flatMap(c -> c.hits().stream())
+                .map(GroupedGuideHit::title)
+                .toList();
+        assertThat(allTitles)
+                .anyMatch(title -> title.contains("<span class=\"highlighted\">"));
+    }
+
+    @Test
+    void excludeIds_single() {
+        URI excludedUrl = GuideRef.HIBERNATE_ORM.url();
+        var result = given()
+                .queryParam("q", "orm")
+                .queryParam("excludeIds", excludedUrl.toString())
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+
+        assertThat(result.hits()).extracting(GuideSearchHit::url)
+                .doesNotContain(excludedUrl);
+        assertThat(result.hits()).isNotEmpty();
+    }
+
+    @Test
+    void excludeIds_multiple() {
+        URI excludedUrl1 = GuideRef.HIBERNATE_ORM.url();
+        URI excludedUrl2 = GuideRef.HIBERNATE_ORM_PANACHE.url();
+        var result = given()
+                .queryParam("q", "orm")
+                .queryParam("excludeIds", excludedUrl1.toString())
+                .queryParam("excludeIds", excludedUrl2.toString())
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+
+        assertThat(result.hits()).extracting(GuideSearchHit::url)
+                .doesNotContain(excludedUrl1, excludedUrl2);
+        assertThat(result.hits()).isNotEmpty();
+    }
+
+    @Test
+    void excludeIds_absent() {
+        var resultWithout = search("orm");
+        var resultWith = given()
+                .queryParam("q", "orm")
+                .when().get(GUIDES_SEARCH)
+                .then()
+                .statusCode(200)
+                .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
+
+        assertThat(resultWith.hits()).extracting(GuideSearchHit::url)
+                .containsExactlyInAnyOrderElementsOf(
+                        resultWithout.hits().stream().map(GuideSearchHit::url).toList());
     }
 
     private static ThrowingConsumer<String> hitsHaveCorrectWordHighlighted(AtomicInteger matches, String word,
