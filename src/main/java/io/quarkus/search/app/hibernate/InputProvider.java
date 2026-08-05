@@ -27,7 +27,7 @@ public record InputProvider(Path content) {
         String writableContent = null;
         if (content != null) {
             // Remove meaningless/duplicate content
-            content.select(".toc, .tocwrapper, .relations")
+            content.select(".toc, .tocwrapper, .relations, .guide-nav-wrapper, .guide-metadata-bar")
                     .remove();
             writableContent = encode(content);
         } else {
