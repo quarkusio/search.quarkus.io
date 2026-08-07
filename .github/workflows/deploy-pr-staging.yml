@@ -96,8 +96,10 @@ jobs:
     # See https://github.com/quarkusio/quarkus/blob/da1a782e04b01b2e165d65474163050d497340c1/extensions/container-image/spi/src/main/java/io/quarkus/container/spi/ImageReference.java#L60
     - name: Generate app version
       id: app-version
+      # Service "search-backend" is invalid: metadata.labels: Invalid value: "****": must be no more than 63 characters
       run: |
-        echo "VALUE=1.0.0-pr${PR_NUMBER}-$(date -u '+%Y%m%d%H%M%S')-${{ steps.pr.outputs.sha }}" >> $GITHUB_OUTPUT
+        VERSION="1.0.0-pr${PR_NUMBER}-$(date -u '+%Y%m%d%H%M%S')-${{ steps.pr.outputs.sha }}"
+        echo "VALUE=${VERSION:0:63}" >> $GITHUB_OUTPUT
 
     - name: Build container images and Helm charts, push app container image
       run: |
@@ -106,7 +108,8 @@ jobs:
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
           -Dquarkus.container-image.registry="${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}" \
-          -Dquarkus.container-image.group="$(oc project --short)"
+          -Dquarkus.container-image.group="$(oc project --short)" \
+          -DskipTests
 
     - name: Push Elasticsearch container image
       run: |

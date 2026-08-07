@@ -84,8 +84,10 @@ jobs:
     # See https://github.com/quarkusio/quarkus/blob/da1a782e04b01b2e165d65474163050d497340c1/extensions/container-image/spi/src/main/java/io/quarkus/container/spi/ImageReference.java#L60
     - name: Generate app version
       id: app-version
+      # Service "search-backend" is invalid: metadata.labels: Invalid value: "****": must be no more than 63 characters
       run: |
-        echo "VALUE=1.0.0-$(date -u '+%Y%m%d%H%M%S')-${{ github.sha }}" >> $GITHUB_OUTPUT
+        VERSION="1.0.0-$(date -u '+%Y%m%d%H%M%S')-${{ github.sha }}"
+        echo "VALUE=${VERSION:0:63}" >> $GITHUB_OUTPUT
 
     - name: Build container images and Helm charts, push app container image
       run: |
