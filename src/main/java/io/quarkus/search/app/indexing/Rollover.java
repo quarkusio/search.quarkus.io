@@ -25,14 +25,12 @@ import org.hibernate.search.backend.elasticsearch.metamodel.ElasticsearchIndexDe
 import org.hibernate.search.mapper.pojo.standalone.entity.SearchIndexedEntity;
 import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RestClient;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+
+import co.elastic.clients.transport.rest5_client.low_level.Request;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 
 /**
  * Implementation of a rollover,
@@ -101,16 +99,16 @@ public class Rollover implements Closeable {
         }
     }
 
-    private static RestClient client(SearchMapping searchMapping) {
-        return searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class);
+    private static Rest5Client client(SearchMapping searchMapping) {
+        return searchMapping.backend().unwrap(ElasticsearchBackend.class).client(Rest5Client.class);
     }
 
-    private final RestClient client;
+    private final Rest5Client client;
     private final Gson gson;
     private final List<IndexRolloverResult> indexRolloverResults;
     private boolean done;
 
-    private Rollover(RestClient client, Gson gson, List<IndexRolloverResult> indexRolloverResults) {
+    private Rollover(Rest5Client client, Gson gson, List<IndexRolloverResult> indexRolloverResults) {
         this.client = client;
         this.gson = gson;
         this.indexRolloverResults = indexRolloverResults;
@@ -133,7 +131,7 @@ public class Rollover implements Closeable {
         done = true;
     }
 
-    private static IndexRolloverResult rollover(RestClient client, Gson gson, ElasticsearchIndexDescriptor index,
+    private static IndexRolloverResult rollover(Rest5Client client, Gson gson, ElasticsearchIndexDescriptor index,
             JsonObject mapping, JsonObject settings)
             throws IOException {
         var request = new Request("POST", "/" + index.writeName() + "/_rollover");
@@ -147,7 +145,7 @@ public class Rollover implements Closeable {
         // We don't want the read alias to start pointing to the new index immediately.
         body.add("aliases", new JsonObject());
 
-        request.setEntity(new StringEntity(gson.toJson(body), ContentType.APPLICATION_JSON));
+        request.setJsonEntity(gson.toJson(body));
         var response = client.performRequest(request);
         try (var input = response.getEntity().getContent()) {
             var responseBody = gson.fromJson(new InputStreamReader(input, StandardCharsets.UTF_8), JsonObject.class);
@@ -159,7 +157,7 @@ public class Rollover implements Closeable {
     private record IndexRolloverResult(ElasticsearchIndexDescriptor index, String oldIndex, String newIndex) {
     }
 
-    static Collection<GetAliasedResult> aliased(RestClient client, Gson gson,
+    static Collection<GetAliasedResult> aliased(Rest5Client client, Gson gson,
             List<ElasticsearchIndexDescriptor> indexes)
             throws IOException {
         var request = new Request("GET", "/_aliases");
@@ -231,7 +229,7 @@ public class Rollover implements Closeable {
         }
     }
 
-    private static void commitAll(RestClient client, Gson gson, List<IndexRolloverResult> rollovers) {
+    private static void commitAll(Rest5Client client, Gson gson, List<IndexRolloverResult> rollovers) {
         Log.info("Committing index rollover");
         try {
             changeAliasesAtomically(client, gson, rollovers, rolloverResult -> {
@@ -248,7 +246,7 @@ public class Rollover implements Closeable {
         }
     }
 
-    private static void rollbackAll(RestClient client, Gson gson, List<IndexRolloverResult> rollovers) {
+    private static void rollbackAll(Rest5Client client, Gson gson, List<IndexRolloverResult> rollovers) {
         Log.info("Rolling back index rollover");
         try {
             changeAliasesAtomically(client, gson, rollovers, rolloverResult -> {
@@ -265,7 +263,7 @@ public class Rollover implements Closeable {
         }
     }
 
-    private static boolean recoverInconsistentAliases(RestClient client, Gson gson,
+    private static boolean recoverInconsistentAliases(Rest5Client client, Gson gson,
             Collection<GetAliasedResult> aliased) {
         List<GetAliasedResult> inconsistentList = aliased.stream()
                 .filter(a -> a.allAliasedIndexes.size() > 1)
@@ -309,14 +307,14 @@ public class Rollover implements Closeable {
         return true;
     }
 
-    private static <T> void changeAliasesAtomically(RestClient client, Gson gson, List<T> input,
+    private static <T> void changeAliasesAtomically(Rest5Client client, Gson gson, List<T> input,
             Function<T, Stream<JsonObject>> actionsFunction) throws IOException {
         var request = new Request("POST", "_aliases");
         JsonObject body = new JsonObject();
         JsonArray actions = new JsonArray();
         body.add("actions", actions);
         input.stream().flatMap(actionsFunction).forEach(actions::add);
-        request.setEntity(new StringEntity(gson.toJson(body), ContentType.APPLICATION_JSON));
+        request.setJsonEntity(gson.toJson(body));
         client.performRequest(request);
     }
 
