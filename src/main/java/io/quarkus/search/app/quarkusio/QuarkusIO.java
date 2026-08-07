@@ -12,6 +12,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -81,6 +82,10 @@ public class QuarkusIO implements Closeable {
 
     public static Path yamlMetadataPath(String version) {
         return Path.of("_data", "versioned", version.replace('.', '-'), "index", "quarkus.yaml");
+    }
+
+    public static Path yamlCategoriesMetadataPath(String version) {
+        return Path.of("_data", "versioned", version.replace('.', '-'), "index", "categories.yaml");
     }
 
     public static Path yamlVersionMetadataPath() {
@@ -176,14 +181,19 @@ public class QuarkusIO implements Closeable {
                             .map(QuarkusIO::extractVersion)
                             .filter(versionFilter)
                             .flatMap(quarkusVersion -> {
-                                String quarkus = quarkusVersion.path();
+                                Stream<Guide> fromCategories = tryParseCategoriesYaml(
+                                        cloneDirectory, quarkusVersion, language,
+                                        repository, translationSourcesTree);
+                                if (fromCategories != null) {
+                                    return fromCategories;
+                                }
 
                                 Catalog translations = translations(
                                         repository, translationSourcesTree,
                                         resolveTranslationPath(
                                                 quarkusVersion.versionDirectory(), "quarkus.yaml", language));
 
-                                try (InputStream file = cloneDirectory.sourcesFile(quarkus)) {
+                                try (InputStream file = cloneDirectory.sourcesFile(quarkusVersion.path())) {
                                     return parseYamlMetadata(cloneDirectory, file, quarkusVersion.version(), language,
                                             translations);
                                 } catch (IOException e) {
@@ -193,6 +203,25 @@ public class QuarkusIO implements Closeable {
                                 }
                             });
                 });
+    }
+
+    private Stream<Guide> tryParseCategoriesYaml(GitCloneDirectory cloneDirectory,
+            VersionAndPaths quarkusVersion, Language language,
+            Repository repository, RevTree translationSourcesTree) {
+        String categoriesPath = yamlCategoriesMetadataPath(quarkusVersion.version()).toString();
+        try (InputStream file = cloneDirectory.sourcesFile(categoriesPath)) {
+            Catalog translations = translations(
+                    repository, translationSourcesTree,
+                    resolveTranslationPath(
+                            quarkusVersion.versionDirectory(), "categories.yaml", language));
+
+            return parseCategoriesYamlMetadata(cloneDirectory, file, quarkusVersion.version(), language, translations);
+        } catch (NoSuchFileException e) {
+            return null;
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Unable to load %s: %s".formatted(categoriesPath, e.getMessage()), e);
+        }
     }
 
     // older version guides like guides-2-7.yaml or guides-2-13.yaml
@@ -282,6 +311,91 @@ public class QuarkusIO implements Closeable {
 
             return parsed.stream();
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    private Stream<Guide> parseCategoriesYamlMetadata(GitCloneDirectory cloneDirectory, InputStream categoriesYamlStream,
+            String quarkusVersion, Language language, Catalog messages) {
+        return parse(categoriesYamlStream, yaml -> {
+            Map<URI, Guide> parsed = new HashMap<>();
+
+            List<Map<String, Object>> categories = (List<Map<String, Object>>) yaml.get("categories");
+            if (categories == null) {
+                return Stream.empty();
+            }
+
+            for (Map<String, Object> categoryObj : categories) {
+                String categoryId = toString(categoryObj.get("id"));
+                int categoryOrdinal = 0;
+
+                List<Map<String, Object>> directGuides = (List<Map<String, Object>>) categoryObj.get("guides");
+                if (directGuides != null) {
+                    for (Map<String, Object> parsedGuide : directGuides) {
+                        mergeGuide(cloneDirectory, quarkusVersion, language, messages,
+                                parsed, parsedGuide, categoryId, null, categoryOrdinal++);
+                    }
+                }
+
+                List<Map<String, Object>> subcategories = (List<Map<String, Object>>) categoryObj.get("subcategories");
+                if (subcategories != null) {
+                    for (Map<String, Object> subcategoryObj : subcategories) {
+                        String subcategoryId = toString(subcategoryObj.get("id"));
+                        List<Map<String, Object>> subGuides = (List<Map<String, Object>>) subcategoryObj.get("guides");
+                        if (subGuides != null) {
+                            for (Map<String, Object> parsedGuide : subGuides) {
+                                mergeGuide(cloneDirectory, quarkusVersion, language, messages,
+                                        parsed, parsedGuide, categoryId, subcategoryId, categoryOrdinal++);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return parsed.values().stream();
+        });
+    }
+
+    private void mergeGuide(GitCloneDirectory cloneDirectory, String quarkusVersion,
+            Language language, Catalog messages,
+            Map<URI, Guide> parsed, Map<String, Object> parsedGuide,
+            String categoryId, String subcategoryId, int ordinal) {
+        String parsedUrl = toString(parsedGuide.get("url"));
+        if (parsedUrl == null || parsedUrl.startsWith("http")) {
+            return;
+        }
+
+        URI guideUrl = httpUrl(siteUris.get(language), quarkusVersion, parsedUrl);
+        Guide existing = parsed.get(guideUrl);
+
+        if (existing != null) {
+            existing.categories.add(categoryId);
+            if (subcategoryId != null) {
+                existing.subcategories.add(subcategoryId);
+            }
+            existing.categoriesOrder.add(ordinal);
+            return;
+        }
+
+        Guide guide = createGuide(cloneDirectory, quarkusVersion, toString(parsedGuide.get("type")), parsedGuide,
+                "summary", language, messages);
+        if (guide == null) {
+            return;
+        }
+        guide.categories = new HashSet<>();
+        guide.categories.add(categoryId);
+        guide.subcategories = new HashSet<>();
+        if (subcategoryId != null) {
+            guide.subcategories.add(subcategoryId);
+        }
+        guide.categoriesOrder = new ArrayList<>();
+        guide.categoriesOrder.add(ordinal);
+        guide.keywords.set(language, translate(messages, toString(parsedGuide.get("keywords"))));
+        guide.topics = toSet(parsedGuide.get("topics")).stream()
+                .map(v -> new I18nData<>(language, v))
+                .collect(Collectors.toList());
+        guide.extensions = toSet(parsedGuide.get("extensions"));
+
+        parsed.put(guideUrl, guide);
     }
 
     private Stream<Guide> parseYamlLegacyMetadata(GitCloneDirectory cloneDirectory, InputStream quarkusYamlPath, String version,

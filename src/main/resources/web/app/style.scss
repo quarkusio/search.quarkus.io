@@ -13,6 +13,17 @@
     --tag-deprecated-text-color: #FFFFFF;
     --tag-experimental-background-color: #ff004a;
     --tag-experimental-text-color: #FFFFFF;
+
+    --card-bg-color: #ffffff;
+    --card-border-color: #e2e6ec;
+    --card-border-hover-color: var(--link-color);
+    --card-pinned-bg-color: #edf4ff;
+    --card-pinned-border-color: #c0d8f8;
+    --card-accent-color: var(--link-color);
+    --card-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --tag-chip-bg: #eef2f8;
+    --tag-chip-text: #4a5568;
+    --tag-chip-border: #dde3ed;
 }
 
 body {

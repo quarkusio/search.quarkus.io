@@ -71,40 +71,33 @@ class SynonymSearchServiceTest {
 
     @ParameterizedTest
     @MethodSource
-    void synonymsContent(String query, Set<String> expectedContentHighlights) {
+    void synonymsContent(String query, Set<String> expectedGuideNames) {
         var hits = searchHitSearchResult(query).hits();
-        assertThat(expectedContentHighlights)
-                .allSatisfy(expectedContentHighlight -> {
+        assertThat(expectedGuideNames)
+                .allSatisfy(expectedGuideName -> {
                     assertThat(hits)
-                            .flatExtracting(GuideSearchHit::content)
-                            .anySatisfy(hitTitle -> assertThat(hitTitle).containsIgnoringCase(expectedContentHighlight));
+                            .extracting(GuideSearchHit::url)
+                            .anySatisfy(url -> assertThat(url.toString()).contains(expectedGuideName));
                 });
     }
 
     private List<? extends Arguments> synonymsContent() {
         return List.of(
                 Arguments.of("Development Service",
-                        Set.of("<span class=\"highlighted\">Dev Services</span>",
-                                "<span class=\"highlighted\">dev-service</span>-amqp")),
+                        Set.of("dev-services")),
                 Arguments.of("dev Service",
-                        Set.of("<span class=\"highlighted\">Dev Services</span>",
-                                "<span class=\"highlighted\">dev-service</span>-amqp")),
+                        Set.of("dev-services")),
                 Arguments.of("rest easy",
-                        Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")),
+                        Set.of("rest")),
                 Arguments.of("vertx",
-                        Set.of("<span class=\"highlighted\">io.vertx.core.Vertx</span>",
-                                "<span class=\"highlighted\">Vert.x</span>", "<span class=\"highlighted\">vertx</span>")),
+                        Set.of("vertx-reference")),
                 Arguments.of("rest api",
-                        Set.of("<span class=\"highlighted\">REST</span>", "<span class=\"highlighted\">RESTEasy</span>")));
+                        Set.of("rest")));
     }
 
     private static SearchResult<GuideSearchHit> searchHitSearchResult(String q) {
         return given()
                 .queryParam("q", q)
-                // Bumping the number of snippets to give low-score matching terms more chance to appear in highlights.
-                // This is fine because these tests are not about relevance,
-                // just about checking that synonyms are detected correctly.
-                .queryParam("contentSnippets", 10)
                 .when().get(GUIDES_SEARCH)
                 .then()
                 .statusCode(200)

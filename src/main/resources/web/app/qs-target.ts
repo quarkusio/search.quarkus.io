@@ -1,7 +1,9 @@
 import {LitElement, html, css, unsafeCSS} from 'lit';
 import {customElement, property, state, queryAll} from 'lit/decorators.js';
 import './qs-guide'
-import {QS_NEXT_PAGE_EVENT, QS_QUERY_SUGGESTION_EVENT, QS_RESULT_EVENT, QS_START_EVENT, QsResult} from "./qs-form";
+import './qs-guide-group'
+import './qs-categories-toc'
+import {QS_NEXT_PAGE_EVENT, QS_QUERY_SUGGESTION_EVENT, QS_RESULT_EVENT, QS_GROUPED_RESULT_EVENT, QS_START_EVENT, QsResult, QsGroupedResult} from "./qs-form";
 import debounce from 'lodash/debounce';
 import icons from "./assets/icons";
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
@@ -28,7 +30,7 @@ export class QsTarget extends LitElement {
     .qs-hits {
       display: grid;
       grid-template-columns: repeat(12, 1fr);
-      grid-gap: 1em;
+      grid-gap: 0.75rem;
       clear: both;
       margin-bottom: 4em;
     }
@@ -67,18 +69,12 @@ export class QsTarget extends LitElement {
 
     qs-guide {
       grid-column: span 4;
-      margin: 1rem 0rem 1rem 0rem;
 
       @media screen and (max-width: 1300px) {
         grid-column: span 6;
       }
 
       @media screen and (max-width: 768px) {
-        grid-column: span 12;
-        margin: 1rem 0rem 1rem 0rem;
-      }
-
-      @media screen and (max-width: 480px) {
         grid-column: span 12;
       }
     }
@@ -88,7 +84,9 @@ export class QsTarget extends LitElement {
   @property({type: String, attribute: 'search-results-title'}) searchResultsTitle: string = '';
   @property({type: String}) private type: string = "guide";
   @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
+  @property({type: Object, attribute: 'categories-meta'}) categoriesMeta: Record<string, {title: string, description?: string}> = {};
   @state() private _result: QsResult | undefined;
+  @state() private _groupedResult: QsGroupedResult | undefined;
   @state() private _loading = true;
   @queryAll('.qs-hit') private _hits: NodeListOf<HTMLElement>;
 
@@ -98,18 +96,42 @@ export class QsTarget extends LitElement {
     super.connectedCallback();
     this._form = document.querySelector("qs-form");
     this._form.addEventListener(QS_RESULT_EVENT, this._handleResult);
+    this._form.addEventListener(QS_GROUPED_RESULT_EVENT, this._handleGroupedResult);
     this._form.addEventListener(QS_START_EVENT, this._loadingStart);
     document.addEventListener('scroll', this._handleScrollDebounced)
   }
 
   disconnectedCallback() {
     this._form.removeEventListener(QS_RESULT_EVENT, this._handleResult);
+    this._form.removeEventListener(QS_GROUPED_RESULT_EVENT, this._handleGroupedResult);
     this._form.removeEventListener(QS_START_EVENT, this._loadingStart);
     document.removeEventListener('scroll', this._handleScrollDebounced);
     super.disconnectedCallback();
   }
 
   render() {
+    if (this._groupedResult?.categories) {
+      if (this._groupedResult.categories.length === 0) {
+        return html`
+          <div id="qs-target" class="no-hits">
+            <p>Sorry, no ${this.type}s matched your search. Please try again.</p>
+          </div>
+        `;
+      }
+      return html`
+        ${this.searchResultsTitle === '' ? '' : html`<h1 class="search-result-title">${this.searchResultsTitle}</h1>`}
+        ${this._groupedResult.suggestion ? html`
+          <div class="result-message">
+            <p>No ${this.type}s matched your original search query.
+                Showing results for <span class="suggestion" @click=${this._querySuggestion}>${unsafeHTML(this._groupedResult.suggestion.highlighted)}</span> instead.</p>
+          </div>
+        ` : ''}
+        <div id="qs-target" class="qs-grouped-hits" aria-label="Search Hits">
+          ${this._groupedResult.categories.map(cat => this._renderGroup(cat))}
+        </div>
+        ${this._loading ? this._renderLoading() : ''}
+      `;
+    }
     if (this._result?.hits) {
       if (this._result.hits.length === 0) {
         return html`
@@ -159,6 +181,30 @@ export class QsTarget extends LitElement {
     `;
   }
 
+  private _renderGroup(cat) {
+    const meta = this.categoriesMeta?.[cat.category] || {};
+    const title = meta.title || cat.category;
+    const description = meta.description || '';
+    const searchContext = this._groupedResult ? {
+      server: this._groupedResult.server || '',
+      query: this._groupedResult.search?.q || '',
+      language: this._groupedResult.search?.language || 'en',
+      version: this._groupedResult.search?.version || undefined,
+    } : null;
+
+    return html`
+      <qs-guide-group
+        category=${cat.category}
+        title=${title}
+        description=${description}
+        hit-count=${cat.hitCount}
+        .hits=${cat.hits}
+        .searchContext=${searchContext}
+        origins-with-relative-urls=${this.originsWithRelativeUrls}
+      ></qs-guide-group>
+    `;
+  }
+
   private _renderHit(i) {
     switch (this.type) {
       case 'guide':
@@ -198,9 +244,22 @@ export class QsTarget extends LitElement {
   }
   private _handleScrollDebounced = debounce(this._handleScroll, 100);
 
+  private _handleGroupedResult = (e: CustomEvent) => {
+    console.debug("Received grouped results in qs-target: ", e.detail);
+    this._loadingEnd();
+    this._result = undefined;
+    if (e.detail?.categories) {
+      document.body.classList.add("qs-has-results");
+    } else {
+      document.body.classList.remove("qs-has-results");
+    }
+    this._groupedResult = e.detail;
+  }
+
   private _handleResult = (e: CustomEvent) => {
     console.debug("Received results in qs-target: ", e.detail);
     this._loadingEnd();
+    this._groupedResult = undefined;
     if (!this._result || !e.detail || !e.detail.hits || e.detail.page === 0) {
       if(e.detail?.hits) {
         document.body.classList.add("qs-has-results");
@@ -227,6 +286,7 @@ export class QsTarget extends LitElement {
   }
 
   private _querySuggestion() {
-    this._form.dispatchEvent(new CustomEvent(QS_QUERY_SUGGESTION_EVENT, {detail: {suggestion: this._result.suggestion}}));
+    const suggestion = this._groupedResult?.suggestion || this._result?.suggestion;
+    this._form.dispatchEvent(new CustomEvent(QS_QUERY_SUGGESTION_EVENT, {detail: {suggestion}}));
   }
 }
