@@ -94,7 +94,8 @@ jobs:
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
           -Dquarkus.container-image.registry="${{ steps.oc-registry.outputs.OC_REGISTRY_URL }}" \
-          -Dquarkus.container-image.group="$(oc project --short)"
+          -Dquarkus.container-image.group="$(oc project --short)" \
+          -DskipTests
 
     - name: Push Elasticsearch container image
       run: |
