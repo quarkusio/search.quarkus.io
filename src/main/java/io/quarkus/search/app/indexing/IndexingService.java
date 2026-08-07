@@ -39,9 +39,8 @@ import org.hibernate.search.backend.elasticsearch.ElasticsearchBackend;
 import org.hibernate.search.mapper.pojo.standalone.mapping.SearchMapping;
 import org.hibernate.search.util.common.impl.Throwables;
 
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RestClient;
-
+import co.elastic.clients.transport.rest5_client.low_level.Request;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.smallrye.mutiny.subscription.Cancellable;
 
 @ApplicationScoped
@@ -137,7 +136,7 @@ public class IndexingService {
 
     private boolean isSearchBackendReachable() {
         try {
-            searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
+            searchMapping.backend().unwrap(ElasticsearchBackend.class).client(Rest5Client.class)
                     .performRequest(new Request("GET", "/"));
             return true;
         } catch (IOException e) {
@@ -148,7 +147,7 @@ public class IndexingService {
 
     private boolean isSearchBackendReady() {
         try {
-            searchMapping.backend().unwrap(ElasticsearchBackend.class).client(RestClient.class)
+            searchMapping.backend().unwrap(ElasticsearchBackend.class).client(Rest5Client.class)
                     .performRequest(new Request("GET", "/_cluster/health?wait_for_status=green&timeout=0s"));
             return true;
         } catch (IOException e) {
