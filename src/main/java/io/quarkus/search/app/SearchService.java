@@ -53,7 +53,7 @@ public class SearchService {
     private static final int PAGE_SIZE = 50;
     private static final long TOTAL_HIT_COUNT_THRESHOLD = 100;
     private static final int GROUPED_CATEGORIES_SIZE = 30;
-    public static final int GROUPED_DOCS_PER_CATEGORY = 6;
+    public static final int GROUPED_DOCS_PER_CATEGORY = 9;
 
     @Inject
     SearchMapping searchMapping;

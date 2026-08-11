@@ -15,13 +15,13 @@ export class QsGuideGroup extends LitElement {
 
   static styles = css`
     .qs-guide-group {
-      margin-bottom: 2rem;
+      margin-bottom: 3.5rem;
     }
 
     .qs-guide-group-header {
       display: flex;
       align-items: center;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.95rem;
     }
 
     .qs-guide-group-header h2,
@@ -32,11 +32,11 @@ export class QsGuideGroup extends LitElement {
     }
 
     .qs-guide-group-header h2 {
-      font-size: 1.3rem;
+      font-size: 1.5rem;
     }
 
     .qs-guide-group-header h3 {
-      font-size: 1.05rem;
+      font-size: 1rem;
     }
 
     .count {
@@ -47,7 +47,7 @@ export class QsGuideGroup extends LitElement {
     }
 
     .title-line {
-      background-color: var(--card-border-color, #e2e6ec);
+      background-color: color-mix(in srgb, var(--card-border-color) 33%, transparent);
       flex: 1;
       height: 1px;
       margin-left: 10px;
@@ -125,6 +125,14 @@ export class QsGuideGroup extends LitElement {
       vertical-align: middle;
       margin-left: 0.5rem;
     }
+      
+    .qs-guide-group-pinned .qs-guide-group-header h2 {
+      color: var(--card-accent-color)
+    }
+
+    .qs-guide-group-pinned .qs-guide-group-header div.title-line {
+      background-color: var(--card-accent-color)
+    }
   `;
 
   @property({type: String}) category: string = '';
@@ -135,6 +143,7 @@ export class QsGuideGroup extends LitElement {
   @property({type: Object, attribute: false}) searchContext: SearchContext | null = null;
   @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
   @property({type: Boolean}) subgroup: boolean = false;
+  @property({type: Boolean}) pinned: boolean = false;
 
   @state() private _additionalHits: any[] = [];
   @state() private _loading: boolean = false;
@@ -173,8 +182,9 @@ export class QsGuideGroup extends LitElement {
   }
 
   private _renderBrowseMode() {
+    const pinnedClass = this.pinned ? 'qs-guide-group-pinned' : '';
     return html`
-      <div class="qs-guide-group">
+      <div class="qs-guide-group ${pinnedClass}">
         ${this._renderHeader()}
         ${this.description ? html`<p class="qs-guide-group-description">${this.description}</p>` : ''}
         <slot></slot>

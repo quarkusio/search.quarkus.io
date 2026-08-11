@@ -83,7 +83,7 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide a {
-          color: var(--link-color, #1259A5);
+          color: var(--title-text-color);
           text-decoration: none;
           transition: color 0.15s ease;
       }
@@ -243,7 +243,7 @@ export class QsGuide extends LitElement {
       <div class="qs-hit qs-guide ${pinnedClass}" aria-label="Guide Hit" @click="${this._handleCardClick}">
         <div class="qs-guide-header">
           <h4>
-            <a href="${this.relativizeUrl()}" target="_blank">${this._renderHTML(this.title)}</a>
+            <a href="${this.relativizeUrl()}">${this._renderHTML(this.title)}</a>
           </h4>
           <div class="qs-guide-badges">
             ${this.status ? html`<span class="status-tag status-${this.status}" title="${this._statusHint()}">${this.status}</span>` : ''}
@@ -265,7 +265,7 @@ export class QsGuide extends LitElement {
     if ((e.target as HTMLElement).closest('a')) {
       return;
     }
-    window.open(this.relativizeUrl(), '_blank');
+    window.open(this.relativizeUrl(), '_self');
   }
 
   private _renderTags() {

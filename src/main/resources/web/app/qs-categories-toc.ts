@@ -21,7 +21,7 @@ export class QsCategoriesToc extends LitElement {
       font-size: 0.85rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--text-color, black);
+      color: var(--main-text-color);
     }
 
     ul {
@@ -42,7 +42,7 @@ export class QsCategoriesToc extends LitElement {
       font-size: 0.85rem;
       font-weight: 600;
       line-height: 1.5;
-      color: var(--text-color, black);
+      color: var(--main-text-color);
       text-decoration: none;
       border-radius: 3px;
       cursor: pointer;
@@ -71,7 +71,7 @@ export class QsCategoriesToc extends LitElement {
       padding: 0.1rem 0.45rem;
       font-size: 0.7rem;
       line-height: 1.5;
-      color: var(--text-color, black);
+      color: var(--main-text-color);
       opacity: 0.75;
       text-decoration: none;
       border-radius: 8px;
@@ -183,7 +183,7 @@ export class QsCategoriesToc extends LitElement {
         group = target.querySelector(`qs-guide-group[category="${CSS.escape(category)}"]`);
       }
       if(group) {
-        group.scrollIntoView({behavior: 'smooth', block: 'start'});
+        group.scrollIntoView({behavior: 'instant', block: 'start'});
       }
     }
   }
