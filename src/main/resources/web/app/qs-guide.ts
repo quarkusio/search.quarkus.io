@@ -21,7 +21,6 @@ export class QsGuide extends LitElement {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
-          background-color: var(--card-bg-color);
           border: 1px solid var(--card-border-color);
           border-radius: 10px;
           padding: 1rem;
@@ -36,23 +35,6 @@ export class QsGuide extends LitElement {
       .qs-guide:hover {
           border-color: var(--card-border-hover-color);
           background-color: var(--card-border-hover-color);
-      }
-
-      .qs-guide::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 4px;
-          height: 100%;
-          background-color: var(--card-accent-color);
-          border-radius: 0.75rem 0 0 0.75rem;
-          opacity: 0;
-          transition: opacity 0.2s ease;
-      }
-
-      .qs-guide:hover::before {
-          opacity: 1;
       }
 
       .qs-guide--pinned {
@@ -77,7 +59,7 @@ export class QsGuide extends LitElement {
 
       .qs-guide-header h4 {
           margin: 0;
-          font-size: 1.25rem;
+          font-size: 1.15rem;
           font-weight: 600;
           line-height: 1.375;
       }
@@ -152,7 +134,7 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide-summary {
-          font-size: 1rem;
+          font-size: 0.9rem;
           line-height: 1.625;
           color: var(--main-text-color);
           margin: 0;
@@ -240,7 +222,7 @@ export class QsGuide extends LitElement {
     const pinnedClass = this.pinned ? 'qs-guide--pinned' : '';
 
     return html`
-      <div class="qs-hit qs-guide ${pinnedClass}" aria-label="Guide Hit" @click="${this._handleCardClick}">
+      <div class="qs-hit qs-guide ${pinnedClass}" aria-label="Guide Hit" @click="${this._handleCardClick}" @auxclick="${this._handleCardAuxClick}">
         <div class="qs-guide-header">
           <h4>
             <a href="${this.relativizeUrl()}">${this._renderHTML(this.title)}</a>
@@ -261,11 +243,25 @@ export class QsGuide extends LitElement {
     `;
   }
 
-  private _handleCardClick(e: Event) {
+  private _handleCardClick(e: MouseEvent) {
     if ((e.target as HTMLElement).closest('a')) {
       return;
     }
-    window.open(this.relativizeUrl(), '_self');
+    // Ctrl (Windows/Linux) or Cmd (macOS) click opens in a new tab, like a normal link
+    const newTab = e.ctrlKey || e.metaKey;
+    window.open(this.relativizeUrl(), newTab ? '_blank' : '_self');
+  }
+
+  private _handleCardAuxClick(e: MouseEvent) {
+    // Middle mouse button ("scroll" click) opens in a new tab
+    if (e.button !== 1) {
+      return;
+    }
+    if ((e.target as HTMLElement).closest('a')) {
+      return;
+    }
+    e.preventDefault();
+    window.open(this.relativizeUrl(), '_blank');
   }
 
   private _renderTags() {

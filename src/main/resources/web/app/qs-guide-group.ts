@@ -79,6 +79,14 @@ export class QsGuideGroup extends LitElement {
       }
     }
 
+    @media screen and (max-width: 1200px) {
+      .qs-guide-group-description {
+        margin: 0.5rem 0 0.5rem 0;
+        display: block;
+        white-space: normal
+      }
+    }
+
     @media screen and (max-width: 768px) {
       .qs-guide-group-content qs-guide {
         grid-column: span 12;
@@ -216,10 +224,12 @@ export class QsGuideGroup extends LitElement {
       <div class="qs-guide-group-header">
         ${useH3
           ? html`<h3>${displayTitle}</h3>`
-          : html`<h2>${displayTitle}</h2>`
+          : html`<h2>
+                  ${displayTitle}
+                  ${this.hitCount > 0 ? html`<span class="count">(${this.hitCount})</span>` : ''}
+                  ${this.description ? html`<span class="qs-guide-group-description">${this.description}</span>` : ''}
+                </h2>`
         }
-        ${this.hitCount > 0 ? html`<span class="count">(${this.hitCount})</span>` : ''}
-        ${this.description ? html`<span class="qs-guide-group-description">${this.description}</span>` : ''}
       </div>
     `;
   }

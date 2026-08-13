@@ -18,7 +18,7 @@ export class QsCategoriesToc extends LitElement {
 
     h3 {
       margin: 0 0 0.4rem 0;
-      font-size: 0.85rem;
+      font-size: 1.125rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--main-text-color);
@@ -39,7 +39,7 @@ export class QsCategoriesToc extends LitElement {
     .toc > ul > li > a {
       display: block;
       padding: 0.15rem 0.4rem;
-      font-size: 0.85rem;
+      font-size: 1rem;
       font-weight: 600;
       line-height: 1.5;
       color: var(--main-text-color);
@@ -69,7 +69,7 @@ export class QsCategoriesToc extends LitElement {
     .toc > ul > li > ul > li > a {
       display: inline-block;
       padding: 0.1rem 0.45rem;
-      font-size: 0.7rem;
+      font-size: 0.9rem;
       line-height: 1.5;
       color: var(--main-text-color);
       opacity: 0.75;
