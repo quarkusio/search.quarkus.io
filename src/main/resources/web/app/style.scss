@@ -3,6 +3,7 @@
     --text-color: black;
     --main-text-color: black;
     --title-text-color: #1259A5;
+    --sub-title-text-color: #205894;
     --input-border-color: #5996E5;
     --top-nav-bg: black;
     --link-color: #1259A5;
@@ -17,11 +18,10 @@
 
     --card-bg-color: #ffffff;
     --card-border-color: #e2e6ec;
-    --card-border-hover-color: var(--link-color);
-    --card-pinned-bg-color: #edf4ff;
+    --card-border-hover-color: #e4edf7;
+    --card-pinned-bg-color: #e4edf7;
     --card-pinned-border-color: #c0d8f8;
     --card-accent-color: var(--link-color);
-    --card-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
     --tag-chip-bg: #eef2f8;
     --tag-chip-text: #4a5568;
     --tag-chip-border: #dde3ed;

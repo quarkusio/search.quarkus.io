@@ -15,12 +15,12 @@ export class QsGuideGroup extends LitElement {
 
   static styles = css`
     .qs-guide-group {
-      margin-bottom: 3.5rem;
+      margin-bottom: 1.5rem;
     }
 
     .qs-guide-group-header {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       margin-bottom: 0.95rem;
     }
 
@@ -32,16 +32,19 @@ export class QsGuideGroup extends LitElement {
     }
 
     .qs-guide-group-header h2 {
-      font-size: 1.5rem;
+        font-size: 1.875rem;
+        margin: 2rem 0 .75rem;
     }
 
     .qs-guide-group-header h3 {
-      font-size: 1rem;
+        font-size: 1.05rem;
+        padding-bottom: .5rem;
+        color: var(--sub-title-text-color);
     }
 
     .count {
       margin-left: 0.5rem;
-      font-size: 0.85rem;
+      font-size: 1.5rem;
       color: var(--content-highlight-color, #777);
       white-space: nowrap;
     }
@@ -54,10 +57,9 @@ export class QsGuideGroup extends LitElement {
     }
 
     .qs-guide-group-description {
-      margin: 0 0 0.5rem 0;
-      color: var(--content-highlight-color, #777);
-      opacity: 0.7;
-      font-size: 0.85rem;
+      margin: 0 0 0.5rem 1rem;
+      color: var(--content-highlight-color, #555555);
+      font-size: 1rem;
     }
 
     .qs-guide-group-content {
@@ -186,7 +188,6 @@ export class QsGuideGroup extends LitElement {
     return html`
       <div class="qs-guide-group ${pinnedClass}">
         ${this._renderHeader()}
-        ${this.description ? html`<p class="qs-guide-group-description">${this.description}</p>` : ''}
         <slot></slot>
       </div>
     `;
@@ -197,7 +198,6 @@ export class QsGuideGroup extends LitElement {
     return html`
       <div class="qs-guide-group">
         ${this._renderHeader()}
-        ${this.description ? html`<p class="qs-guide-group-description">${this.description}</p>` : ''}
         <div class="qs-guide-group-content">
           ${allHits.map(hit => html`
             <qs-guide .data=${hit} origins-with-relative-urls=${this.originsWithRelativeUrls}></qs-guide>
@@ -219,7 +219,7 @@ export class QsGuideGroup extends LitElement {
           : html`<h2>${displayTitle}</h2>`
         }
         ${this.hitCount > 0 ? html`<span class="count">(${this.hitCount})</span>` : ''}
-        ${useH3 ? '' : html`<div class="title-line"></div>` }
+        ${this.description ? html`<span class="qs-guide-group-description">${this.description}</span>` : ''}
       </div>
     `;
   }

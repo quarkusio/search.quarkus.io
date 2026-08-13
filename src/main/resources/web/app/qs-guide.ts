@@ -23,8 +23,8 @@ export class QsGuide extends LitElement {
           gap: 0.75rem;
           background-color: var(--card-bg-color);
           border: 1px solid var(--card-border-color);
-          border-radius: 0.75rem;
-          padding: 1.25rem;
+          border-radius: 10px;
+          padding: 1rem;
           cursor: pointer;
           position: relative;
           overflow: hidden;
@@ -35,7 +35,7 @@ export class QsGuide extends LitElement {
 
       .qs-guide:hover {
           border-color: var(--card-border-hover-color);
-          box-shadow: var(--card-shadow-hover);
+          background-color: var(--card-border-hover-color);
       }
 
       .qs-guide::before {
@@ -77,7 +77,7 @@ export class QsGuide extends LitElement {
 
       .qs-guide-header h4 {
           margin: 0;
-          font-size: 0.875rem;
+          font-size: 1.25rem;
           font-weight: 600;
           line-height: 1.375;
       }
@@ -152,7 +152,7 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide-summary {
-          font-size: 0.8125rem;
+          font-size: 1rem;
           line-height: 1.625;
           color: var(--main-text-color);
           margin: 0;
