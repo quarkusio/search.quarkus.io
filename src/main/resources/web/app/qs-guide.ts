@@ -65,7 +65,7 @@ export class QsGuide extends LitElement {
       }
 
       .qs-guide a {
-          color: var(--title-text-color);
+          color: var(--title-text-color, #1259A5);
           text-decoration: none;
           transition: color 0.15s ease;
       }
