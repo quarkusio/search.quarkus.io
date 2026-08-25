@@ -421,6 +421,8 @@ public final class QuarkusIOSample {
         public FilterDefinitionCollector addGuide(GuideRef ref, String version) {
             String htmlPath = QuarkusIO.htmlPath(Language.ENGLISH, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
+            // The main site uses the "pretty URL" layout: <base>/index.html
+            htmlPath = htmlPath + "/index.html";
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
         }
@@ -442,6 +444,8 @@ public final class QuarkusIOSample {
         public FilterDefinitionCollector addLocalizedGuide(Language language, GuideRef ref, String version) {
             String htmlPath = QuarkusIO.htmlPath(language, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
+            // Localized sites still use the old layout: <base>.html
+            htmlPath = htmlPath + ".html";
             addOnPagesBranch(htmlPath, htmlPath);
             return this;
         }

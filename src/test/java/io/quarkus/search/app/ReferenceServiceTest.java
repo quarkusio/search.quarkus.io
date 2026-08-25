@@ -59,6 +59,7 @@ class ReferenceServiceTest {
                 "compatibility",
                 "core",
                 "data",
+                "execution-model",
                 "miscellaneous",
                 "security",
                 "web",
