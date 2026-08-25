@@ -69,8 +69,11 @@ public class QuarkusIO implements Closeable {
         }
     }
 
+    // Returns the base path of a guide's rendered HTML on the gh-pages branch, without extension.
+    // The actual file is resolved from this base by GitUtils.resolveHtmlPath(...), since the main
+    // site now uses "<base>/index.html" while localized sites still use "<base>.html".
     public static String htmlPath(Language language, String version, String name) {
-        String htmlPath = httpPath(version, name) + ".html";
+        String htmlPath = httpPath(version, name);
         return (Language.ENGLISH.equals(language) ? "" : "docs" + (htmlPath.startsWith("/") ? "" : "/")) + htmlPath;
     }
 
@@ -441,7 +444,8 @@ public class QuarkusIO implements Closeable {
 
         InputProvider inputProvider;
         String message = "";
-        if (!GitUtils.fileExists(cloneDirectory.git().getRepository(), cloneDirectory.pagesTree(), path)) {
+        String resolvedPath = GitUtils.resolveHtmlPath(cloneDirectory.git().getRepository(), cloneDirectory.pagesTree(), path);
+        if (resolvedPath == null) {
             // if  a file is not present we do not want to add such guide. Since if the html is not there
             // it means that users won't be able to open it on the site, and returning it in the search results make it pointless.
 
@@ -452,10 +456,11 @@ public class QuarkusIO implements Closeable {
         } else {
             try {
                 inputProvider = InputProvider.from(
-                        Jsoup.parse(GitUtils.file(cloneDirectory.git().getRepository(), cloneDirectory.pagesTree(), path),
+                        Jsoup.parse(
+                                GitUtils.file(cloneDirectory.git().getRepository(), cloneDirectory.pagesTree(), resolvedPath),
                                 StandardCharsets.UTF_8.displayName(), "/"),
                         processedGuidesDirectory,
-                        path);
+                        resolvedPath);
             } catch (IOException e) {
                 message = path + " is ignored since we were not able to write a preprocessed HTML content file for it: "
                         + e.getMessage();
