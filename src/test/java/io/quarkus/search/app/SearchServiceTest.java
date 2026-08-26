@@ -456,7 +456,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Show…"));
+                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> A build item representing…"));
     }
 
     @Test
@@ -469,7 +469,7 @@ class SearchServiceTest {
                 .extract().body().as(SEARCH_RESULT_SEARCH_HITS);
         assertThat(result.hits()).extracting(GuideSearchHit::content)
                 .containsOnly(Set.of(
-                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> No Javadoc found Show…"));
+                        "…allow No Javadoc found <span class=\"highlighted\">io.quarkus.deployment.pkg.builditem.NativeImageBuildItem</span> A build item representing…"));
     }
 
     @Test

@@ -2,6 +2,7 @@ package io.quarkus.search.app.indexing.reporting;
 
 import static io.quarkus.search.app.indexing.reporting.StatusRenderer.toStatusDetailsMarkdown;
 import static io.quarkus.search.app.indexing.reporting.StatusRenderer.toStatusSummary;
+import static io.quarkus.search.app.util.GitHubApiRetry.executeWithRetry;
 import static io.quarkus.search.app.util.Streams.toStream;
 import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 
@@ -27,6 +28,11 @@ import org.kohsuke.github.GitHubBuilder;
 class GithubStatusReporter implements StatusReporter {
 
     private static final String STATUS_REPORT_HEADER = "## search.quarkus.io indexing status: ";
+    // Delay between comment deletions to avoid secondary rate limits
+    // Can be overridden via system property (e.g., for tests)
+    private static final long COMMENT_DELETE_DELAY_MILLIS = Long.getLong(
+            "search.quarkus.io.github-api.comment-delete-delay-millis",
+            1000);
 
     private final Clock clock;
     private final ReportingConfig.GithubReporter config;
@@ -92,6 +98,14 @@ class GithubStatusReporter implements StatusReporter {
                     issue.comment(reportComment);
             }
 
+            // "Pack" comments to avoid hitting issues with comments (be it sync app's or GH own comment limits)
+            try {
+                packComments(issue);
+            } catch (Exception e) {
+                Log.errorf(e, "Failed to pack comments for issue %s#%s",
+                        config.issue().repository(), issue.getNumber());
+            }
+
             // handle issue state (open/close):
             switch (status) {
                 case IN_PROGRESS -> {
@@ -115,6 +129,48 @@ class GithubStatusReporter implements StatusReporter {
             }
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Unable to report failures to GitHub: " + e.getMessage(), e);
+        }
+    }
+
+    private void packComments(GHIssue issue) throws IOException {
+        int commentCount = issue.getCommentsCount();
+        int threshold = config.commentPackThreshold();
+        int retained = config.commentPackRetained();
+        int maxToRemove = config.commentPackMaxToRemove();
+
+        if (commentCount <= threshold) {
+            return;
+        }
+
+        int commentsToDelete = Math.min(commentCount - retained, maxToRemove);
+        Log.infof("Packing issue %s#%s: deleting %d old comments (keeping %d most recent)",
+                config.issue().repository(), issue.getNumber(), commentsToDelete, commentCount - commentsToDelete);
+
+        var comments = toStream(issue.queryComments().list()).toList();
+        for (int i = 0; i < commentsToDelete && i < comments.size(); i++) {
+            var comment = comments.get(i);
+            try {
+                executeWithRetry(() -> {
+                    try {
+                        comment.delete();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            } catch (Exception e) {
+                Log.errorf(e, "Failed to delete comment %s from issue %s#%s",
+                        comment.getId(), config.issue().repository(), issue.getNumber());
+            }
+
+            // Delay between deletions to avoid triggering secondary rate limits
+            if (i < commentsToDelete - 1) {
+                try {
+                    Thread.sleep(COMMENT_DELETE_DELAY_MILLIS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while packing comments", e);
+                }
+            }
         }
     }
 

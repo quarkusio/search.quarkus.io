@@ -130,6 +130,8 @@ spec:
               value: 'false'
             - name: 'xpack.watcher.enabled'
               value: 'false'
+            - name: 'ingest.geoip.downloader.enabled'
+              value: 'false'
           envFrom:
             - configMapRef:
                 name: search-backend-config

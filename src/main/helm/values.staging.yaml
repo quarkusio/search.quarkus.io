@@ -22,4 +22,4 @@ elasticsearch:
       memory: 1.5Gi
     requests:
       cpu: 250m
-      memory: 1.0Mi
+      memory: 1.0Gi

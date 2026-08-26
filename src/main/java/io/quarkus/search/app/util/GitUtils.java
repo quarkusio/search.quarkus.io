@@ -67,13 +67,42 @@ public final class GitUtils {
         return loader.openStream();
     }
 
-    public static boolean fileExists(Repository repo, RevTree tree, String path) {
-        try {
-            TreeWalk treeWalk = new TreeWalk(repo);
-            treeWalk.addTree(tree);
-            treeWalk.setRecursive(true);
-            treeWalk.setFilter(PathFilter.create(path));
-            return treeWalk.next();
+    /**
+     * Resolves the actual HTML file path for a guide, given its base path (without extension).
+     * <p>
+     * There may be different rendered layouts for the guides:
+     * <ul>
+     * <li>{@code <base>.html} - the historical general layout, still used by some localized sites;</li>
+     * <li>{@code <base>/index.html} - the "pretty URL" layout now used by the main site;</li>
+     * <li>{@code <base>} - an extension-less blob, used by some localized sites.</li>
+     * </ul>
+     *
+     * @return the path of the existing HTML file, or {@code null} if none was found.
+     */
+    public static String resolveHtmlPath(Repository repo, RevTree tree, String basePath) {
+        // Historical main-site layout, still used by some localized sites:
+        String htmlFile = basePath + ".html";
+        if (blobExists(repo, tree, htmlFile)) {
+            return htmlFile;
+        }
+        // "Pretty URL" layout used by the main site:
+        String indexFile = basePath + "/index.html";
+        if (blobExists(repo, tree, indexFile)) {
+            return indexFile;
+        }
+        // Extension-less layout used by some localized sites (but more of an edge case that should just go away):
+        if (blobExists(repo, tree, basePath)) {
+            return basePath;
+        }
+        return null;
+    }
+
+    /**
+     * @return {@code true} if {@code path} points to an actual file blob (and not a directory) in the tree.
+     */
+    private static boolean blobExists(Repository repo, RevTree tree, String path) {
+        try (TreeWalk treeWalk = TreeWalk.forPath(repo, path, tree)) {
+            return treeWalk != null && !treeWalk.isSubtree();
         } catch (IOException e) {
             Log.warn("A problem occurred while trying to find a file in git tree: " + e.getMessage(), e);
             return false;

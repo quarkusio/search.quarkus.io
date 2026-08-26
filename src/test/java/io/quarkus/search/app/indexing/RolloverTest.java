@@ -29,10 +29,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RestClient;
-
 import com.google.gson.Gson;
+
+import co.elastic.clients.transport.rest5_client.low_level.Request;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -50,12 +50,12 @@ class RolloverTest {
 
     @Inject
     SearchMapping searchMapping;
-    RestClient client;
+    Rest5Client client;
 
     @PostConstruct
     void setClient() {
         client = searchMapping.backend().unwrap(ElasticsearchBackend.class)
-                .client(RestClient.class);
+                .client(Rest5Client.class);
     }
 
     // We test only one index, to keep things simple
