@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -69,6 +70,7 @@ class FetchingServiceTest {
     static void initOrigin() throws IOException, GitAPIException {
         Path sourceRepoPath = tmpDir.path();
         Path metadata1ToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/quarkus.yaml");
+        Path categoriesMetadataToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/categories.yaml");
         Path metadata2ToFetch = sourceRepoPath.resolve("_data/guides-2-7.yaml");
         Path guide1HtmlToFetch = sourceRepoPath.resolve("guides/" + FETCHED_GUIDE_1_NAME + ".html");
         Path guide2HtmlToFetch = sourceRepoPath.resolve("version/2.7/guides/" + FETCHED_GUIDE_2_NAME + ".html");
@@ -99,6 +101,7 @@ class FetchingServiceTest {
 
             PathUtils.createParentDirectories(metadata1ToFetch);
             Files.writeString(metadata1ToFetch, METADATA_YAML);
+            Files.writeString(categoriesMetadataToFetch, METADATA_CATEGORIES_YAML);
             PathUtils.createParentDirectories(metadata2ToFetch);
             Files.writeString(metadata2ToFetch, METADATA_LEGACY_YAML);
             git.add().addFilepattern(".").call();
@@ -109,7 +112,7 @@ class FetchingServiceTest {
             Language language = entry.getKey();
             Path localizedSourceRepoPath = entry.getValue().path();
             Path localizedMetadata1ToFetch = localizedSourceRepoPath
-                    .resolve("l10n/po/" + language.locale + "/_data/versioned/latest/index/quarkus.yaml.po");
+                    .resolve("l10n/po/" + language.locale + "/_data/versioned/latest/index/categories.yaml.po");
             Path localizedMetadata2ToFetch = localizedSourceRepoPath
                     .resolve("l10n/po/" + language.locale + "/_data/guides-2-7.yaml.po");
             Path localizedGuide1HtmlToFetch = localizedSourceRepoPath.resolve("docs/guides/" + FETCHED_GUIDE_1_NAME + ".html");
@@ -153,6 +156,7 @@ class FetchingServiceTest {
     private void updateMainRepository() throws IOException, GitAPIException {
         Path sourceRepoPath = tmpDir.path();
         Path metadata1ToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/quarkus.yaml");
+        Path categoriesMetadataToFetch = sourceRepoPath.resolve("_data/versioned/latest/index/categories.yaml");
         Path guide1HtmlToFetch = sourceRepoPath.resolve("guides/" + FETCHED_GUIDE_1_NAME + ".html");
 
         try (Git git = Git.open(sourceRepoPath.toFile())) {
@@ -166,6 +170,7 @@ class FetchingServiceTest {
             git.checkout().setName(QuarkusIO.MAIN_BRANCHES.sources()).call();
 
             Files.writeString(metadata1ToFetch, METADATA_YAML_UPDATED);
+            Files.writeString(categoriesMetadataToFetch, METADATA_CATEGORIES_YAML_UPDATED);
             git.add().addFilepattern(".").call();
             git.commit().setMessage("Source updated commit").call();
         }
@@ -211,7 +216,9 @@ class FetchingServiceTest {
                                     "Some title",
                                     "This is a summary",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -220,7 +227,9 @@ class FetchingServiceTest {
                                     "何かのタイトル",
                                     "これは概要です",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -229,7 +238,9 @@ class FetchingServiceTest {
                                     "何かのタイトル",
                                     "これは概要です",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -238,7 +249,9 @@ class FetchingServiceTest {
                                     "何かのタイトル",
                                     "これは概要です",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -247,7 +260,9 @@ class FetchingServiceTest {
                                     "何かのタイトル",
                                     "これは概要です",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -257,6 +272,8 @@ class FetchingServiceTest {
                                     "This is a different summary.",
                                     null,
                                     Set.of("getting-started"),
+                                    Set.of(),
+                                    List.of(),
                                     Set.of(),
                                     Set.of(),
                                     FETCHED_GUIDE_2_CONTENT_PROCESSED);
@@ -269,6 +286,8 @@ class FetchingServiceTest {
                                     null,
                                     Set.of("getting-started"),
                                     Set.of(),
+                                    List.of(),
+                                    Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
@@ -277,6 +296,8 @@ class FetchingServiceTest {
                                     "This is a different summary.",
                                     null,
                                     Set.of("getting-started"),
+                                    Set.of(),
+                                    List.of(),
                                     Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
@@ -287,6 +308,8 @@ class FetchingServiceTest {
                                     null,
                                     Set.of("getting-started"),
                                     Set.of(),
+                                    List.of(),
+                                    Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
@@ -295,6 +318,8 @@ class FetchingServiceTest {
                                     "This is a different summary.",
                                     null,
                                     Set.of("getting-started"),
+                                    Set.of(),
+                                    List.of(),
                                     Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
@@ -320,7 +345,9 @@ class FetchingServiceTest {
                                     "Some updated title",
                                     "This is an updated summary",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     FETCHED_GUIDE_1_CONTENT_PROCESSED_UPDATED);
@@ -329,7 +356,9 @@ class FetchingServiceTest {
                                     "Some updated title",
                                     "This is an updated summary",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -338,7 +367,9 @@ class FetchingServiceTest {
                                     "Some updated title",
                                     "This is an updated summary",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -347,7 +378,9 @@ class FetchingServiceTest {
                                     "Some updated title",
                                     "This is an updated summary",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -356,7 +389,9 @@ class FetchingServiceTest {
                                     "Some updated title",
                                     "This is an updated summary",
                                     "keyword1 keyword2",
-                                    Set.of("category1", "category2"),
+                                    Set.of("cat-a", "cat-b"),
+                                    Set.of("cat-b-sub1"),
+                                    List.of(0, 0),
                                     Set.of("topic1", "topic2"),
                                     Set.of("io.quarkus:extension1", "io.quarkus:extension2"),
                                     JA_FETCHED_GUIDE_1_CONTENT_PROCESSED);
@@ -366,6 +401,8 @@ class FetchingServiceTest {
                                     "This is a different summary.",
                                     null,
                                     Set.of("getting-started"),
+                                    Set.of(),
+                                    List.of(),
                                     Set.of(),
                                     Set.of(),
                                     FETCHED_GUIDE_2_CONTENT_PROCESSED);
@@ -378,6 +415,8 @@ class FetchingServiceTest {
                                     null,
                                     Set.of("getting-started"),
                                     Set.of(),
+                                    List.of(),
+                                    Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://es.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
@@ -386,6 +425,8 @@ class FetchingServiceTest {
                                     "This is a different summary.",
                                     null,
                                     Set.of("getting-started"),
+                                    Set.of(),
+                                    List.of(),
                                     Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
@@ -396,6 +437,8 @@ class FetchingServiceTest {
                                     null,
                                     Set.of("getting-started"),
                                     Set.of(),
+                                    List.of(),
+                                    Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
                             case "https://pt.quarkus.io/version/2.7/guides/" + FETCHED_GUIDE_2_NAME -> isGuide(
@@ -404,6 +447,8 @@ class FetchingServiceTest {
                                     "This is a different summary.",
                                     null,
                                     Set.of("getting-started"),
+                                    Set.of(),
+                                    List.of(),
                                     Set.of(),
                                     Set.of(),
                                     JA_FETCHED_GUIDE_2_CONTENT_PROCESSED);
@@ -434,6 +479,45 @@ class FetchingServiceTest {
                 url: /guides/foo
             """;
 
+    private static final String METADATA_CATEGORIES_YAML = """
+            categories:
+            - id: cat-a
+              title: Category A
+              description: First category
+              guides:
+              - title: Some title
+                filename: foo.adoc
+                summary: This is a summary
+                keywords: keyword1 keyword2
+                topics:
+                - topic1
+                - topic2
+                extensions:
+                - io.quarkus:extension1
+                - io.quarkus:extension2
+                type: reference
+                url: /guides/foo
+            - id: cat-b
+              title: Category B
+              description: Second category
+              subcategories:
+              - id: cat-b-sub1
+                title: Subcategory B1
+                guides:
+                - title: Some title
+                  filename: foo.adoc
+                  summary: This is a summary
+                  keywords: keyword1 keyword2
+                  topics:
+                  - topic1
+                  - topic2
+                  extensions:
+                  - io.quarkus:extension1
+                  - io.quarkus:extension2
+                  type: reference
+                  url: /guides/foo
+            """;
+
     private static final String METADATA_YAML_UPDATED = """
             # Generated file. Do not edit
             ---
@@ -453,6 +537,45 @@ class FetchingServiceTest {
                 id: foo
                 type: reference
                 url: /guides/foo
+            """;
+
+    private static final String METADATA_CATEGORIES_YAML_UPDATED = """
+            categories:
+            - id: cat-a
+              title: Category A
+              description: First category
+              guides:
+              - title: Some updated title
+                filename: foo.adoc
+                summary: This is an updated summary
+                keywords: keyword1 keyword2
+                topics:
+                - topic1
+                - topic2
+                extensions:
+                - io.quarkus:extension1
+                - io.quarkus:extension2
+                type: reference
+                url: /guides/foo
+            - id: cat-b
+              title: Category B
+              description: Second category
+              subcategories:
+              - id: cat-b-sub1
+                title: Subcategory B1
+                guides:
+                - title: Some updated title
+                  filename: foo.adoc
+                  summary: This is an updated summary
+                  keywords: keyword1 keyword2
+                  topics:
+                  - topic1
+                  - topic2
+                  extensions:
+                  - io.quarkus:extension1
+                  - io.quarkus:extension2
+                  type: reference
+                  url: /guides/foo
             """;
 
     private static final String METADATA_LEGACY_YAML = """
@@ -567,7 +690,8 @@ class FetchingServiceTest {
             """;
 
     private static Consumer<Guide> isGuide(Language language, String title, String summary, String keywords,
-            Set<String> categories, Set<String> topics, Set<String> extensions, String content) {
+            Set<String> categories, Set<String> subcategories, List<Integer> categoriesOrder,
+            Set<String> topics, Set<String> extensions, String content) {
         return guide -> {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(guide).extracting("language").isEqualTo(language);
@@ -579,6 +703,10 @@ class FetchingServiceTest {
                         .containsExactlyInAnyOrderEntriesOf(keywords == null ? Map.of() : Map.of(language, keywords));
                 softly.assertThat(guide).extracting("categories", InstanceOfAssertFactories.COLLECTION)
                         .containsExactlyInAnyOrderElementsOf(categories);
+                softly.assertThat(guide).extracting("subcategories", InstanceOfAssertFactories.COLLECTION)
+                        .containsExactlyInAnyOrderElementsOf(subcategories);
+                softly.assertThat(guide).extracting("categoriesOrder", InstanceOfAssertFactories.LIST)
+                        .containsExactlyElementsOf(categoriesOrder);
                 softly.assertThat(guide)
                         .extracting(g -> g.topics.stream().map(I18nData::asMap).collect(Collectors.toList()),
                                 InstanceOfAssertFactories.COLLECTION)

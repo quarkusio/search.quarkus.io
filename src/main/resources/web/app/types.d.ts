@@ -7,4 +7,5 @@ export interface Guide {
     content?: [string] | string;
     categories?: string;
     origin?: string;
+    pinned?: boolean;
 }

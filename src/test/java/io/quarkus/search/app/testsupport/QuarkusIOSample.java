@@ -189,6 +189,10 @@ public final class QuarkusIOSample {
                     copyRootPath, copyGit,
                     collector.sourceCopyPathToOriginalPath, failOnMissing);
 
+            copyIfNecessary(originalRepo, branches.sources(),
+                    copyRootPath, copyGit,
+                    collector.optionalSourcesCopyPathToOriginalPath, false);
+
             editIfNecessary(originalRepo,
                     copyRootPath, copyGit,
                     collector.yamlQuarkusFilesToFilter);
@@ -232,8 +236,18 @@ public final class QuarkusIOSample {
         if (yamlQuarkusFilesToFilter.isEmpty()) {
             return;
         }
+        List<String> edited = new ArrayList<>();
         for (Map.Entry<String, Consumer<Path>> entry : yamlQuarkusFilesToFilter.entrySet()) {
-            entry.getValue().accept(copyRootPath.resolve(entry.getKey()));
+            Path fileToEdit = copyRootPath.resolve(entry.getKey());
+            if (!Files.exists(fileToEdit)) {
+                continue;
+            }
+            entry.getValue().accept(fileToEdit);
+            edited.add(entry.getKey());
+        }
+
+        if (edited.isEmpty()) {
+            return;
         }
 
         copyGit.add().addFilepattern(".").call();
@@ -243,8 +257,7 @@ public final class QuarkusIOSample {
                 Edited:%s"""
                 .formatted(
                         originalRepo,
-                        yamlQuarkusFilesToFilter.values().stream()
-                                .map(Object::toString)
+                        edited.stream()
                                 .collect(Collectors.joining("\n* ", "\n* ", "\n"))))
                 .call();
     }
@@ -269,6 +282,72 @@ public final class QuarkusIOSample {
             }
             return filtered;
         });
+    }
+
+    // Filters categories.yaml to only keep guides matching the test refs.
+    // Structure: categories -> [{id, title, guides?, subcategories -> [{id, title, guides}]}]
+    @SuppressWarnings("unchecked")
+    private static void yamlCategoriesEditor(String version, Path fileToEdit, GuideRef[] refs) {
+        yamlQuarkusEditor(fileToEdit, categoriesYaml -> {
+            Set<String> guideRefs = Arrays.stream(refs).map(g -> g.name(version)).collect(Collectors.toSet());
+
+            List<Map<String, Object>> categories = (List<Map<String, Object>>) categoriesYaml.get("categories");
+            List<Map<String, Object>> filteredCategories = new ArrayList<>();
+
+            if (categories != null) {
+                for (Map<String, Object> categoryObj : categories) {
+                    Map<String, Object> filteredCategory = new HashMap<>(categoryObj);
+                    boolean hasGuides = false;
+
+                    hasGuides |= filterGuideList(filteredCategory, "guides", guideRefs);
+                    hasGuides |= filterSubcategories(filteredCategory, guideRefs);
+
+                    if (hasGuides) {
+                        filteredCategories.add(filteredCategory);
+                    }
+                }
+            }
+
+            return Map.of("categories", filteredCategories);
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean filterSubcategories(Map<String, Object> parent, Set<String> guideRefs) {
+        List<Map<String, Object>> subcategories = (List<Map<String, Object>>) parent.get("subcategories");
+        if (subcategories == null) {
+            return false;
+        }
+        List<Map<String, Object>> filtered = new ArrayList<>();
+        for (Map<String, Object> subcategoryObj : subcategories) {
+            Map<String, Object> copy = new HashMap<>(subcategoryObj);
+            if (filterGuideList(copy, "guides", guideRefs)) {
+                filtered.add(copy);
+            }
+        }
+        if (!filtered.isEmpty()) {
+            parent.put("subcategories", filtered);
+        } else {
+            parent.remove("subcategories");
+        }
+        return !filtered.isEmpty();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean filterGuideList(Map<String, Object> parent, String key, Set<String> guideRefs) {
+        List<Map<String, Object>> guides = (List<Map<String, Object>>) parent.get(key);
+        if (guides == null) {
+            return false;
+        }
+        List<Map<String, Object>> filtered = guides.stream()
+                .filter(g -> guideRefs.contains(Objects.toString(g.get("url"), null)))
+                .collect(Collectors.toList());
+        if (!filtered.isEmpty()) {
+            parent.put(key, filtered);
+        } else {
+            parent.remove(key);
+        }
+        return !filtered.isEmpty();
     }
 
     private static void yamlVersionEditor(Path fileToEdit, Collection<String> versions) {
@@ -380,6 +459,7 @@ public final class QuarkusIOSample {
             c.addVersionMetadata(SAMPLED_VERSIONS);
             for (String version : SAMPLED_VERSIONS) {
                 c.addMetadata(version, guides);
+                c.addCategoriesMetadata(version, guides);
                 for (GuideRef guideRef : guides) {
                     c.addGuide(guideRef, version);
                 }
@@ -408,6 +488,7 @@ public final class QuarkusIOSample {
 
     public static class FilterDefinitionCollector {
         private final Map<String, String> sourceCopyPathToOriginalPath = new LinkedHashMap<>();
+        private final Map<String, String> optionalSourcesCopyPathToOriginalPath = new LinkedHashMap<>();
         private final Map<String, String> pagesCopyPathToOriginalPath = new LinkedHashMap<>();
         private final Map<String, Consumer<Path>> yamlQuarkusFilesToFilter = new LinkedHashMap<>();
 
@@ -441,6 +522,13 @@ public final class QuarkusIOSample {
             return this;
         }
 
+        public FilterDefinitionCollector addCategoriesMetadata(String version, GuideRef[] guides) {
+            String categoriesPath = QuarkusIO.yamlCategoriesMetadataPath(version).toString();
+            addOnSourceBranchIfExists(categoriesPath, categoriesPath);
+            addMetadataToFilter(categoriesPath, path -> yamlCategoriesEditor(version, path, guides));
+            return this;
+        }
+
         public FilterDefinitionCollector addLocalizedGuide(Language language, GuideRef ref, String version) {
             String htmlPath = QuarkusIO.htmlPath(language, version, ref.name(version));
             htmlPath = htmlPath.startsWith("/") ? htmlPath.substring(1) : htmlPath;
@@ -460,6 +548,11 @@ public final class QuarkusIOSample {
 
         public void addOnSourceBranch(String originalPath, String copyPath) {
             add("source", sourceCopyPathToOriginalPath, originalPath, copyPath);
+        }
+
+        // Files from the sources branch that may not exist upstream (e.g. categories.yaml for older versions)
+        public void addOnSourceBranchIfExists(String originalPath, String copyPath) {
+            add("sources", optionalSourcesCopyPathToOriginalPath, originalPath, copyPath);
         }
 
         public void addOnPagesBranch(String originalPath, String copyPath) {
