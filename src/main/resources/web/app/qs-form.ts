@@ -73,7 +73,7 @@ export class QsForm extends LitElement {
 
   constructor() {
     super();
-    const searchParams = new URLSearchParams(window.location.hash.substring(1));
+    const searchParams = new URLSearchParams(window.location.search.substring(1));
     if (searchParams.size > 0) {
       this._initialQueryStringPresent = true;
       const formElements = this._getFormElements();
@@ -99,7 +99,11 @@ export class QsForm extends LitElement {
       this._initialQueryStringPresent = false;
       this._handleInputChange(null);
     }
-    window.location.hash = this._browserData ? (new URLSearchParams(this._browserData)).toString() : window.location.hash;
+   const newSearch = this._browserData ? '?' + (new URLSearchParams(this._browserData)).toString() : '';
+   const newUrl = window.location.pathname + newSearch + window.location.hash;
+   if (window.location.pathname + window.location.search + window.location.hash !== newUrl) {
+      history.replaceState(null, '', newUrl);
+   }
     if (!this._backendData) {
       this._clearSearch();
     } else {
