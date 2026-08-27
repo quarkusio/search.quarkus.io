@@ -1,4 +1,4 @@
-import { LitElement, html, css, unsafeCSS } from 'lit';
+import { LitElement, PropertyValues, html, css, unsafeCSS } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { customElement, property } from 'lit/decorators.js';
 import icons from './assets/icons';
@@ -203,19 +203,15 @@ export class QsGuide extends LitElement {
   @property({type: Boolean}) pinned: boolean = false;
   @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
 
-  connectedCallback() {
-    if (this.data) {
+  willUpdate(changedProperties: PropertyValues) {
+    // Copy the data whenever it changes so that reused elements are re-rendered:
+    if (changedProperties.has('data') && this.data) {
       for (const key in this.data) {
         if (this.data.hasOwnProperty(key)) {
           this[key] = this.data[key];
         }
       }
     }
-    super.connectedCallback();
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
   }
 
   render() {
