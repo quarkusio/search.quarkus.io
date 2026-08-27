@@ -12,9 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.quarkus.search.app.SearchService;
 import io.quarkus.search.app.entity.Guide;
 import io.quarkus.search.app.hibernate.InputProvider;
 import io.quarkus.search.app.indexing.reporting.FailureCollector;
@@ -35,6 +37,10 @@ public class QuarkiverseIO implements Closeable {
     private static final List<String> LATEST_VERSIONS = List.of("dev", "main");
 
     public static final String QUARKIVERSE_ORIGIN = "quarkiverse-hub";
+    public static final String QUARKIVERSE_CATEGORY = "Quarkiverse";
+    // we are somewhat demoting the Quarkiverse to the "Second page" of the search results
+    // by positioning them after the first articles from the "main categories"
+    private static final int INITIAL_DEPTH = SearchService.GROUPED_DOCS_PER_CATEGORY / 2;
 
     private final FailureCollector failureCollector;
 
@@ -50,11 +56,13 @@ public class QuarkiverseIO implements Closeable {
         this.tempDir = tempDir;
     }
 
-    private Guide readGuide(Path file) {
+    private Guide readGuide(Path file, int ordinal) {
         Guide guide = new Guide();
         guide.url = baseUri.resolve(pages.get().relativize(file).toString());
         guide.type = "reference";
         guide.origin = QUARKIVERSE_ORIGIN;
+        guide.categories = Set.of(QUARKIVERSE_CATEGORY);
+        guide.categoriesOrder = List.of(ordinal);
 
         try {
             Document document = Jsoup.parse(file);
@@ -94,8 +102,7 @@ public class QuarkiverseIO implements Closeable {
                     // if we don't find one, we'll report it as a "warning"
                     .map(this::latestVersion)
                     .filter(Objects::nonNull)
-                    .flatMap(this::filesToIndex)
-                    .map(this::readGuide);
+                    .flatMap(this::readGuides);
         } catch (IOException e) {
             if (quarkiverseStream != null) {
                 quarkiverseStream.close();
@@ -106,15 +113,16 @@ public class QuarkiverseIO implements Closeable {
         }
     }
 
-    private Stream<Path> filesToIndex(Path path) {
-        List<Path> files = new ArrayList<>();
+    private Stream<Guide> readGuides(Path extensionDir) {
+        List<Guide> guides = new ArrayList<>();
         try {
             Files.walkFileTree(
-                    path, new SimpleFileVisitor<>() {
+                    extensionDir, new SimpleFileVisitor<>() {
                         @Override
                         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                             if (file.getFileName().toString().endsWith(".html")) {
-                                files.add(file);
+                                int depth = INITIAL_DEPTH + extensionDir.relativize(file).getNameCount() - 1;
+                                guides.add(readGuide(file, depth));
                             }
                             return FileVisitResult.CONTINUE;
                         }
@@ -130,9 +138,10 @@ public class QuarkiverseIO implements Closeable {
                         }
                     });
         } catch (IOException e) {
-            failureCollector.critical(FailureCollector.Stage.PARSING, "Failed to traverse the directory tree: " + path, e);
+            failureCollector.critical(FailureCollector.Stage.PARSING,
+                    "Failed to traverse the directory tree: " + extensionDir, e);
         }
-        return files.stream();
+        return guides.stream();
     }
 
     private Path latestVersion(Path extensionRoot) {

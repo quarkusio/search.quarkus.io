@@ -2,6 +2,8 @@
     --background: white;
     --text-color: black;
     --main-text-color: black;
+    --title-text-color: #1259A5;
+    --sub-title-text-color: #205894;
     --input-border-color: #5996E5;
     --top-nav-bg: black;
     --link-color: #1259A5;
@@ -13,6 +15,15 @@
     --tag-deprecated-text-color: #FFFFFF;
     --tag-experimental-background-color: #ff004a;
     --tag-experimental-text-color: #FFFFFF;
+
+    --card-border-color: #e2e6ec;
+    --card-border-hover-color: #e4edf7;
+    --card-pinned-bg-color: #e4edf7;
+    --card-pinned-border-color: #c0d8f8;
+    --card-accent-color: var(--link-color);
+    --tag-chip-bg: #eef2f8;
+    --tag-chip-text: #4a5568;
+    --tag-chip-border: #dde3ed;
 }
 
 body {

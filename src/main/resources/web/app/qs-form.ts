@@ -5,6 +5,7 @@ import {LocalSearch} from "./local-search";
 
 export const QS_START_EVENT = 'qs-start';
 export const QS_RESULT_EVENT = 'qs-result';
+export const QS_GROUPED_RESULT_EVENT = 'qs-grouped-result';
 export const QS_NEXT_PAGE_EVENT = 'qs-next-page';
 export const QS_QUERY_SUGGESTION_EVENT = 'qs-query-suggestion';
 
@@ -28,6 +29,19 @@ export interface QsSuggestion {
   highlighted: string;
 }
 
+export interface QsCategoryGroup {
+  category: string;
+  hitCount: number;
+  hits: QsHit[];
+}
+
+export interface QsGroupedResult {
+  categories: QsCategoryGroup[];
+  suggestion?: QsSuggestion;
+  search: any;
+  server: string;
+}
+
 /**
  * This component is the form that triggers the search
  */
@@ -36,11 +50,11 @@ export class QsForm extends LitElement {
 
   static styles = css`
 
-      ::slotted(*) {
-          display: block !important;
+      #qs-form {
+          display: contents;
       }
 
-      .quarkus-search {
+      ::slotted(section) {
           display: block !important;
       }
 
@@ -57,6 +71,7 @@ export class QsForm extends LitElement {
   @property({type: String, attribute: 'quarkus-version'}) quarkusversion?: string;
   @property({type: String, attribute: 'local-search'}) localSearch: boolean = false;
   @property({type: String, attribute: 'origin-filter'}) originFilter: string = '';
+  @property({type: Boolean}) grouped: boolean = false;
 
   @state({
     hasChanged(newVal: any, oldVal: any) {
@@ -99,7 +114,7 @@ export class QsForm extends LitElement {
       this._initialQueryStringPresent = false;
       this._handleInputChange(null);
     }
-    window.location.hash = this._browserData ? (new URLSearchParams(this._browserData)).toString() : window.location.hash;
+    this._updateHash();
     if (!this._backendData) {
       this._clearSearch();
     } else {
@@ -158,32 +173,49 @@ export class QsForm extends LitElement {
       return;
     }
 
-    this._jsonFetch(controller, 'GET', this._backendData, this._page > 0 ? this.initialTimeout : this.moreTimeout)
-      .then((r: any) => {
-        if (this._page > 0) {
-          this._currentHitCount += r.hits.length;
-        } else {
-          this._currentHitCount = r.hits.length;
+    if (this.grouped) {
+      this._groupedFetch(controller)
+        .then((r: any) => {
+          this.dispatchEvent(new CustomEvent(QS_GROUPED_RESULT_EVENT, {detail: {...r, search: this._backendData, server: this.server}}));
+        }).catch(e => {
+          console.error('Could not run grouped search: ' + e);
+          if (this._abortController != controller) {
+            return;
+          }
+          this._localSearch();
+        }).finally(() => {
+          if (this._abortController == controller) {
+            this._abortController = null
+          }
+        });
+    } else {
+      this._jsonFetch(controller, 'GET', this._backendData, this._page > 0 ? this.initialTimeout : this.moreTimeout)
+        .then((r: any) => {
+          if (this._page > 0) {
+            this._currentHitCount += r.hits.length;
+          } else {
+            this._currentHitCount = r.hits.length;
+          }
+          const total = r.total?.lowerBound;
+          const hasMoreHits = r.hits.length > 0 && total > this._currentHitCount;
+          this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: this._backendData, page: this._page, hasMoreHits}}));
+        }).catch(e => {
+        console.error('Could not run search: ' + e);
+        if (this._abortController != controller) {
+          // A concurrent search erased ours; most likely input changed while waiting for results.
+          // Ignore this search and let the concurrent one reset the data as it sees fit.
+          return;
         }
-        const total = r.total?.lowerBound;
-        const hasMoreHits = r.hits.length > 0 && total > this._currentHitCount;
-        this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT, {detail: {...r, search: this._backendData, page: this._page, hasMoreHits}}));
-      }).catch(e => {
-      console.error('Could not run search: ' + e);
-      if (this._abortController != controller) {
-        // A concurrent search erased ours; most likely input changed while waiting for results.
-        // Ignore this search and let the concurrent one reset the data as it sees fit.
-        return;
-      }
-      this._page = 0;
-      this._currentHitCount = 0;
-      // Fall back to Javascript in-page search
-      this._localSearch();
-    }).finally(() => {
-      if (this._abortController == controller) {
-        this._abortController = null
-      }
-    });
+        this._page = 0;
+        this._currentHitCount = 0;
+        // Fall back to Javascript in-page search
+        this._localSearch();
+      }).finally(() => {
+        if (this._abortController == controller) {
+          this._abortController = null
+        }
+      });
+    }
   }
 
   private _searchDebounced = debounce(this._search, 300);
@@ -192,8 +224,6 @@ export class QsForm extends LitElement {
     const formElements = this._getFormElements();
     const formData = {
       language: this.language,
-      contentSnippets: 2,
-      contentSnippetsLength: 120,
     };
     const queryData = {};
     if (this.quarkusversion) {
@@ -242,6 +272,48 @@ export class QsForm extends LitElement {
     return el.tagName.toLowerCase() === 'input'
   }
 
+  private _updateHash() {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const formKeys = new Set<string>();
+    this._getFormElements().forEach(el => formKeys.add(el.name));
+    formKeys.forEach(key => hashParams.delete(key));
+    if (this._browserData) {
+      for (const [key, value] of Object.entries(this._browserData)) {
+        hashParams.set(key, value as string);
+      }
+    }
+    const newHash = hashParams.toString();
+    window.location.hash = newHash ? newHash : '';
+  }
+
+  private async _groupedFetch(controller: AbortController) {
+    const queryParams: Record<string, string> = {};
+    if (this._backendData['q']) {
+      queryParams['q'] = this._backendData['q'];
+    }
+    if (this._backendData['language']) {
+      queryParams['language'] = this._backendData['language'];
+    }
+    if (this._backendData['version']) {
+      queryParams['version'] = this._backendData['version'];
+    }
+    if (this._backendData['origin']) {
+      queryParams['origin'] = this._backendData['origin'];
+    }
+    const timeoutId = setTimeout(() => controller.abort(), this.initialTimeout);
+    const response = await fetch(this.server + '/api/guides/search/grouped?' + (new URLSearchParams(queryParams)).toString(), {
+      method: 'GET',
+      signal: controller.signal,
+      body: null
+    });
+    clearTimeout(timeoutId);
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw 'Response status is ' + response.status + '; response: ' + await response.text();
+    }
+  }
+
   private async _jsonFetch(controller: AbortController, method: string, params: object, timeout: number) {
     const queryParams: Record<string, string> = {
       ...params,
@@ -268,7 +340,11 @@ export class QsForm extends LitElement {
       this._abortController.abort();
       this._abortController = null;
     }
-    this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT));
+    if (this.grouped) {
+      this.dispatchEvent(new CustomEvent(QS_GROUPED_RESULT_EVENT));
+    } else {
+      this.dispatchEvent(new CustomEvent(QS_RESULT_EVENT));
+    }
   }
 
   private _localSearch(): any {

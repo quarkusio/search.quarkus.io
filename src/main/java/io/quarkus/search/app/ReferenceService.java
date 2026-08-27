@@ -66,6 +66,15 @@ public class ReferenceService {
         return listAllValues("categories", Comparator.naturalOrder());
     }
 
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "List available subcategories")
+    @Path("/subcategories")
+    @CacheResult(cacheName = REFERENCE_CACHE, keyGenerator = MethodNameCacheKeyGenerator.class)
+    public List<String> subcategories() {
+        return listAllValues("subcategories", Comparator.naturalOrder());
+    }
+
     public void invalidateCaches() {
         cache.invalidateAll().subscribe().asCompletionStage().join();
     }
