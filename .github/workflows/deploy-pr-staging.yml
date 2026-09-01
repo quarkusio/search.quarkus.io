@@ -47,7 +47,7 @@ jobs:
         ref: ${{ steps.pr.outputs.sha }}
 
     - name: Set up JDK 21
-      uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+      uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
       with:
         distribution: temurin
         java-version: 21
@@ -58,7 +58,7 @@ jobs:
          version: 'v3.13.3'
 
     - name: Install CLI tools from OpenShift Mirror
-      uses: redhat-actions/openshift-tools-installer@144527c7d98999f2652264c048c7a9bd103f8a82 # v1.13.1
+      uses: redhat-actions/openshift-tools-installer@37eb3cfb20ac2df6f0511ffa71cd917e4d49cabf # v3.1
       with:
         oc: "latest"
 
