@@ -21,7 +21,7 @@
     <url>https://github.com/quarkusio/search.quarkus.io/issues</url>
   </issueManagement>
   <properties>
-    <compiler-plugin.version>3.15.0</compiler-plugin.version>
+    <compiler-plugin.version>3.16.0</compiler-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -30,7 +30,7 @@
     <quarkus.version>3.39.0</quarkus.version>
     <revision>999-SNAPSHOT</revision>
     <skipITs>true</skipITs>
-    <surefire-plugin.version>3.5.6</surefire-plugin.version>
+    <surefire-plugin.version>3.6.0</surefire-plugin.version>
     <!-- Match the memory limits to the ones set for the staging profile (see src/main/helm/values.staging.yaml). -->
     <test.jvm.args>-Xms1536m -Xmx1536m</test.jvm.args>
     <version.docker.plugin>0.49.0</version.docker.plugin>
