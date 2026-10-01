@@ -37,10 +37,16 @@ public record InputProvider(Path content) {
                 // Means we've found a guide content column. hence let's use that to have only real content:
                 writableContent = encode(content);
             } else {
-                Log.warnf(
-                        "Was unable to find the content section of a guide. Using whole document as text. %s Document starts with: %.10000s",
-                        context, body.toString());
-                writableContent = encode(body);
+                // Reference pages such as all-config/all-builditems use yet another layout:
+                content = body.selectFirst(".grid-wrapper.guides-configuration-reference");
+                if (content != null) {
+                    writableContent = encode(content);
+                } else {
+                    Log.warnf(
+                            "Was unable to find the content section of a guide. Using whole document as text. %s Document starts with: %.10000s",
+                            context, body.toString());
+                    writableContent = encode(body);
+                }
             }
         }
 
