@@ -2,8 +2,7 @@ package io.quarkus.search.app.indexing.reporting;
 
 import static io.quarkus.search.app.indexing.reporting.StatusRenderer.toStatusDetailsMarkdown;
 import static io.quarkus.search.app.indexing.reporting.StatusRenderer.toStatusSummary;
-import static io.quarkus.search.app.util.GitHubApiRetry.executeWithRetry;
-import static io.quarkus.search.app.util.Streams.toStream;
+import static io.quarkiverse.githubapp.GitHubApiUtil.sleepForWriteThrottling;
 import static io.quarkus.search.app.util.UncheckedIOFunction.uncheckedIO;
 
 import java.io.IOException;
@@ -14,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import io.quarkiverse.githubapp.GitHubApiUtil;
 import io.quarkus.search.app.util.Streams;
 
 import io.quarkus.logging.Log;
@@ -28,11 +28,6 @@ import org.kohsuke.github.GitHubBuilder;
 class GithubStatusReporter implements StatusReporter {
 
     private static final String STATUS_REPORT_HEADER = "## search.quarkus.io indexing status: ";
-    // Delay between comment deletions to avoid secondary rate limits
-    // Can be overridden via system property (e.g., for tests)
-    private static final long COMMENT_DELETE_DELAY_MILLIS = Long.getLong(
-            "search.quarkus.io.github-api.comment-delete-delay-millis",
-            1000);
 
     private final Clock clock;
     private final ReportingConfig.GithubReporter config;
@@ -146,36 +141,21 @@ class GithubStatusReporter implements StatusReporter {
         Log.infof("Packing issue %s#%s: deleting %d old comments (keeping %d most recent)",
                 config.issue().repository(), issue.getNumber(), commentsToDelete, commentCount - commentsToDelete);
 
-        var comments = toStream(issue.queryComments().list()).toList();
+        var comments = GitHubApiUtil.toStream(issue.queryComments().list()).toList();
         for (int i = 0; i < commentsToDelete && i < comments.size(); i++) {
             var comment = comments.get(i);
             try {
-                executeWithRetry(() -> {
-                    try {
-                        comment.delete();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                comment.delete();
             } catch (Exception e) {
                 Log.errorf(e, "Failed to delete comment %s from issue %s#%s",
                         comment.getId(), config.issue().repository(), issue.getNumber());
             }
-
-            // Delay between deletions to avoid triggering secondary rate limits
-            if (i < commentsToDelete - 1) {
-                try {
-                    Thread.sleep(COMMENT_DELETE_DELAY_MILLIS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted while packing comments", e);
-                }
-            }
+            sleepForWriteThrottling();
         }
     }
 
     private Stream<GHIssueComment> getStatusCommentsSince(GHIssue issue, Instant since) {
-        return toStream(issue.queryComments().since(Date.from(since)).list())
+        return GitHubApiUtil.toStream(issue.queryComments().since(Date.from(since)).list())
                 .filter(uncheckedIO(
                         (GHIssueComment comment) -> comment.getBody().startsWith(STATUS_REPORT_HEADER))::apply);
     }
