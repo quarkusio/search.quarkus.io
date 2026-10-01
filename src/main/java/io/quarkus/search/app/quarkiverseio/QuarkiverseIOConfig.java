@@ -33,7 +33,7 @@ public interface QuarkiverseIOConfig {
         @WithDefault("quarkiverse/quarkiverse-docs")
         String repository();
 
-        @WithDefault("Publish website")
+        @WithDefault("publish.yml")
         String actionName();
 
         @WithDefault("github-pages")
