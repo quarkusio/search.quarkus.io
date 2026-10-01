@@ -37,6 +37,7 @@ import org.hibernate.search.util.common.impl.SuppressingCloser;
 
 import org.kohsuke.github.GHArtifact;
 import org.kohsuke.github.GHRepository;
+import org.kohsuke.github.GHWorkflow;
 import org.kohsuke.github.GHWorkflowRun;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
@@ -45,6 +46,9 @@ import io.vertx.core.impl.ConcurrentHashSet;
 
 @ApplicationScoped
 public class FetchingService {
+
+    private static final int RECENT_SUCCESSFUL_RUNS_TO_CONSIDER = 5;
+    private static final int WORKFLOW_PAGE_SIZE = 10;
 
     @Inject
     FetchingConfig fetchingConfig;
@@ -92,28 +96,36 @@ public class FetchingService {
                         "Cannot fetch Quarkiverse guides from GitHub artifact: missing configuration 'quarkiverseio.github-artifact.token'")))
                 .build();
         GHRepository repository = github.getRepository(ghConfig.repository());
-        Path artifact = null;
-        for (GHWorkflowRun run : repository.queryWorkflowRuns()
-                .conclusion(GHWorkflowRun.Conclusion.SUCCESS)
-                .list().withPageSize(10)) {
-            if (ghConfig.actionName().equals(run.getName()) && ghConfig.mainBranchName().equals(run.getHeadBranch())) {
-                for (GHArtifact ghArtifact : run.listArtifacts().withPageSize(5).toList()) {
-                    if (ghConfig.artifactName().equals(ghArtifact.getName())) {
-                        artifact = tempDir.path().resolve(ghArtifact.getName() + ".zip");
-                        final Path finalArtifact = artifact;
-                        Log.infof(
-                                "Downloading Quarkiverse %s artifact #%s", ghConfig.artifactName(),
-                                ghArtifact.getId());
-                        ghArtifact.download(is -> Files.copy(is, finalArtifact));
-                        return finalArtifact;
-                    }
+        GHWorkflow workflow = repository.getWorkflow(ghConfig.actionName());
+
+        int consideredRuns = 0;
+        for (GHWorkflowRun run : workflow.listRuns().withPageSize(WORKFLOW_PAGE_SIZE)) {
+            if (!ghConfig.mainBranchName().equals(run.getHeadBranch())
+                    || run.getConclusion() != GHWorkflowRun.Conclusion.SUCCESS) {
+                continue;
+            }
+            consideredRuns++;
+
+            for (GHArtifact ghArtifact : run.listArtifacts().withPageSize(5).toList()) {
+                if (ghConfig.artifactName().equals(ghArtifact.getName())) {
+                    Path artifact = tempDir.path().resolve(ghArtifact.getName() + ".zip");
+                    Log.infof(
+                            "Downloading Quarkiverse %s artifact #%s", ghConfig.artifactName(),
+                            ghArtifact.getId());
+                    ghArtifact.download(is -> Files.copy(is, artifact));
+                    return artifact;
                 }
-                Log.warnf(
-                        "The Github action run %s of %s is missing the required % artifact. Trying to find it in a previous run.",
-                        run.getId(), ghConfig.actionName(), ghConfig.artifactName());
+            }
+            Log.warnf(
+                    "The Github action run %s of %s is missing the required %s artifact. Trying to find it in a previous run.",
+                    run.getId(), ghConfig.actionName(), ghConfig.artifactName());
+            if (consideredRuns >= RECENT_SUCCESSFUL_RUNS_TO_CONSIDER) {
+                break;
             }
         }
-        throw new IllegalStateException("GitHub artifact " + ghConfig.artifactName() + " not found.");
+        throw new IllegalStateException("GitHub artifact " + ghConfig.artifactName()
+                + " not found in the last " + RECENT_SUCCESSFUL_RUNS_TO_CONSIDER
+                + " successful runs of workflow '" + ghConfig.actionName() + "'.");
     }
 
     public QuarkusIO fetchQuarkusIo(FailureCollector failureCollector) {
