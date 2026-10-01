@@ -106,7 +106,7 @@ public class FetchingService {
             }
             consideredRuns++;
 
-            for (GHArtifact ghArtifact : run.listArtifacts().withPageSize(5).toList()) {
+            for (GHArtifact ghArtifact : run.listArtifacts().withPageSize(WORKFLOW_PAGE_SIZE).toList()) {
                 if (ghConfig.artifactName().equals(ghArtifact.getName())) {
                     Path artifact = tempDir.path().resolve(ghArtifact.getName() + ".zip");
                     Log.infof(
