@@ -2,6 +2,7 @@ import {LitElement, html, css, unsafeCSS, PropertyValues} from 'lit';
 import {customElement, property, state} from 'lit/decorators.js';
 import './qs-guide';
 import icons from './assets/icons';
+import {getPinnedKeys, onPinsChanged, pinKey} from './pinned-guides';
 
 export interface SearchContext {
   server: string;
@@ -157,6 +158,65 @@ export class QsGuideGroup extends LitElement {
 
   @state() private _additionalHits: any[] = [];
   @state() private _loading: boolean = false;
+
+  private _unsubscribePins: () => void;
+
+  connectedCallback() {
+    super.connectedCallback();
+    if (!this.pinned) {
+      return;
+    }
+    this._unsubscribePins = onPinsChanged(() => this._syncUserPinnedGuides());
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this._syncUserPinnedGuides(), {once: true});
+    } else {
+      this._syncUserPinnedGuides();
+    }
+  }
+
+  disconnectedCallback() {
+    this._unsubscribePins?.();
+    super.disconnectedCallback();
+  }
+
+  /**
+   * Adds the guides pinned by the visitor to the (server-rendered) list of this pinned group,
+   * after the site-curated ones. Cards are copied from the same guide elsewhere on the page,
+   * so a pin made in another documentation version only shows if the guide exists in this one.
+   */
+  private _syncUserPinnedGuides() {
+    let list = this.querySelector(':scope > ul.guide-list');
+    if (!list) {
+      list = document.createElement('ul');
+      list.className = 'guide-list';
+      this.appendChild(list);
+    }
+    list.querySelectorAll(':scope > li[data-user-pinned]').forEach(li => li.remove());
+
+    const curatedKeys = new Set(
+        Array.from(list.querySelectorAll('qs-guide'), g => pinKey(g.getAttribute('url'))));
+    const sources = new Map<string, Element>();
+    document.querySelectorAll('qs-guide-group:not([pinned]) qs-guide[url]').forEach(g => {
+      const key = pinKey(g.getAttribute('url'));
+      if (!sources.has(key)) {
+        sources.set(key, g);
+      }
+    });
+
+    for (const key of getPinnedKeys()) {
+      const source = sources.get(key);
+      if (curatedKeys.has(key) || !source) {
+        continue;
+      }
+      const card = source.cloneNode(true) as Element;
+      card.setAttribute('pinned', '');
+      card.setAttribute('user-pinned', '');
+      const li = document.createElement('li');
+      li.setAttribute('data-user-pinned', '');
+      li.appendChild(card);
+      list.appendChild(li);
+    }
+  }
 
   willUpdate(changedProperties: PropertyValues) {
     if (changedProperties.has('hits') || changedProperties.has('category')) {
