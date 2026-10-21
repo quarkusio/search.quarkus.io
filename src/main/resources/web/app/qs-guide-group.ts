@@ -1,7 +1,10 @@
-import {LitElement, html, css, unsafeCSS, PropertyValues} from 'lit';
+import {LitElement, html, css, unsafeCSS, PropertyValues, render, nothing} from 'lit';
+import {repeat} from 'lit/directives/repeat.js';
 import {customElement, property, state} from 'lit/decorators.js';
 import './qs-guide';
+import type {QsGuide} from './qs-guide';
 import icons from './assets/icons';
+import {onPinsChanged, userPinnedGuides} from './pinned-guides';
 
 export interface SearchContext {
   server: string;
@@ -158,6 +161,59 @@ export class QsGuideGroup extends LitElement {
   @state() private _additionalHits: any[] = [];
   @state() private _loading: boolean = false;
 
+  private _unsubscribePins: () => void;
+
+  connectedCallback() {
+    super.connectedCallback();
+    if (!this.pinned) {
+      return;
+    }
+    this._unsubscribePins = onPinsChanged(() => this._renderUserPinnedGuides());
+    this._renderUserPinnedGuides();
+  }
+
+  disconnectedCallback() {
+    this._unsubscribePins?.();
+    super.disconnectedCallback();
+  }
+
+  /**
+   * Renders the guides pinned by the visitor in the (server-rendered) list of this pinned group,
+   * after the site-curated ones, so they get the site's own grid and card styling.
+   * Cards are keyed by guide, so the ones that stay pinned keep their DOM nodes and focus.
+   */
+  private _renderUserPinnedGuides() {
+    let list = this.querySelector(':scope > ul.guide-list');
+    if (!list) {
+      list = document.createElement('ul');
+      list.className = 'guide-list';
+      this.appendChild(list);
+    }
+    const guides = userPinnedGuides();
+
+    // If the focused card is unpinned, move the focus to the next (or previous) pinned card, or to the group title
+    const focused = (document.activeElement as Element)?.closest('li[data-user-pinned]');
+    let focusTarget: string | null | undefined;
+    if (focused && list.contains(focused) && !guides.some(g => g.key === focused.getAttribute('data-user-pinned'))) {
+      const keys = Array.from(list.querySelectorAll(':scope > li[data-user-pinned]'), li => li.getAttribute('data-user-pinned'));
+      const index = keys.indexOf(focused.getAttribute('data-user-pinned'));
+      const remaining = new Set(guides.map(g => g.key));
+      focusTarget = [...keys.slice(index + 1), ...keys.slice(0, index).reverse()].find(k => remaining.has(k)) ?? null;
+    }
+
+    render(html`${repeat(guides, g => g.key, g => html`
+      <li data-user-pinned=${g.key}>
+        <qs-guide pinned .data=${g} origins-with-relative-urls=${this.originsWithRelativeUrls}></qs-guide>
+      </li>
+    `)}`, list);
+
+    if (focusTarget) {
+      (list.querySelector(`:scope > li[data-user-pinned="${CSS.escape(focusTarget)}"] qs-guide`) as QsGuide)?.focusPinToggle();
+    } else if (focusTarget === null) {
+      this.renderRoot.querySelector<HTMLElement>('.qs-guide-group-header h2')?.focus();
+    }
+  }
+
   willUpdate(changedProperties: PropertyValues) {
     if (changedProperties.has('hits') || changedProperties.has('category')) {
       this._additionalHits = [];
@@ -224,7 +280,7 @@ export class QsGuideGroup extends LitElement {
       <div class="qs-guide-group-header">
         ${useH3
           ? html`<h3>${displayTitle}</h3>`
-          : html`<h2>
+          : html`<h2 tabindex=${this.pinned ? '-1' : nothing}>
                   ${displayTitle}
                   ${this.hitCount > 0 ? html`<span class="count">(${this.hitCount})</span>` : ''}
                   ${this.description ? html`<span class="qs-guide-group-description">${this.description}</span>` : ''}
