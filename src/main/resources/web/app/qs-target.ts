@@ -1,4 +1,4 @@
-import {LitElement, html, css, unsafeCSS} from 'lit';
+import {LitElement, html, css, unsafeCSS, PropertyValues} from 'lit';
 import {customElement, property, state, queryAll} from 'lit/decorators.js';
 import './qs-guide'
 import './qs-guide-group'
@@ -7,6 +7,7 @@ import {QS_NEXT_PAGE_EVENT, QS_QUERY_SUGGESTION_EVENT, QS_RESULT_EVENT, QS_GROUP
 import debounce from 'lodash/debounce';
 import icons from "./assets/icons";
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import {loadCatalog} from './pinned-guides';
 
 
 /**
@@ -85,6 +86,8 @@ export class QsTarget extends LitElement {
   @property({type: String}) private type: string = "guide";
   @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
   @property({type: Object, attribute: 'categories-meta'}) categoriesMeta: Record<string, {title: string, description?: string}> = {};
+  /** Lets visitors pin the guides of the (server-rendered) guides index in this target */
+  @property({type: Boolean}) pinnable: boolean = false;
   @state() private _result: QsResult | undefined;
   @state() private _groupedResult: QsGroupedResult | undefined;
   @state() private _loading = true;
@@ -107,6 +110,16 @@ export class QsTarget extends LitElement {
     this._form.removeEventListener(QS_START_EVENT, this._loadingStart);
     document.removeEventListener('scroll', this._handleScrollDebounced);
     super.disconnectedCallback();
+  }
+
+  willUpdate(changedProperties: PropertyValues) {
+    if (changedProperties.has('pinnable') && this.pinnable) {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => loadCatalog(this), {once: true});
+      } else {
+        loadCatalog(this);
+      }
+    }
   }
 
   render() {
