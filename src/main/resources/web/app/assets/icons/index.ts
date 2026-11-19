@@ -9,6 +9,7 @@ import reference from './docsicon-reference.svg';
 import quarkus from './quarkus_icon_default.svg';
 import quarkiverse from './quarkiverse_logo_horizontal.svg';
 import loading from './loading.svg';
+import pin from './pin.svg';
 
 const icons = {
     docs: {
@@ -25,7 +26,8 @@ const icons = {
         quarkus,
         quarkiverse
     },
-    loading
+    loading,
+    pin
 }
 
 export default icons;

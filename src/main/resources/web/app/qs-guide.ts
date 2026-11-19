@@ -1,7 +1,8 @@
 import { LitElement, PropertyValues, html, css, unsafeCSS } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import icons from './assets/icons';
+import { PinType, onPinsChanged, pinType, togglePinned } from './pinned-guides';
 
 /**
  * This component is a single guide hit in the search results
@@ -172,6 +173,80 @@ export class QsGuide extends LitElement {
           font-family: ui-monospace, monospace;
       }
 
+      .pin-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 1.75rem;
+          height: 1.75rem;
+          /* Keep the larger click target without making the header taller than on cards without a toggle */
+          margin: -0.375rem 0;
+          padding: 0;
+          border: none;
+          border-radius: 9999px;
+          background: none;
+          color: var(--main-text-color);
+          cursor: pointer;
+          opacity: 0.6;
+          transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+      }
+
+      .pin-toggle svg {
+          width: 1rem;
+          height: 1rem;
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 2;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+      }
+
+      .pin-toggle:hover,
+      .pin-toggle:focus-visible {
+          opacity: 1;
+          color: var(--card-accent-color);
+          background-color: var(--tag-chip-bg);
+      }
+
+      .pin-toggle[aria-pressed="true"] {
+          opacity: 1;
+          color: var(--card-accent-color);
+      }
+
+      .pin-toggle[aria-pressed="true"] svg {
+          fill: currentColor;
+      }
+
+      /* Site-curated pins: shown, but they can't be unpinned */
+      .pin-toggle.curated,
+      .pin-toggle.curated:hover,
+      .pin-toggle.curated:focus-visible {
+          opacity: 0.6;
+          color: var(--sub-title-text-color);
+          background: none;
+          cursor: default;
+      }
+
+      .pin-toggle.curated svg {
+          fill: currentColor;
+      }
+
+      /* With a mouse, only reveal the unpinned toggle when hovering the card */
+      @media (hover: hover) {
+          .pin-toggle[aria-pressed="false"] {
+              opacity: 0;
+          }
+
+          .qs-guide:hover .pin-toggle[aria-pressed="false"],
+          .pin-toggle[aria-pressed="false"]:focus-visible {
+              opacity: 0.6;
+          }
+
+          .qs-guide .pin-toggle[aria-pressed="false"]:hover {
+              opacity: 1;
+          }
+      }
+
       .qs-guide .origin {
           background-size: 100px 25px;
           background-repeat: no-repeat;
@@ -200,8 +275,28 @@ export class QsGuide extends LitElement {
   @property({type: String}) keywords: string;
   @property({type: String}) origin: string = "quarkus";
   @property({type: String}) categories: string;
+  /** Set on the cards shown in the pinned group */
   @property({type: Boolean}) pinned: boolean = false;
   @property({type: String, attribute: 'origins-with-relative-urls'}) originsWithRelativeUrls: string[] = [];
+
+  /** Undefined when the guide can't be pinned (not in the guides index of a pinnable target) */
+  @state() private _pinType: PinType | undefined;
+  private _unsubscribePins: () => void;
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._unsubscribePins = onPinsChanged(() => this._refreshPinned());
+    this._refreshPinned();
+  }
+
+  disconnectedCallback() {
+    this._unsubscribePins?.();
+    super.disconnectedCallback();
+  }
+
+  private _refreshPinned() {
+    this._pinType = pinType(this.url);
+  }
 
   willUpdate(changedProperties: PropertyValues) {
     // Copy the data whenever it changes so that reused elements are re-rendered:
@@ -211,6 +306,9 @@ export class QsGuide extends LitElement {
           this[key] = this.data[key];
         }
       }
+    }
+    if (changedProperties.has('url') || changedProperties.has('data')) {
+      this._refreshPinned();
     }
   }
 
@@ -226,6 +324,7 @@ export class QsGuide extends LitElement {
           <div class="qs-guide-badges">
             ${this.status ? html`<span class="status-tag status-${this.status}" title="${this._statusHint()}">${this.status}</span>` : ''}
             ${(this.origin && this.origin.toLowerCase() !== 'quarkus') ? html`<a href="${this._originLink()}" target="_blank" class="origin ${this.origin}" title="${this._originTitle()}">${unsafeHTML(this._originIcon())}</a>` : ''}
+            ${this._renderPinToggle()}
           </div>
         </div>
 
@@ -237,6 +336,43 @@ export class QsGuide extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private _renderPinToggle() {
+    if (!this._pinType) {
+      return '';
+    }
+    if (this._pinType === 'curated') {
+      const label = 'Pinned for everyone';
+      return html`
+        <button class="pin-toggle curated" type="button" aria-disabled="true" aria-label="${label}" title="${label}"
+                @click="${this._handlePinClick}">
+          ${unsafeHTML(this._iconToSvg(icons.pin))}
+        </button>
+      `;
+    }
+    const pinned = this._pinType === 'user';
+    const label = pinned ? 'Unpin this guide' : 'Pin this guide to the top';
+    return html`
+      <button class="pin-toggle" type="button"
+              aria-pressed="${pinned}"
+              aria-label="${label}"
+              title="${label}"
+              @click="${this._handlePinClick}">
+        ${unsafeHTML(this._iconToSvg(icons.pin))}
+      </button>
+    `;
+  }
+
+  /** Focuses the pin toggle of this card, if it has one */
+  focusPinToggle() {
+    this.renderRoot.querySelector<HTMLButtonElement>('.pin-toggle')?.focus();
+  }
+
+  private _handlePinClick(e: MouseEvent) {
+    // Don't let the card handle the click and navigate to the guide
+    e.stopPropagation();
+    togglePinned(this.url);
   }
 
   private _handleCardClick(e: MouseEvent) {
@@ -253,7 +389,7 @@ export class QsGuide extends LitElement {
     if (e.button !== 1) {
       return;
     }
-    if ((e.target as HTMLElement).closest('a')) {
+    if ((e.target as HTMLElement).closest('a, button')) {
       return;
     }
     e.preventDefault();
