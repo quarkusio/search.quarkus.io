@@ -15,7 +15,7 @@ app:
       memory: 500Mi
 elasticsearch:
   envs:
-    ES_JAVA_OPTS: ' -Xms750m -Xmx750m '
+    ES_JAVA_OPTS: ' -Xms750m -Xmx750m -XX:-UseBASE64Intrinsics '
   resources:
     limits:
       cpu: 500m
