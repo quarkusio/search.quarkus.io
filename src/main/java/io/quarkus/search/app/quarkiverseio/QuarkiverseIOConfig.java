@@ -27,9 +27,6 @@ public interface QuarkiverseIOConfig {
     URI baseUri();
 
     interface GithubArtifact {
-        // Only necessary if source = github-artifact
-        Optional<String> token();
-
         @WithDefault("quarkiverse/quarkiverse-docs")
         String repository();
 

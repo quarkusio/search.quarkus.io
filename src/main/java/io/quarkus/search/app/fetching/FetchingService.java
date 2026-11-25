@@ -27,6 +27,7 @@ import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.quarkusio.QuarkusIOConfig;
 import io.quarkus.search.app.util.CloseableDirectory;
 import io.quarkus.search.app.util.GitCloneDirectory;
+import io.quarkus.search.app.util.GitHubClients;
 import io.quarkus.search.app.util.SimpleExecutor;
 
 import io.quarkus.logging.Log;
@@ -40,7 +41,6 @@ import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GHWorkflow;
 import org.kohsuke.github.GHWorkflowRun;
 import org.kohsuke.github.GitHub;
-import org.kohsuke.github.GitHubBuilder;
 
 import io.vertx.core.impl.ConcurrentHashSet;
 
@@ -58,6 +58,9 @@ public class FetchingService {
 
     @Inject
     QuarkiverseIOConfig quarkiverseIOConfig;
+
+    @Inject
+    GitHubClients gitHubClients;
 
     private final Map<URI, GitCloneDirectory.Details> detailsCache = new ConcurrentHashMap<>();
     private final Set<CloseableDirectory> tempDirectories = new ConcurrentHashSet<>();
@@ -89,12 +92,9 @@ public class FetchingService {
         return new QuarkiverseIO(Optional.ofNullable(pages), quarkiverseIOConfig.baseUri(), failureCollector, tempDir);
     }
 
-    private static Path fetchQuarkusIoGitHubArtifact(QuarkiverseIOConfig.GithubArtifact ghConfig, CloseableDirectory tempDir)
+    private Path fetchQuarkusIoGitHubArtifact(QuarkiverseIOConfig.GithubArtifact ghConfig, CloseableDirectory tempDir)
             throws IOException {
-        GitHub github = new GitHubBuilder()
-                .withOAuthToken(ghConfig.token().orElseThrow(() -> new IllegalStateException(
-                        "Cannot fetch Quarkiverse guides from GitHub artifact: missing configuration 'quarkiverseio.github-artifact.token'")))
-                .build();
+        GitHub github = gitHubClients.forRepository(ghConfig.repository());
         GHRepository repository = github.getRepository(ghConfig.repository());
         GHWorkflow workflow = repository.getWorkflow(ghConfig.actionName());
 
