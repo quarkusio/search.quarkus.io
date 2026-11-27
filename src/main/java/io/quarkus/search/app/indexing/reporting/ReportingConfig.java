@@ -14,8 +14,6 @@ public interface ReportingConfig {
     interface GithubReporter {
         GithubReporter.Issue issue();
 
-        String token();
-
         /**
          * @return How often to report status on GitHub when the last report was identical and contained only warnings.
          */

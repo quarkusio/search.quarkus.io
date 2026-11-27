@@ -29,6 +29,7 @@ import io.quarkus.search.app.indexing.state.IndexingState;
 import io.quarkus.search.app.quarkiverseio.QuarkiverseIO;
 import io.quarkus.search.app.quarkusio.QuarkusIO;
 import io.quarkus.search.app.util.ExceptionUtils;
+import io.quarkus.search.app.util.GitHubClients;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
@@ -60,11 +61,14 @@ public class IndexingService {
     @Inject
     ReferenceService referenceService;
 
+    @Inject
+    GitHubClients gitHubClients;
+
     private IndexingState state;
 
     @PostConstruct
     void init() {
-        state = new IndexingState(StatusReporter.create(indexingConfig.reporting(), Clock.systemUTC()),
+        state = new IndexingState(StatusReporter.create(indexingConfig.reporting(), Clock.systemUTC(), gitHubClients),
                 indexingConfig.retry(), this::scheduleIndexing);
     }
 

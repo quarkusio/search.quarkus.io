@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import io.quarkus.search.app.util.GitHubClients;
 import io.quarkus.search.app.util.Streams;
 
 import io.quarkus.logging.Log;
@@ -23,7 +24,6 @@ import org.kohsuke.github.GHIssueComment;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
-import org.kohsuke.github.GitHubBuilder;
 
 class GithubStatusReporter implements StatusReporter {
 
@@ -35,10 +35,12 @@ class GithubStatusReporter implements StatusReporter {
             1000);
 
     private final Clock clock;
+    private final GitHubClients gitHubClients;
     private final ReportingConfig.GithubReporter config;
 
-    GithubStatusReporter(Clock clock, ReportingConfig.GithubReporter config) {
+    GithubStatusReporter(Clock clock, GitHubClients gitHubClients, ReportingConfig.GithubReporter config) {
         this.clock = clock;
+        this.gitHubClients = gitHubClients;
         this.config = config;
     }
 
@@ -46,7 +48,7 @@ class GithubStatusReporter implements StatusReporter {
     public void report(Status status, Map<FailureCollector.Level, List<Failure>> failures) {
         Log.infof("Reporting indexing status to GitHub.");
         try {
-            GitHub github = new GitHubBuilder().withOAuthToken(config.token()).build();
+            GitHub github = gitHubClients.forRepository(config.issue().repository());
             GHRepository repository = github.getRepository(config.issue().repository());
             GHIssue issue = repository.getIssue(config.issue().id());
 
