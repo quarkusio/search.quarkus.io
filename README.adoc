@@ -74,16 +74,28 @@ _DEV_QUARKUSIO_WEB_URI=http://localhost:4000
 ----
 
 By default, in dev mode, any parsing/indexing warnings and errors are going to be simply logged.
-But in case you want to get index errors reported to a GitHub issue, the following properties should be added:
+But in case you want to get index errors reported to a GitHub issue,
+you will need to <<github-app,register your own GitHub App>>, install it on your fork of this repository,
+and add the following properties:
 [source,properties]
 ----
 _DEV_INDEXING_REPORTING_TYPE=github-issue
-# see about tokens https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
-INDEXING_REPORTING_GITHUB_TOKEN={your-generated-github-token}
+# The numeric id of your GitHub App
+QUARKUS_GITHUB_APP_APP_ID={your-github-app-id}
+# The private key of your GitHub App, in PEM format.
+# Note the backslashes at the end of each line (except the last one):
+# in a .env file, that is how a multi-line value is considered one value.
+QUARKUS_GITHUB_APP_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\
+{one line of your private key per line, each ending with a backslash}\
+-----END RSA PRIVATE KEY-----
 INDEXING_REPORTING_GITHUB_ISSUE_REPOSITORY={your-github-user}/search.quarkus.io
 INDEXING_REPORTING_GITHUB_ISSUE_ID={github-issue-id-in-your-repository}
 INDEXING_REPORTING_GITHUB_WARNING_REPEAT_DELAY=10m
 ----
+
+NOTE: Without these properties, dev mode uses a placeholder app id and private key
+(see `application.properties`), because the GitHub App extension refuses to start without them.
+The placeholders are never used to contact GitHub.
 
 === Updating the built-in docs.quarkiverse.io sample
 
@@ -107,9 +119,18 @@ add the following properties to your `.env` file:
 [source,properties]
 ----
 _DEV_QUARKIVERSEIO_SOURCE=github-artifact
-# see about tokens https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
-QUARKIVERSEIO_GITHUB_ARTIFACT_TOKEN={your-generated-github-token}
+QUARKUS_GITHUB_APP_APP_ID={your-github-app-id}
+# Same multi-line format as above
+QUARKUS_GITHUB_APP_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\
+{your-github-app-private-key}\
+-----END RSA PRIVATE KEY-----
 ----
+
+NOTE: The GitHub App must be installed on the `quarkiverse/quarkiverse-docs` repository
+and have the "Actions: read" permission (see <<github-app>>).
+In practice, this is only possible for maintainers of the Quarkiverse organization;
+everybody else should rely on the built-in sample, or download the artifact manually
+as explained in the previous section.
 
 [[testing]]
 == Testing
@@ -209,7 +230,9 @@ podman container run -it --rm --name search.quarkus.io --pod search.quarkus.io \
     -v $REPOS_DIR/ja.quarkus.io:/mnt/ja.quarkus.io:ro,z \
     -v $REPOS_DIR/pt.quarkus.io:/mnt/pt.quarkus.io:ro,z \
     -e INDEXING_REPORTING_TYPE=log \
-    -e GITHUB_OAUTH=ignored \
+    -e QUARKUS_GITHUB_APP_APP_ID=0 \
+    -e QUARKUS_GITHUB_APP_PRIVATE_KEY="$(grep '^%dev.quarkus.github-app.private-key=' src/main/resources/application.properties | cut -d= -f2-)" \
+    -e QUARKUS_GITHUB_APP_WEBHOOK_SECRET=ignored \
     -e GITHUB_STATUS_ISSUE_ID=1 \
     -e QUARKUSIO_GIT_URI=file:/mnt/quarkus.io \
     -e QUARKUSIO_LOCALIZED_CN_GIT_URI=file:/mnt/cn.quarkus.io \
@@ -259,7 +282,9 @@ you will need to set up a few things manually:
 2. Namespace
    The OpenShift namespace needs to be registered as a GitHub Actions environment variable.
    See `.github/workflows/deploy.yml`.
-3. Config maps and secrets.
+3. GitHub App.
+   See <<github-app>>.
+4. Config maps and secrets.
    `search-quarkus-io-config`::
    Environment variables for the application.
      +
@@ -269,15 +294,18 @@ you will need to set up a few things manually:
      * `GITHUB_STATUS_ISSUE_ID`: The number of an issue on quarkusio/search.quarkus.io
        where indexing status should be reported.
        See `indexing.reporting.github` configuration properties for more details.
-   `search-quarkus-io-secret`::
+     * `QUARKUS_GITHUB_APP_APP_ID`: The numeric id of the GitHub App (see <<github-app>>).
+   `search-quarkus-io-secrets`::
    Secret environment variables for the application.
      +
      Put in there whatever secret configuration you need for your specific cluster.
      +
      In particular:
-     * `GITHUB_OAUTH`: a GitHub token that allows commenting/reopening/closing a GitHub issue
-     on quarkusio/search.quarkus.io.
-     See `indexing.reporting.github` configuration properties for more details.
+     * `QUARKUS_GITHUB_APP_PRIVATE_KEY`: The private key of the GitHub App (see <<github-app>>), in PEM format
+       (as an environment variable in a Kubernetes secret, the PEM file content can be used as is, with its line breaks).
+     * `QUARKUS_GITHUB_APP_WEBHOOK_SECRET`: Any random string.
+       The application does not use webhooks, but the GitHub App extension requires a webhook secret in production
+       so that the (unused) webhook endpoint rejects any request that is not properly signed.
    `search-backend-config`::
    Environment variables for the Elasticsearch instances.
      +
@@ -286,6 +314,41 @@ you will need to set up a few things manually:
    Secret environment variables for the Elasticsearch instances.
      +
      Put in there whatever secret configuration you need for your specific cluster.
+
+[[github-app]]
+=== GitHub App
+
+The application accesses the GitHub API through a
+https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/about-creating-github-apps[GitHub App]
+(using https://github.com/quarkiverse/quarkus-github-app[quarkus-github-app]),
+not through personal access tokens.
+It does so for two purposes:
+
+* Reporting indexing status to a GitHub issue in `quarkusio/search.quarkus.io`
+(see `indexing.reporting.github` configuration properties).
+* Downloading the `github-pages` artifact of the `publish.yml` workflow in `quarkiverse/quarkiverse-docs`,
+to index docs.quarkiverse.io (see `quarkiverseio.github-artifact` configuration properties).
+
+The GitHub App must be configured as follows:
+
+* Repository permissions:
+** `Issues`: `Read and write`
+** `Actions`: `Read-only`
+** `Metadata`: `Read-only` (mandatory, set automatically)
+* No other permissions.
+* No webhook: untick "Active" in the webhook settings (webhooks are not used).
+* Visibility: "Any account" if the App is not owned by the `quarkiverse` organization,
+otherwise it cannot be installed on the `quarkiverse` organization.
+* Installed on the `quarkusio` organization (at least on the `quarkusio/search.quarkus.io` repository),
+and on the `quarkiverse` organization (at least on the `quarkiverse/quarkiverse-docs` repository).
+The application finds the installation corresponding to each repository on its own.
+
+Then generate a private key for the App, and register the App id and private key
+in the cluster as explained in <<deployment>>.
+
+For development, you can register your own App in a playground organization or account,
+with the same permissions, by following the steps in
+https://quarkiverse.github.io/quarkiverse-docs/quarkus-github-app/dev/index.html[the Quarkus GitHub App documentation].
 
 [[license]]
 == License
